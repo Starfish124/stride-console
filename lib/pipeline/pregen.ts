@@ -69,6 +69,18 @@ export async function pregen(
     const draft = await runRecipe(recipe);
     const message = `The ${RECIPE_LABELS[recipe]} draft for week ${draft.weekNumber} is ready to review.`;
     pushInbox({ draftId: draft.id, recipe, message });
+    // Phone push, self-hosted. A push failure never fails the pregen run.
+    try {
+      const { sendToAll } = await import("../push.ts");
+      const weekday = now.toLocaleDateString("en-US", { weekday: "long" });
+      await sendToAll({
+        title: "Stride Console",
+        body: `Your ${weekday} ${RECIPE_LABELS[recipe]} is ready to approve.`,
+        url: `/drafts/${draft.id}`,
+      });
+    } catch {
+      // No subscriptions or no web-push module: the inbox banner still lands.
+    }
     return { outcome: "created", recipe, draftId: draft.id, message };
   } catch (err) {
     return {

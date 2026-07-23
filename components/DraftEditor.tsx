@@ -177,7 +177,7 @@ export function DraftEditor({
   const isCarousel = draft.recipe === "myth";
 
   return (
-    <div className="pt-10">
+    <div className="pb-28 pt-10 lg:pb-0">
       <div className="flex flex-wrap items-center gap-4">
         <p className="eyebrow text-slate">
           {RECIPE_LABELS[draft.recipe]} — week {draft.weekNumber}
@@ -378,6 +378,35 @@ export function DraftEditor({
               </ul>
             </div>
           ) : null}
+        </div>
+      </div>
+
+      {/* Phone action bar: the two decisions that matter, in thumb reach. */}
+      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-white/95 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur lg:hidden">
+        <div className="mx-auto flex max-w-5xl gap-2">
+          <button
+            onClick={() => copyText(text)}
+            className="flex-1 rounded-input border border-ink py-3 text-sm font-semibold text-ink"
+          >
+            {copied ? "Copied." : "Copy text."}
+          </button>
+          {draft.status === "draft" ? (
+            <button
+              onClick={approve}
+              disabled={Boolean(busy) || blocking > 0}
+              className="flex-1 rounded-input bg-indigo py-3 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              Approve.
+            </button>
+          ) : (
+            <button
+              onClick={markPosted}
+              disabled={postedHere}
+              className="flex-1 rounded-input bg-ink py-3 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {postedHere ? "Posted." : "Mark posted."}
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -17,8 +17,13 @@
   eventRecap) through the shared runner with a promo-slice warning on the third
   post of a week, myth quick-add on the event page.
 
+- Phase 4 — Phone app: installable PWA (manifest, brand-mark icons, offline
+  shell service worker), self-hosted web push on pregen (VAPID keys + subs in
+  data/), one-handed review bar on phone widths.
+
 ## Next
-- Phase 4 — Phone app: PWA install, push on draft-ready, one-handed review.
+- The master plan is built. Future work when it earns its keep: activate the
+  LinkedIn stub, per-event signups, stats charts over postlog.json.
 
 ## Decisions on record
 - Publishing is copy-open until LinkedIn API credentials exist. Nothing auto-posts.
@@ -35,3 +40,8 @@
   per event when two cycles ever overlap.
 - The promo-slice rule warns, never blocks: founders can post a third time in a
   week, but the runner says so on the draft.
+- web-push (MIT, free) is the one new dependency of Phase 4: hand-rolling VAPID
+  plus aes128gcm payload encryption is error-prone, and the no-paid-deps rule
+  holds.
+- Pushes carry a title line only, never draft text: they transit the browser
+  vendor's push relay, and drafts stay on the machine.

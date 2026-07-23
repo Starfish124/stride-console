@@ -13,6 +13,7 @@ import type {
   PitchSignup,
   PostLogEntry,
   PostStats,
+  PushSubscriptionRecord,
   SeenItem,
   SourceEntry,
   StrideEvent,
@@ -30,6 +31,7 @@ const FILES = {
   inbox: path.join(DATA_DIR, "inbox.json"),
   events: path.join(DATA_DIR, "events.json"),
   signups: path.join(DATA_DIR, "signups.json"),
+  pushSubs: path.join(DATA_DIR, "push-subs.json"),
 } as const;
 
 function ensureDataDir(): void {
@@ -301,6 +303,25 @@ export function recordPostStats(
   entry.stats = { ...stats, recordedAt: new Date().toISOString() };
   writeJson(FILES.postlog, log);
   return entry;
+}
+
+// ---------- web-push subscriptions ----------
+
+export function listPushSubs(): PushSubscriptionRecord[] {
+  return readJson<PushSubscriptionRecord[]>(FILES.pushSubs, []);
+}
+
+export function addPushSub(sub: Omit<PushSubscriptionRecord, "addedAt">): void {
+  const subs = listPushSubs().filter((s) => s.endpoint !== sub.endpoint);
+  subs.push({ ...sub, addedAt: new Date().toISOString() });
+  writeJson(FILES.pushSubs, subs);
+}
+
+export function removePushSub(endpoint: string): void {
+  writeJson(
+    FILES.pushSubs,
+    listPushSubs().filter((s) => s.endpoint !== endpoint),
+  );
 }
 
 // ---------- inbox (draft-ready notifications) ----------

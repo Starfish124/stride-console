@@ -4,6 +4,7 @@ import { claudeCliPath, writerMode } from "@/lib/pipeline/write";
 import { lessons } from "@/lib/pipeline/memory";
 import { Header } from "@/components/ui";
 import { SourcesEditor } from "@/components/SourcesEditor";
+import { PushToggle } from "@/components/PushToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +50,11 @@ export default async function SettingsPage() {
               ANTHROPIC_API_KEY in .env.local.
             </p>
           )}
+        </section>
+
+        <section className="mb-10 rounded-card border border-line bg-white p-6">
+          <p className="eyebrow text-slate">Draft-ready notifications</p>
+          <PushToggle />
         </section>
 
         <section className="mb-10 rounded-card border border-line bg-white p-6">

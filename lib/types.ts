@@ -207,6 +207,13 @@ export interface PitchSignup {
   at: string;
 }
 
+/** A founder phone's web-push subscription, stored locally like everything else. */
+export interface PushSubscriptionRecord {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+  addedAt: string;
+}
+
 /** One line per pregen run, surfaced as the dashboard's ready-to-review banner. */
 export interface InboxEntry {
   id: string;

@@ -2,7 +2,7 @@
 
 The private marketing machine for Stride AI. Two founders log in, press a button, and get a finished LinkedIn post: sourced from the week's AI news, written in the Stride voice, gated by a deterministic anti-slop linter, rendered into on-brand visuals, and published through a copy-open flow. Nothing ever auto-posts.
 
-This is Phases 0-3 of the marketing machine master plan — the console shell, the full content engine, the automation layer, and the event engine — running with zero external accounts. No LinkedIn API, no database service. Everything lives in local JSON files under `data/`.
+This is Phases 0-4 of the marketing machine master plan — the console shell, the full content engine, the automation layer, the event engine, and the phone app — running with zero external accounts. No LinkedIn API, no database service. Everything lives in local JSON files under `data/`.
 
 ## The three buttons
 
@@ -66,6 +66,16 @@ The Events tab creates an event (date, venue, capacity) and generates the T-6-we
 
 `lib/publish/linkedin.ts` has the OAuth, image-upload and create-post flow typed out and documented, behind `STRIDE_LINKEDIN=on` plus credentials. It is inactive: nothing calls it, and every function throws until the flag and keys exist. Publishing stays copy-open until then, and approval stays with the founders either way.
 
+## The phone app
+
+The console installs as a PWA, so draft review works from a pocket.
+
+**Add to Home Screen.** Open the console in the phone's browser (same network as the machine running it, e.g. `http://<your-mac>.local:3000`). On iPhone: Safari, the Share button, "Add to Home Screen." On Android: Chrome, the three-dot menu, "Add to Home screen" or the install prompt. The app opens full screen with the brand mark as its icon.
+
+**Draft-ready pushes.** Settings has a "Draft-ready notifications" toggle per device. Turn it on and pregen sends "Your Monday Stride TLDR is ready to approve." with a tap-through to the draft. Self-hosted: VAPID keys generate themselves into `data/push-keys.json`, subscriptions live in `data/push-subs.json`, and delivery uses the browser's own push service and nothing else. The push carries a title, never draft content. On iPhone this needs iOS 16.4 or later and the app installed on the Home Screen first.
+
+**One-handed review.** On phone widths the draft screen keeps Copy and Approve (or Mark posted) in a fixed bar at the bottom, inside thumb reach. An offline visit gets a branded shell instead of a browser error.
+
 ## Data
 
 Everything is JSON under `data/` (gitignored, auto-created): `drafts.json`, `seen.json` (dedupe cache: URL match + >80% title similarity), `myths.json`, `sources.json` (seeded from `config/sources.default.json` on first run), `postlog.json` (now including manually entered stats), `inbox.json`, `events.json`, `signups.json`. Renders land in `data/renders/<draftId>/`.
@@ -87,6 +97,8 @@ When you run the console's sourcing from a machine with [Agent-Reach](https://gi
 
 - **Phase 2 — Automation:** done. Scheduled pre-generation, ready-banner, stats + feedback memory, LinkedIn API stub.
 - **Phase 3 — Event engine:** done. Events tab with checklist, public /pitch signup, four event recipes.
-- **Phase 4 — Phone app:** installable PWA with a push when a draft is ready.
+- **Phase 4 — Phone app:** done. Installable PWA, self-hosted draft-ready push, one-handed review.
+
+The machine is feature-complete against the master plan. Next up when it hurts: LinkedIn API activation (the stub is ready), per-event signups, and moving off the file store.
 
 See `stride-marketing-machine-architecture.md` in the project workspace for the full plan.

@@ -4,13 +4,17 @@ import { AUTH_COOKIE, getPassword, sessionToken } from "@/lib/auth";
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  // /pitch is the public signup page for the 1 Min AI Pitch event.
+  // /pitch is the public signup page; the PWA shell files must load pre-login.
   const isPublic =
     pathname === "/login" ||
     pathname === "/api/login" ||
     pathname === "/pitch" ||
     pathname === "/api/pitch" ||
-    pathname === "/favicon.ico";
+    pathname === "/favicon.ico" ||
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/sw.js" ||
+    pathname === "/offline.html" ||
+    pathname.startsWith("/icons/");
   if (isPublic) return NextResponse.next();
 
   const cookie = request.cookies.get(AUTH_COOKIE)?.value;
