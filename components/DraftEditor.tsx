@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Destination, Draft, LintResult } from "@/lib/types";
+import type { Destination, Draft, LintResult, PostLogEntry } from "@/lib/types";
 import { StatusBadge } from "@/components/ui";
+import { StatsForm } from "@/components/StatsForm";
 
 const TABS: { id: Destination; label: string }[] = [
   { id: "page", label: "Company page" },
@@ -87,7 +88,13 @@ function LintPanel({ result }: { result: LintResult }) {
   );
 }
 
-export function DraftEditor({ initial }: { initial: Draft }) {
+export function DraftEditor({
+  initial,
+  postLog = [],
+}: {
+  initial: Draft;
+  postLog?: PostLogEntry[];
+}) {
   const router = useRouter();
   const [draft, setDraft] = useState<Draft>(initial);
   const [tab, setTab] = useState<Destination>("page");
@@ -302,6 +309,14 @@ export function DraftEditor({ initial }: { initial: Draft }) {
               </button>
             </div>
           </div>
+
+          {postedHere ? (
+            <StatsForm
+              draftId={draft.id}
+              destination={tab}
+              existing={postLog.find((e) => e.destination === tab)?.stats}
+            />
+          ) : null}
         </div>
 
         <div className="flex flex-col gap-6">

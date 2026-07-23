@@ -2,6 +2,12 @@
 
 export type RecipeId = "tldr" | "news" | "myth";
 
+export const RECIPE_LABELS: Record<RecipeId, string> = {
+  tldr: "Stride TLDR",
+  news: "Breaking This Week",
+  myth: "Myth vs Reality",
+};
+
 export type Destination = "page" | "founderA" | "founderB";
 
 export type DraftStatus = "draft" | "approved" | "posted";
@@ -117,10 +123,30 @@ export interface Draft {
   sourceReport: SourceReportEntry[];
 }
 
+/** Manually entered LinkedIn numbers, recorded a day or two after posting. */
+export interface PostStats {
+  impressions: number;
+  reactions: number;
+  comments: number;
+  saves: number;
+  recordedAt: string;
+}
+
 export interface PostLogEntry {
   draftId: string;
   recipe: RecipeId;
   destination: Destination;
   who: string;
   at: string;
+  stats?: PostStats;
+}
+
+/** One line per pregen run, surfaced as the dashboard's ready-to-review banner. */
+export interface InboxEntry {
+  id: string;
+  draftId: string;
+  recipe: RecipeId;
+  message: string;
+  at: string;
+  seen: boolean;
 }

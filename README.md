@@ -2,7 +2,7 @@
 
 The private marketing machine for Stride AI. Two founders log in, press a button, and get a finished LinkedIn post: sourced from the week's AI news, written in the Stride voice, gated by a deterministic anti-slop linter, rendered into on-brand visuals, and published through a copy-open flow. Nothing ever auto-posts.
 
-This is Phase 0+1 of the marketing machine master plan — the console shell plus the full content engine, running with zero external accounts. No LinkedIn API, no database service. Everything lives in local JSON files under `data/`.
+This is Phases 0-2 of the marketing machine master plan — the console shell, the full content engine, and the automation layer — running with zero external accounts. No LinkedIn API, no database service. Everything lives in local JSON files under `data/`.
 
 ## The three buttons
 
@@ -50,9 +50,21 @@ The voice gate blocks "Approve." while any variant has a blocking violation, so 
 
 `lib/pipeline/lint.ts` is a deterministic linter built from the Stride Voice Guide (`lib/voice/guide.ts`): negation pivots, a banned-word list, phantom sources, boosters without numbers, staccato triplets, em-dash/emoji/exclamation bans, hook-inside-140-chars, 1,200–2,000 character band, paragraph and hashtag rules, at-least-one-number. Errors block approval; in API mode a failed lint triggers exactly one rewrite with the violations listed.
 
+## Scheduled pre-generation
+
+`npm run pregen` writes the week's draft headlessly: Monday sources and writes the TLDR, Wednesday the news post. It is safe to run twice — one draft per recipe per ISO week. A launchd template plus setup steps live in `docs/AUTOMATION.md`; once loaded, drafts wait in the console by breakfast and the dashboard shows a ready-to-review banner (`data/inbox.json`, no external notification service).
+
+## Feedback memory
+
+Every posted draft carries a small form for the LinkedIn numbers: impressions, reactions, comments, saves. Manual entry, two founders, ten seconds. `lib/pipeline/memory.ts` turns the log into a few plain-language lessons ("hooks with a number averaged 2,000 impressions against 700 without one") that ride along in every writer prompt. A lesson only appears when both sides of a comparison have at least 2 posts and the gap is at least 25 percent. The current lessons show on the settings page.
+
+## LinkedIn API groundwork
+
+`lib/publish/linkedin.ts` has the OAuth, image-upload and create-post flow typed out and documented, behind `STRIDE_LINKEDIN=on` plus credentials. It is inactive: nothing calls it, and every function throws until the flag and keys exist. Publishing stays copy-open until then, and approval stays with the founders either way.
+
 ## Data
 
-Everything is JSON under `data/` (gitignored, auto-created): `drafts.json`, `seen.json` (dedupe cache: URL match + >80% title similarity), `myths.json`, `sources.json` (seeded from `config/sources.default.json` on first run), `postlog.json`. Renders land in `data/renders/<draftId>/`.
+Everything is JSON under `data/` (gitignored, auto-created): `drafts.json`, `seen.json` (dedupe cache: URL match + >80% title similarity), `myths.json`, `sources.json` (seeded from `config/sources.default.json` on first run), `postlog.json` (now including manually entered stats), `inbox.json`. Renders land in `data/renders/<draftId>/`.
 
 ## Tests and the no-network demo
 
@@ -69,7 +81,7 @@ When you run the console's sourcing from a machine with [Agent-Reach](https://gi
 
 ## Roadmap
 
-- **Phase 2 — Full automation:** LinkedIn developer app + OAuth, scheduled pre-generation (drafts ready Tuesday/Thursday morning), stats pull + feedback memory.
+- **Phase 2 — Automation:** done. Scheduled pre-generation, ready-banner, stats + feedback memory, LinkedIn API stub.
 - **Phase 3 — Event engine:** the 1 Min AI Pitch tab, signup page, event content recipes.
 - **Phase 4 — Phone app:** installable PWA with a push when a draft is ready.
 

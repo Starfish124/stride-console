@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- launchd template for scheduled pre-generation. Setup: docs/AUTOMATION.md.
+     Replace REPLACE_WITH_REPO_PATH with the absolute path to stride-console. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.stride.pregen</string>
+
+  <!-- A login shell so node and the claude CLI are on PATH. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>cd REPLACE_WITH_REPO_PATH &amp;&amp; npm run pregen</string>
+  </array>
+
+  <!-- Monday and Wednesday, 07:30. Drafts wait in the console by breakfast. -->
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict>
+      <key>Weekday</key>
+      <integer>1</integer>
+      <key>Hour</key>
+      <integer>7</integer>
+      <key>Minute</key>
+      <integer>30</integer>
+    </dict>
+    <dict>
+      <key>Weekday</key>
+      <integer>3</integer>
+      <key>Hour</key>
+      <integer>7</integer>
+      <key>Minute</key>
+      <integer>30</integer>
+    </dict>
+  </array>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/stride-pregen.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/stride-pregen.log</string>
+</dict>
+</plist>

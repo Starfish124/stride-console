@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { listDrafts, listMyths } from "@/lib/store";
+import { listDrafts, listInbox, listMyths } from "@/lib/store";
 import { FOUNDER_COOKIE } from "@/lib/auth";
 import { Header, Radar, StatusBadge } from "@/components/ui";
 import { RecipeCard } from "@/components/RecipeCard";
 import { MythQuickAdd } from "@/components/MythQuickAdd";
+import { InboxBanner } from "@/components/InboxBanner";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,7 @@ export default async function Dashboard() {
   const founder = jar.get(FOUNDER_COOKIE)?.value;
   const drafts = listDrafts().slice(0, 8);
   const unusedMyths = listMyths().filter((m) => !m.used).length;
+  const inbox = listInbox().filter((e) => !e.seen);
 
   return (
     <div className="min-h-screen bg-paper">
@@ -55,6 +57,7 @@ export default async function Dashboard() {
             Two posts a week, written in the Stride voice, designed on-brand,
             approved by one of you before anything goes anywhere.
           </p>
+          <InboxBanner entries={inbox} />
         </section>
 
         <section className="grid gap-4 md:grid-cols-3">

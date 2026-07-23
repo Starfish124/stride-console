@@ -10,6 +10,7 @@ import { spawn, spawnSync } from "node:child_process";
 import os from "node:os";
 import type { Myth, RecipeId, SourcedItem, WriterOutput } from "../types.ts";
 import { buildWriterPrompt } from "../voice/guide.ts";
+import { lessonsBlock } from "./memory.ts";
 
 export interface WriteInput {
   items: SourcedItem[];
@@ -84,9 +85,16 @@ export function userPayload(recipe: RecipeId, input: WriteInput): string {
   );
 }
 
+/** Voice guide + formula, plus the feedback-memory lessons once stats exist. */
+export function systemPrompt(recipe: RecipeId): string {
+  const block = lessonsBlock();
+  const base = buildWriterPrompt(recipe);
+  return block ? `${base}\n\n${block}` : base;
+}
+
 /** The full prompt, exposed in the UI so founders can run it manually in no-key mode. */
 export function buildFullPrompt(recipe: RecipeId, input: WriteInput): string {
-  return `${buildWriterPrompt(recipe)}\n\nSOURCE MATERIAL:\n${userPayload(recipe, input)}`;
+  return `${systemPrompt(recipe)}\n\nSOURCE MATERIAL:\n${userPayload(recipe, input)}`;
 }
 
 // ---------- defensive JSON parsing ----------
@@ -260,7 +268,7 @@ export async function apiWrite(
   recipe: RecipeId,
   input: WriteInput,
 ): Promise<WriterOutput> {
-  const raw = await callClaude(buildWriterPrompt(recipe), userPayload(recipe, input));
+  const raw = await callClaude(systemPrompt(recipe), userPayload(recipe, input));
   const parsed = parseWriterJson(raw);
   if (parsed) return parsed;
   // The model ignored the JSON spec; fall back to the deterministic template.
@@ -279,7 +287,7 @@ export async function apiRewrite(
     null,
     2,
   )}\n\nThe voice linter found these violations. Rewrite the draft fixing exactly these, changing nothing else:\n${violations}`;
-  const raw = await callClaude(buildWriterPrompt(recipe), user);
+  const raw = await callClaude(systemPrompt(recipe), user);
   return parseWriterJson(raw) ?? previous;
 }
 

@@ -5,9 +5,12 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import type {
+  Destination,
   Draft,
+  InboxEntry,
   Myth,
   PostLogEntry,
+  PostStats,
   SeenItem,
   SourceEntry,
 } from "./types.ts";
@@ -21,6 +24,7 @@ const FILES = {
   myths: path.join(DATA_DIR, "myths.json"),
   sources: path.join(DATA_DIR, "sources.json"),
   postlog: path.join(DATA_DIR, "postlog.json"),
+  inbox: path.join(DATA_DIR, "inbox.json"),
 } as const;
 
 function ensureDataDir(): void {
@@ -181,4 +185,47 @@ export function listPostLog(): PostLogEntry[] {
 
 export function appendPostLog(entry: PostLogEntry): void {
   writeJson(FILES.postlog, [...listPostLog(), entry]);
+}
+
+/** Attach manually entered stats to the log entry for this draft + destination. */
+export function recordPostStats(
+  draftId: string,
+  destination: Destination,
+  stats: Omit<PostStats, "recordedAt">,
+): PostLogEntry | undefined {
+  const log = listPostLog();
+  const entry = log.find(
+    (e) => e.draftId === draftId && e.destination === destination,
+  );
+  if (!entry) return undefined;
+  entry.stats = { ...stats, recordedAt: new Date().toISOString() };
+  writeJson(FILES.postlog, log);
+  return entry;
+}
+
+// ---------- inbox (draft-ready notifications) ----------
+
+export function listInbox(): InboxEntry[] {
+  return readJson<InboxEntry[]>(FILES.inbox, []);
+}
+
+export function pushInbox(
+  entry: Omit<InboxEntry, "id" | "at" | "seen">,
+): InboxEntry {
+  const full: InboxEntry = {
+    ...entry,
+    id: newId("inbox"),
+    at: new Date().toISOString(),
+    seen: false,
+  };
+  // Newest first; keep the inbox short — it is a banner, not an archive.
+  writeJson(FILES.inbox, [full, ...listInbox()].slice(0, 20));
+  return full;
+}
+
+export function markInboxSeen(): void {
+  writeJson(
+    FILES.inbox,
+    listInbox().map((e) => ({ ...e, seen: true })),
+  );
 }
