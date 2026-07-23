@@ -1,0 +1,47 @@
+[
+  {
+    "title": "Anthropic ships file-search tool for Claude, cutting agent setup from days to minutes",
+    "url": "https://example.com/anthropic-file-search",
+    "source": "Anthropic News",
+    "tier": 1,
+    "publishedAt": "2026-07-21T09:00:00.000Z",
+    "summary": "A built-in retrieval tool lets Claude search company documents without a custom vector database, trimming a typical agent build by 3 days.",
+    "score": 9
+  },
+  {
+    "title": "OpenAI cuts GPT-5 API prices by 40 percent for batch workloads",
+    "url": "https://example.com/openai-price-cut",
+    "source": "OpenAI News",
+    "tier": 1,
+    "publishedAt": "2026-07-20T14:00:00.000Z",
+    "summary": "Batch-tier pricing drops 40 percent, which changes the math for overnight document processing at small firms.",
+    "score": 8
+  },
+  {
+    "title": "EU publishes final guidance on AI Act compliance for companies under 250 employees",
+    "url": "https://example.com/eu-ai-act-smb",
+    "source": "The Verge AI",
+    "tier": 1,
+    "publishedAt": "2026-07-19T08:30:00.000Z",
+    "summary": "The guidance gives smaller firms a 12-month runway and a simplified self-assessment path for most internal automation use cases.",
+    "score": 8
+  },
+  {
+    "title": "Google rolls out Gemini agents that file expense reports end to end in Workspace",
+    "url": "https://example.com/gemini-workspace-agents",
+    "source": "Google AI Blog",
+    "tier": 1,
+    "publishedAt": "2026-07-18T16:00:00.000Z",
+    "summary": "Workspace customers can hand full expense workflows to an agent, with human review kept for amounts over a set threshold.",
+    "score": 7
+  },
+  {
+    "title": "Open-source Llama variant matches paid models on invoice extraction at 1/10th the cost",
+    "url": "https://example.com/llama-invoice-extraction",
+    "source": "Hacker News Front Page",
+    "tier": 2,
+    "publishedAt": "2026-07-17T11:00:00.000Z",
+    "summary": "A fine-tuned open model hits 98 percent field accuracy on a public invoice benchmark, at roughly a tenth of API list prices.",
+    "score": 6
+  }
+]

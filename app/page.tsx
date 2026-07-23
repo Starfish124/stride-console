@@ -1,64 +1,119 @@
-import Image from "next/image";
+import Link from "next/link";
+import { cookies } from "next/headers";
+import { listDrafts, listMyths } from "@/lib/store";
+import { FOUNDER_COOKIE } from "@/lib/auth";
+import { Header, Radar, StatusBadge } from "@/components/ui";
+import { RecipeCard } from "@/components/RecipeCard";
+import { MythQuickAdd } from "@/components/MythQuickAdd";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+const RECIPES = [
+  {
+    index: "01",
+    id: "tldr",
+    title: "The Stride TLDR.",
+    description: "5-7 curated items from this week's AI sources, one line each.",
+  },
+  {
+    index: "02",
+    id: "news",
+    title: "Breaking This Week.",
+    description: "The week's biggest AI story and what it means for operators.",
+  },
+  {
+    index: "03",
+    id: "myth",
+    title: "Myth vs Reality.",
+    description: "Long-form original thinking plus a branded carousel, from the myth bank.",
+  },
+] as const;
+
+const RECIPE_LABELS: Record<string, string> = {
+  tldr: "The Stride TLDR",
+  news: "Breaking This Week",
+  myth: "Myth vs Reality",
+};
+
+export default async function Dashboard() {
+  const jar = await cookies();
+  const founder = jar.get(FOUNDER_COOKIE)?.value;
+  const drafts = listDrafts().slice(0, 8);
+  const unusedMyths = listMyths().filter((m) => !m.used).length;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen bg-paper">
+      <Header founder={founder} />
+      <main className="mx-auto max-w-5xl px-6 pb-20">
+        <section className="relative overflow-hidden py-12">
+          <Radar className="pointer-events-none absolute -right-24 -top-28 h-80 w-80 text-slate opacity-30" />
+          <p className="eyebrow text-slate">Stride console — marketing machine</p>
+          <h1 className="display mt-3 text-4xl text-ink">
+            Press a button. Get a post.
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="mt-2 max-w-lg text-slate">
+            Two posts a week, written in the Stride voice, designed on-brand,
+            approved by one of you before anything goes anywhere.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+        </section>
+
+        <section className="grid gap-4 md:grid-cols-3">
+          {RECIPES.map((r) => (
+            <RecipeCard key={r.id} {...r} />
+          ))}
+        </section>
+
+        <section className="mt-12 grid gap-8 md:grid-cols-2">
+          <div>
+            <p className="eyebrow text-slate">Myth bank</p>
+            <h2 className="mt-2 text-xl font-bold text-ink">
+              Heard a myth in a client call.
+            </h2>
+            <p className="mb-4 mt-1 text-sm text-slate">
+              Ten seconds now, a long-form post later. {unusedMyths} unused in the
+              bank.
+            </p>
+            <MythQuickAdd />
+          </div>
+          <div>
+            <p className="eyebrow text-slate">Recent drafts</p>
+            <h2 className="mt-2 mb-4 text-xl font-bold text-ink">The last runs.</h2>
+            {drafts.length === 0 ? (
+              <p className="rounded-card border border-line bg-white p-6 text-sm text-slate">
+                Nothing yet. Run a recipe above and the draft lands here.
+              </p>
+            ) : (
+              <ul className="overflow-hidden rounded-card border border-line bg-white">
+                {drafts.map((d, i) => (
+                  <li key={d.id} className={i > 0 ? "border-t border-line" : ""}>
+                    <Link
+                      href={`/drafts/${d.id}`}
+                      className="flex items-center gap-4 px-5 py-4 hover:bg-paper"
+                    >
+                      <span className="eyebrow text-indigo">
+                        {String(i + 1).padStart(2, "0")}
+                      </span>
+                      <span className="flex-1">
+                        <span className="block text-sm font-semibold text-ink">
+                          {RECIPE_LABELS[d.recipe]}
+                        </span>
+                        <span className="block text-xs text-slate">
+                          {new Date(d.createdAt).toLocaleString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </span>
+                      <StatusBadge status={d.status} />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
       </main>
     </div>
   );

@@ -1,26 +1,40 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@theme {
+  --color-indigo: #3d44d9;
+  --color-indigo-deep: #2a2fb0;
+  --color-indigo-tint: #e9eafb;
+  --color-ink: #101116;
+  --color-slate: #5e647b;
+  --color-paper: #f4f4f8;
+  --color-line: #e3e4ec;
+  --color-midnight: #101126;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --font-sans: "Archivo", "Helvetica", "Arial", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --radius-input: 8px;
+  --radius-card: 12px;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* Mono label voice: uppercase, +14% tracking, weight 500. */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 11px;
+}
+
+.display {
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }

@@ -1,0 +1,12 @@
+[
+  { "id": "anthropic", "name": "Anthropic News", "url": "https://www.anthropic.com/news", "kind": "page", "tier": 1 },
+  { "id": "openai", "name": "OpenAI News", "url": "https://openai.com/news/rss.xml", "kind": "rss", "tier": 1 },
+  { "id": "google-ai", "name": "Google AI Blog", "url": "https://blog.google/technology/ai/rss/", "kind": "rss", "tier": 1 },
+  { "id": "verge-ai", "name": "The Verge AI", "url": "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml", "kind": "rss", "tier": 1 },
+  { "id": "techcrunch-ai", "name": "TechCrunch AI", "url": "https://techcrunch.com/category/artificial-intelligence/feed/", "kind": "rss", "tier": 1 },
+  { "id": "hn", "name": "Hacker News Front Page", "url": "https://hnrss.org/frontpage?q=AI", "kind": "rss", "tier": 2 },
+  { "id": "import-ai", "name": "Import AI", "url": "https://importai.substack.com/feed", "kind": "rss", "tier": 2 },
+  { "id": "bens-bites", "name": "Ben's Bites", "url": "https://bensbites.beehiiv.com/feed", "kind": "rss", "tier": 2 },
+  { "id": "hf-papers", "name": "Hugging Face Papers", "url": "https://huggingface.co/papers", "kind": "page", "tier": 2 },
+  { "id": "r-artificial", "name": "Reddit r/artificial", "url": "https://www.reddit.com/r/artificial/.rss", "kind": "rss", "tier": 3 }
+]
