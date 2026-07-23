@@ -1,7 +1,13 @@
-// Stage 2 — the writer. With ANTHROPIC_API_KEY set it calls Claude with the full
-// voice guide. Without a key it produces a deterministic template draft (marked
-// needsPolish) so the console works before any account exists.
+// Stage 2 — the writer. Three modes, best available wins:
+//   "subscription" — shells out to the local Claude Code CLI (`claude -p`), so
+//     writing runs on the founders' Claude subscription. No API key, no per-token bill.
+//   "api" — ANTHROPIC_API_KEY set: calls the Anthropic API directly.
+//   "template" — neither available: deterministic template draft (marked
+//     needsPolish) so the console works before any account exists.
+// Default preference: subscription > api > template. Override with STRIDE_WRITER.
 
+import { spawn, spawnSync } from "node:child_process";
+import os from "node:os";
 import type { Myth, RecipeId, SourcedItem, WriterOutput } from "../types.ts";
 import { buildWriterPrompt } from "../voice/guide.ts";
 
@@ -13,6 +19,45 @@ export interface WriteInput {
 
 export function hasApiKey(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY);
+}
+
+// ---------- writer mode selection ----------
+
+export type WriterMode = "subscription" | "api" | "template";
+
+let cachedCliPath: string | null | undefined;
+
+/** Path to the Claude Code CLI, or null. CLAUDE_BIN overrides; result is cached. */
+export function claudeCliPath(): string | null {
+  if (cachedCliPath !== undefined) return cachedCliPath;
+  const override = process.env.CLAUDE_BIN;
+  if (override) {
+    const probe = spawnSync(override, ["--version"], { timeout: 10_000 });
+    cachedCliPath = probe.status === 0 ? override : null;
+    return cachedCliPath;
+  }
+  const which = spawnSync(process.platform === "win32" ? "where" : "which", ["claude"], {
+    timeout: 10_000,
+    encoding: "utf8",
+  });
+  const found = which.status === 0 ? which.stdout.split("\n")[0]?.trim() : "";
+  cachedCliPath = found ? found : null;
+  return cachedCliPath;
+}
+
+/** For tests: forget the cached CLI lookup. */
+export function resetCliCache(): void {
+  cachedCliPath = undefined;
+}
+
+export function writerMode(): WriterMode {
+  const forced = process.env.STRIDE_WRITER;
+  if (forced === "template" || forced === "api" || forced === "subscription") {
+    return forced;
+  }
+  if (claudeCliPath()) return "subscription";
+  if (hasApiKey()) return "api";
+  return "template";
 }
 
 export function userPayload(recipe: RecipeId, input: WriteInput): string {
@@ -89,6 +134,108 @@ export function parseWriterJson(raw: string): WriterOutput | undefined {
     founderIntroA: typeof o.founderIntroA === "string" ? o.founderIntroA : undefined,
     founderIntroB: typeof o.founderIntroB === "string" ? o.founderIntroB : undefined,
   };
+}
+
+// ---------- subscription mode (Claude Code CLI, `claude -p`) ----------
+
+const CLI_TIMEOUT_MS = 240_000;
+
+/**
+ * Run the local Claude Code CLI in print mode with the prompt on stdin.
+ * Runs from the OS temp dir so it never picks up a project's CLAUDE.md or
+ * permission prompts. Uses the founders' Claude subscription auth.
+ */
+export function callClaudeCli(prompt: string): Promise<string> {
+  const bin = claudeCliPath();
+  if (!bin) return Promise.reject(new Error("Claude Code CLI not found"));
+  const args = ["-p", "--output-format", "json"];
+  const model = process.env.CLAUDE_CLI_MODEL;
+  if (model) args.push("--model", model);
+  return new Promise<string>((resolve, reject) => {
+    const env = { ...process.env };
+    // The CLI should bill the subscription, never a stray key in the app's env.
+    delete env.ANTHROPIC_API_KEY;
+    const child = spawn(bin, args, { cwd: os.tmpdir(), env });
+    let stdout = "";
+    let stderr = "";
+    const timer = setTimeout(() => {
+      child.kill("SIGKILL");
+      reject(new Error(`Claude CLI timed out after ${CLI_TIMEOUT_MS / 1000}s`));
+    }, CLI_TIMEOUT_MS);
+    child.stdout.on("data", (d: Buffer) => (stdout += d.toString()));
+    child.stderr.on("data", (d: Buffer) => (stderr += d.toString()));
+    child.on("error", (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      if (code !== 0) {
+        reject(new Error(`Claude CLI exited ${code}: ${stderr.slice(0, 400)}`));
+        return;
+      }
+      resolve(extractCliResult(stdout));
+    });
+    child.stdin.write(prompt);
+    child.stdin.end();
+  });
+}
+
+/** `--output-format json` wraps the answer; unwrap defensively across CLI versions. */
+export function extractCliResult(stdout: string): string {
+  try {
+    const parsed: unknown = JSON.parse(stdout);
+    if (parsed && typeof parsed === "object") {
+      const o = parsed as Record<string, unknown>;
+      if (typeof o.result === "string") return o.result;
+      // stream-json style: last message content.
+      if (Array.isArray(o.content)) {
+        const text = o.content
+          .filter(
+            (b): b is { type: string; text: string } =>
+              typeof b === "object" && b !== null &&
+              (b as Record<string, unknown>).type === "text" &&
+              typeof (b as Record<string, unknown>).text === "string",
+          )
+          .map((b) => b.text)
+          .join("\n");
+        if (text) return text;
+      }
+    }
+  } catch {
+    // Not JSON — plain -p output.
+  }
+  return stdout;
+}
+
+export async function cliWrite(
+  recipe: RecipeId,
+  input: WriteInput,
+): Promise<WriterOutput> {
+  const raw = await callClaudeCli(buildFullPrompt(recipe, input));
+  const parsed = parseWriterJson(raw);
+  if (parsed) return parsed;
+  return templateWrite(recipe, input);
+}
+
+/** One-shot rewrite with the lint violations listed, over the CLI. */
+export async function cliRewrite(
+  recipe: RecipeId,
+  input: WriteInput,
+  previous: WriterOutput,
+  violations: string,
+): Promise<WriterOutput> {
+  const prompt = `${buildFullPrompt(recipe, input)}\n\nYour previous draft:\n${JSON.stringify(
+    previous,
+    null,
+    2,
+  )}\n\nThe voice linter found these violations. Rewrite the draft fixing exactly these, changing nothing else. Reply with the corrected JSON only:\n${violations}`;
+  try {
+    const raw = await callClaudeCli(prompt);
+    return parseWriterJson(raw) ?? previous;
+  } catch {
+    return previous;
+  }
 }
 
 // ---------- API mode ----------

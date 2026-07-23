@@ -28,8 +28,13 @@ Open http://localhost:3000, log in with the shared password (`stride` by default
 Optional `.env.local` (see `.env.example`):
 
 - `STRIDE_PASSWORD` — change the shared password.
-- `ANTHROPIC_API_KEY` — switches the writer from deterministic templates to Claude with the full voice guide. Without a key every draft is still usable: it's marked "needs polish" and carries a copy-ready Claude prompt you can run manually.
-- `ANTHROPIC_MODEL` — defaults to `claude-sonnet-4-5`.
+
+### Writing engine — your Claude subscription by default
+
+If Claude Code is installed on this machine (`claude` on PATH) the console writes every draft through `claude -p`, which runs on your existing Claude subscription — no API key, no per-token billing. This is detected automatically; the settings page shows which engine is active. Related vars: `CLAUDE_BIN` (CLI path if not on PATH), `CLAUDE_CLI_MODEL` (e.g. `sonnet`), `STRIDE_WRITER` (force `subscription` | `api` | `template`).
+
+- `ANTHROPIC_API_KEY` — optional alternative: bill the Anthropic API instead (`ANTHROPIC_MODEL` defaults to `claude-sonnet-4-5`).
+- With neither, every draft is still usable: deterministic templates marked "needs polish", each carrying a copy-ready Claude prompt.
 
 ## How publishing works (copy-open flow)
 

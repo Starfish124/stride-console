@@ -17,8 +17,10 @@ import {
   apiRewrite,
   apiWrite,
   buildFullPrompt,
-  hasApiKey,
+  cliRewrite,
+  cliWrite,
   templateWrite,
+  writerMode,
   type WriteInput,
 } from "./write.ts";
 import { formatViolations, lint } from "./lint.ts";
@@ -52,14 +54,23 @@ async function writeStage(
   recipe: RecipeId,
   input: WriteInput,
 ): Promise<{ out: WriterOutput; needsPolish: boolean }> {
-  if (!hasApiKey()) {
+  const mode = writerMode();
+  if (mode === "template") {
     return { out: templateWrite(recipe, input), needsPolish: true };
   }
-  let out = await apiWrite(recipe, input);
+  const write = mode === "subscription" ? cliWrite : apiWrite;
+  const rewrite = mode === "subscription" ? cliRewrite : apiRewrite;
+  let out: WriterOutput;
+  try {
+    out = await write(recipe, input);
+  } catch {
+    // A dead CLI or API never breaks the button — fall back to the template.
+    return { out: templateWrite(recipe, input), needsPolish: true };
+  }
   // Auto-fix loop: one rewrite pass with the exact violations listed.
   const firstLint = lint(assembleVariant(out.body, out.hashtags));
   if (!firstLint.ok) {
-    out = await apiRewrite(recipe, input, out, formatViolations(firstLint));
+    out = await rewrite(recipe, input, out, formatViolations(firstLint));
   }
   return { out, needsPolish: false };
 }
