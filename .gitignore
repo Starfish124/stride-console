@@ -42,3 +42,7 @@ next-env.d.ts
 
 # local data store (drafts, seen cache, renders)
 /data/
+
+# Xcode
+ios/*.xcodeproj/xcuserdata/
+ios/*.xcodeproj/project.xcworkspace/xcuserdata/

@@ -76,6 +76,8 @@ The console installs as a PWA, so draft review works from a pocket.
 
 **One-handed review.** On phone widths the draft screen keeps Copy and Approve (or Mark posted) in a fixed bar at the bottom, inside thumb reach. An offline visit gets a branded shell instead of a browser error.
 
+**Native iOS app (optional).** `ios/` holds an Xcode project: a native shell around the console with pull-to-refresh, external links routed to the LinkedIn app, and downloads handed to the share sheet. Open `ios/StrideConsole.xcodeproj`, set your team under Signing & Capabilities, plug in the phone, press Run. Regenerate the project after editing `ios/project.yml` with `xcodegen generate`. Two honest trade-offs against the PWA: a free Apple ID re-signs every 7 days, and draft-ready pushes only reach the installed PWA, not the native shell. The console URL lives in `ios/Sources/ContentView.swift`.
+
 ## Data
 
 Everything is JSON under `data/` (gitignored, auto-created): `drafts.json`, `seen.json` (dedupe cache: URL match + >80% title similarity), `myths.json`, `sources.json` (seeded from `config/sources.default.json` on first run), `postlog.json` (now including manually entered stats), `inbox.json`, `events.json`, `signups.json`. Renders land in `data/renders/<draftId>/`.
