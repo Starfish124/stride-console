@@ -40,7 +40,7 @@ If Claude Code is installed on this machine (`claude` on PATH) the console write
 
 LinkedIn's API needs an approved developer app, so Phase 1 publishes manually in three taps:
 
-1. On a draft, pick the destination tab (Company page / Founder A / Founder B) and press "Copy text."
+1. On a draft, pick the destination tab (Company page / Jort / Sarvesh) and press "Copy text."
 2. Press "Open LinkedIn." — it opens the share composer at `linkedin.com/feed/?shareActive=true`. Paste.
 3. Attach the downloaded image (or the PDF as a document for carousels), post, then press "Mark posted." so the log stays honest.
 

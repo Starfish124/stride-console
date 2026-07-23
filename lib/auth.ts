@@ -4,7 +4,7 @@
 export const AUTH_COOKIE = "stride_session";
 export const FOUNDER_COOKIE = "stride_founder";
 
-export const FOUNDERS = ["Founder A", "Founder B"] as const;
+export const FOUNDERS = ["Jort", "Sarvesh"] as const;
 
 export function getPassword(): string {
   return process.env.STRIDE_PASSWORD || "stride";

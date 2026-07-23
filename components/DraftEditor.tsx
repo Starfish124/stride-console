@@ -14,8 +14,8 @@ import { StatsForm } from "@/components/StatsForm";
 
 const TABS: { id: Destination; label: string }[] = [
   { id: "page", label: "Company page" },
-  { id: "founderA", label: "Founder A" },
-  { id: "founderB", label: "Founder B" },
+  { id: "founderA", label: "Jort" },
+  { id: "founderB", label: "Sarvesh" },
 ];
 
 const LINKEDIN_SHARE = "https://www.linkedin.com/feed/?shareActive=true";

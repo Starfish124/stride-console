@@ -74,8 +74,8 @@ export const OUTPUT_SPEC = `Respond with ONLY a JSON object, no markdown fences,
   "imageHeadline": "short headline for the visual; mark exactly one word for indigo emphasis by wrapping it like *this*",
   "imageStat": "optional: one big stat line for the visual, e.g. '3,200 TASKS / DAY'",
   "slides": [{ "myth": "...", "reality": "..." }],
-  "founderIntroA": "optional: one first-person framing line to open founder A's variant",
-  "founderIntroB": "optional: one first-person framing line to open founder B's variant"
+  "founderIntroA": "optional: one first-person framing line to open Jort's personal-profile variant",
+  "founderIntroB": "optional: one first-person framing line to open Sarvesh's personal-profile variant"
 }
 Only include "slides" for the myth recipe. Every string obeys the voice guide.`;
 

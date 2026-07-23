@@ -6,10 +6,11 @@ import { appendPostLog, getDraft, saveDraft } from "../store.ts";
 
 export const LINKEDIN_SHARE_URL = "https://www.linkedin.com/feed/?shareActive=true";
 
+// The stored destination keys stay founderA/founderB; only the labels are names.
 export const DESTINATION_LABELS: Record<Destination, string> = {
   page: "Company page",
-  founderA: "Founder A",
-  founderB: "Founder B",
+  founderA: "Jort",
+  founderB: "Sarvesh",
 };
 
 /** The exact text to paste into LinkedIn for a destination. */

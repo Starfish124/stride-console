@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-const FOUNDERS = ["Founder A", "Founder B"];
+const FOUNDERS = ["Jort", "Sarvesh"];
 
 export function LoginForm() {
   const router = useRouter();
