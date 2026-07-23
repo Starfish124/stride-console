@@ -1,17 +1,26 @@
 // The shared 5-stage runner. Recipes are configs; this is the one pipeline.
 
 import path from "node:path";
-import type {
-  Destination,
-  Draft,
-  LintResult,
-  Myth,
-  RecipeId,
-  SourceReportEntry,
-  SourcedItem,
-  WriterOutput,
+import {
+  isEventRecipe,
+  type Destination,
+  type Draft,
+  type EventWriteInfo,
+  type LintResult,
+  type Myth,
+  type RecipeId,
+  type SourceReportEntry,
+  type SourcedItem,
+  type WriterOutput,
 } from "../types.ts";
-import { RENDERS_DIR, listDrafts, newId, saveDraft } from "../store.ts";
+import {
+  RENDERS_DIR,
+  getEvent,
+  listDrafts,
+  listSignups,
+  newId,
+  saveDraft,
+} from "../store.ts";
 import { isoWeek, sourceMyth, sourceNews, sourceTldr } from "./source.ts";
 import {
   apiRewrite,
@@ -75,29 +84,70 @@ async function writeStage(
   return { out, needsPolish: false };
 }
 
-export async function runRecipe(recipe: RecipeId): Promise<Draft> {
+/** Event recipes source from the event record and the signup list. No network. */
+function eventWriteInfo(eventId: string | undefined): EventWriteInfo | undefined {
+  const event = eventId ? getEvent(eventId) : undefined;
+  if (!event) return undefined;
+  return {
+    title: event.title,
+    date: event.date,
+    venue: event.venue,
+    capacity: event.capacity,
+    signups: listSignups().map((s) => ({
+      name: s.name,
+      startup: s.startup,
+      idea: s.idea,
+    })),
+  };
+}
+
+const WEEK_WINDOW_MS = 10 * 24 * 60 * 60 * 1000;
+
+/** Event posts are the promo slice, about 1 in 10. Warn on the third of a week. */
+function promoWarningFor(recipe: RecipeId, weekNumber: number): string | undefined {
+  if (!isEventRecipe(recipe)) return undefined;
+  const thisWeek = listDrafts().filter(
+    (d) =>
+      d.weekNumber === weekNumber &&
+      Math.abs(Date.now() - Date.parse(d.createdAt)) < WEEK_WINDOW_MS,
+  ).length;
+  if (thisWeek < 2) return undefined;
+  return `This would be post ${thisWeek + 1} for week ${weekNumber}. Event posts are the promo slice, about 1 in 10. Consider holding it for next week.`;
+}
+
+export async function runRecipe(
+  recipe: RecipeId,
+  opts?: { eventId?: string },
+): Promise<Draft> {
   // Stage 1 — source.
   let items: SourcedItem[] = [];
   let myth: Myth | undefined;
+  let event: EventWriteInfo | undefined;
   let report: SourceReportEntry[] = [];
   if (recipe === "tldr") {
     ({ items, report } = await sourceTldr());
   } else if (recipe === "news") {
     ({ items, report } = await sourceNews());
+  } else if (isEventRecipe(recipe)) {
+    event = eventWriteInfo(opts?.eventId);
+    if (!event) {
+      throw new Error("Pick an event first. Event recipes run from the event page.");
+    }
   } else {
     ({ myth } = sourceMyth());
     if (!myth) {
       throw new Error("The myth bank is empty. Add a myth on the dashboard first.");
     }
   }
-  if (recipe !== "myth" && items.length === 0) {
+  if ((recipe === "tldr" || recipe === "news") && items.length === 0) {
     throw new Error(
       "No fresh items survived sourcing. Check the sources on the settings page.",
     );
   }
 
   const weekNumber = isoWeek();
-  const input: WriteInput = { items, myth, weekNumber };
+  const promoWarning = promoWarningFor(recipe, weekNumber);
+  const input: WriteInput = { items, myth, event, weekNumber };
 
   // Stage 2 — write (+ stage 3 auto-fix loop inside).
   const { out, needsPolish } = await writeStage(recipe, input);
@@ -120,6 +170,8 @@ export async function runRecipe(recipe: RecipeId): Promise<Draft> {
     slides: out.slides,
     items,
     mythId: myth?.id,
+    eventId: opts?.eventId,
+    promoWarning,
     weekNumber,
     lint: lintResults,
     renders: { images: [] },
@@ -146,6 +198,12 @@ export async function renderDraft(draft: Draft) {
     draft.recipe === "myth"
       ? listDrafts().filter((d) => d.recipe === "myth" && d.id !== draft.id).length + 1
       : undefined;
+  const event = draft.eventId ? getEvent(draft.eventId) : undefined;
+  const dateLabel = event
+    ? new Date(event.date)
+        .toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+        .toUpperCase()
+    : undefined;
   return renderToDir(
     {
       recipe: draft.recipe,
@@ -155,6 +213,7 @@ export async function renderDraft(draft: Draft) {
       imageStat: draft.imageStat,
       slides: draft.slides,
       mythSeq,
+      dateLabel,
     },
     path.join(RENDERS_DIR, draft.id),
   );
@@ -167,6 +226,7 @@ export async function regenerateDraft(draft: Draft): Promise<Draft> {
     myth: draft.mythId
       ? { id: draft.mythId, text: extractMythText(draft), addedAt: "", used: true }
       : undefined,
+    event: eventWriteInfo(draft.eventId),
     weekNumber: draft.weekNumber,
   };
   const { out, needsPolish } = await writeStage(draft.recipe, input);

@@ -44,6 +44,26 @@ export const RECIPE_FORMULAS: Record<RecipeId, string> = {
 4. One-line takeaway worth saving.
 Positive framing throughout: the reality is an opportunity, not a scolding.
 Also produce 2-4 myth/reality slide pairs for the carousel: each myth stated in one short sentence, each reality in one short sentence led by something concrete.`,
+  eventAnnounce: `POST FORMULA - EVENT ANNOUNCEMENT (1 Min AI Pitch):
+1. Hook = the format, concrete: founders, one minute each, a room of operators and investors. Include a real number (capacity or minutes).
+2. What the evening is, in plain words: who pitches, who listens, what a founder gets out of one minute.
+3. The details: date, venue, capacity. Keep them in the body as plain sentences.
+4. How to claim a spot, ending with: "Signup link in the first comment."`,
+  eventLineup: `POST FORMULA - EVENT LINEUP (1 Min AI Pitch):
+1. Hook = the strength of the room in one number (startups confirmed, ideas on stage).
+2. Name 3-6 of the startups pitching, each in one line: name, and the one-line idea in plain words.
+3. What connects them: one observation about the batch, concrete.
+4. Close with the date and venue, then: "Signup link in the first comment."`,
+  eventReminder: `POST FORMULA - WEEK-BEFORE REMINDER (1 Min AI Pitch):
+1. Hook = time pressure stated plainly with the number of days left. No urgency theater.
+2. One paragraph on what happens on the night: the format, the room.
+3. One paragraph for founders still deciding: what one minute on stage is worth.
+4. Date, venue, remaining capacity if known. End with: "Signup link in the first comment."`,
+  eventRecap: `POST FORMULA - DAY-AFTER RECAP (1 Min AI Pitch):
+1. Hook = the best concrete moment or number from the night (pitches given, connections made).
+2. What happened, first-person and warm: what we watched, what surprised us.
+3. One lesson an operator can take from the pitches, framed as "what we learned".
+4. Thank the room plainly, name the next edition's month if known, and end with something save-worthy.`,
 };
 
 export const OUTPUT_SPEC = `Respond with ONLY a JSON object, no markdown fences, shaped exactly like this:

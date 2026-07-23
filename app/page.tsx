@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { RECIPE_LABELS } from "@/lib/types";
 import { listDrafts, listInbox, listMyths } from "@/lib/store";
 import { FOUNDER_COOKIE } from "@/lib/auth";
 import { Header, Radar, StatusBadge } from "@/components/ui";
@@ -29,12 +30,6 @@ const RECIPES = [
     description: "Long-form original thinking plus a branded carousel, from the myth bank.",
   },
 ] as const;
-
-const RECIPE_LABELS: Record<string, string> = {
-  tldr: "The Stride TLDR",
-  news: "Breaking This Week",
-  myth: "Myth vs Reality",
-};
 
 export default async function Dashboard() {
   const jar = await cookies();

@@ -2,7 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Destination, Draft, LintResult, PostLogEntry } from "@/lib/types";
+import {
+  RECIPE_LABELS,
+  type Destination,
+  type Draft,
+  type LintResult,
+  type PostLogEntry,
+} from "@/lib/types";
 import { StatusBadge } from "@/components/ui";
 import { StatsForm } from "@/components/StatsForm";
 
@@ -11,12 +17,6 @@ const TABS: { id: Destination; label: string }[] = [
   { id: "founderA", label: "Founder A" },
   { id: "founderB", label: "Founder B" },
 ];
-
-const RECIPE_LABELS: Record<string, string> = {
-  tldr: "The Stride TLDR",
-  news: "Breaking This Week",
-  myth: "Myth vs Reality",
-};
 
 const LINKEDIN_SHARE = "https://www.linkedin.com/feed/?shareActive=true";
 
@@ -194,6 +194,12 @@ export function DraftEditor({
       {notice ? (
         <p className="mt-4 rounded-input border border-indigo bg-indigo-tint px-4 py-2 text-sm text-indigo-deep">
           {notice}
+        </p>
+      ) : null}
+
+      {draft.promoWarning ? (
+        <p className="mt-4 rounded-input border border-line bg-white px-4 py-2 text-sm text-slate">
+          {draft.promoWarning}
         </p>
       ) : null}
 

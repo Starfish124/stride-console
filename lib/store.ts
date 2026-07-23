@@ -7,12 +7,15 @@ import crypto from "node:crypto";
 import type {
   Destination,
   Draft,
+  EventChecklistItem,
   InboxEntry,
   Myth,
+  PitchSignup,
   PostLogEntry,
   PostStats,
   SeenItem,
   SourceEntry,
+  StrideEvent,
 } from "./types.ts";
 
 export const DATA_DIR = path.join(process.cwd(), "data");
@@ -25,6 +28,8 @@ const FILES = {
   sources: path.join(DATA_DIR, "sources.json"),
   postlog: path.join(DATA_DIR, "postlog.json"),
   inbox: path.join(DATA_DIR, "inbox.json"),
+  events: path.join(DATA_DIR, "events.json"),
+  signups: path.join(DATA_DIR, "signups.json"),
 } as const;
 
 function ensureDataDir(): void {
@@ -175,6 +180,101 @@ export function isDuplicate(
     if (titleSimilarity(s.title, item.title) > 0.8) return true;
   }
   return false;
+}
+
+// ---------- events (1 Min AI Pitch) ----------
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** The T-6-weeks checklist, due dates counted back from the event date. */
+const CHECKLIST_TEMPLATE: { label: string; daysBefore: number }[] = [
+  { label: "Venue confirmed.", daysBefore: 42 },
+  { label: "Invites out.", daysBefore: 35 },
+  { label: "Speakers confirmed.", daysBefore: 28 },
+  { label: "Investors invited.", daysBefore: 28 },
+  { label: "Catering booked.", daysBefore: 14 },
+  { label: "Photographer booked.", daysBefore: 14 },
+];
+
+export function buildChecklist(eventDate: string): EventChecklistItem[] {
+  const eventTime = Date.parse(eventDate);
+  return CHECKLIST_TEMPLATE.map((item, i) => ({
+    id: `item_${i + 1}`,
+    label: item.label,
+    due: new Date(eventTime - item.daysBefore * DAY_MS).toISOString().slice(0, 10),
+    done: false,
+  }));
+}
+
+export function listEvents(): StrideEvent[] {
+  return readJson<StrideEvent[]>(FILES.events, []);
+}
+
+export function getEvent(id: string): StrideEvent | undefined {
+  return listEvents().find((e) => e.id === id);
+}
+
+/** The next event: soonest date, yesterday's event still counts on the day after. */
+export function upcomingEvent(): StrideEvent | undefined {
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+  return listEvents()
+    .filter((e) => Date.parse(e.date) > cutoff)
+    .sort((a, b) => a.date.localeCompare(b.date))[0];
+}
+
+export function addEvent(input: {
+  title: string;
+  date: string;
+  venue: string;
+  capacity: number;
+}): StrideEvent {
+  const event: StrideEvent = {
+    id: newId("event"),
+    title: input.title.trim(),
+    date: input.date,
+    venue: input.venue.trim(),
+    capacity: input.capacity,
+    checklist: buildChecklist(input.date),
+    createdAt: new Date().toISOString(),
+  };
+  writeJson(FILES.events, [event, ...listEvents()]);
+  return event;
+}
+
+export function setChecklistItem(
+  eventId: string,
+  itemId: string,
+  done: boolean,
+): StrideEvent | undefined {
+  const events = listEvents();
+  const event = events.find((e) => e.id === eventId);
+  const item = event?.checklist.find((i) => i.id === itemId);
+  if (!event || !item) return undefined;
+  item.done = done;
+  writeJson(FILES.events, events);
+  return event;
+}
+
+// ---------- pitch signups ----------
+
+export function listSignups(): PitchSignup[] {
+  return readJson<PitchSignup[]>(FILES.signups, []);
+}
+
+export function addSignup(input: {
+  name: string;
+  startup: string;
+  idea: string;
+}): PitchSignup {
+  const signup: PitchSignup = {
+    id: newId("signup"),
+    name: input.name.trim(),
+    startup: input.startup.trim(),
+    idea: input.idea.trim(),
+    at: new Date().toISOString(),
+  };
+  writeJson(FILES.signups, [...listSignups(), signup]);
+  return signup;
 }
 
 // ---------- post log ----------

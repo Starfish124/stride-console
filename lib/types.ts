@@ -1,11 +1,35 @@
 // Shared types for the Stride Console. Framework-free so Node tests can import them.
 
-export type RecipeId = "tldr" | "news" | "myth";
+export type ContentRecipeId = "tldr" | "news" | "myth";
+
+/** The four 1 Min AI Pitch recipes — the 10% promo slice, same pipeline. */
+export type EventRecipeId =
+  | "eventAnnounce"
+  | "eventLineup"
+  | "eventReminder"
+  | "eventRecap";
+
+export type RecipeId = ContentRecipeId | EventRecipeId;
+
+export const EVENT_RECIPES: EventRecipeId[] = [
+  "eventAnnounce",
+  "eventLineup",
+  "eventReminder",
+  "eventRecap",
+];
+
+export function isEventRecipe(recipe: RecipeId): recipe is EventRecipeId {
+  return (EVENT_RECIPES as RecipeId[]).includes(recipe);
+}
 
 export const RECIPE_LABELS: Record<RecipeId, string> = {
   tldr: "Stride TLDR",
   news: "Breaking This Week",
   myth: "Myth vs Reality",
+  eventAnnounce: "Event announcement",
+  eventLineup: "Event lineup",
+  eventReminder: "Week-before reminder",
+  eventRecap: "Day-after recap",
 };
 
 export type Destination = "page" | "founderA" | "founderB";
@@ -116,6 +140,9 @@ export interface Draft {
   slides?: MythSlide[];
   items: SourcedItem[];
   mythId?: string;
+  eventId?: string;
+  /** Set when an event post would exceed the weekly promo slice. */
+  promoWarning?: string;
   weekNumber: number;
   lint: Record<Destination, LintResult>;
   renders: DraftRenders;
@@ -139,6 +166,45 @@ export interface PostLogEntry {
   who: string;
   at: string;
   stats?: PostStats;
+}
+
+// ---------- events (1 Min AI Pitch) ----------
+
+export interface EventChecklistItem {
+  id: string;
+  label: string;
+  /** ISO date the item is due, derived from the event date at creation. */
+  due: string;
+  done: boolean;
+}
+
+export interface StrideEvent {
+  id: string;
+  title: string;
+  /** ISO date of the event evening. */
+  date: string;
+  venue: string;
+  capacity: number;
+  checklist: EventChecklistItem[];
+  createdAt: string;
+}
+
+/** What the writer gets to work with for an event recipe. */
+export interface EventWriteInfo {
+  title: string;
+  date: string;
+  venue: string;
+  capacity: number;
+  signups: { name: string; startup: string; idea: string }[];
+}
+
+/** A /pitch signup: name + startup + the one-line idea. */
+export interface PitchSignup {
+  id: string;
+  name: string;
+  startup: string;
+  idea: string;
+  at: string;
 }
 
 /** One line per pregen run, surfaced as the dashboard's ready-to-review banner. */

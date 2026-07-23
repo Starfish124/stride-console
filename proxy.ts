@@ -4,8 +4,13 @@ import { AUTH_COOKIE, getPassword, sessionToken } from "@/lib/auth";
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  // /pitch is the public signup page for the 1 Min AI Pitch event.
   const isPublic =
-    pathname === "/login" || pathname === "/api/login" || pathname === "/favicon.ico";
+    pathname === "/login" ||
+    pathname === "/api/login" ||
+    pathname === "/pitch" ||
+    pathname === "/api/pitch" ||
+    pathname === "/favicon.ico";
   if (isPublic) return NextResponse.next();
 
   const cookie = request.cookies.get(AUTH_COOKIE)?.value;

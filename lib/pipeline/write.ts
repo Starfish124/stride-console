@@ -8,13 +8,21 @@
 
 import { spawn, spawnSync } from "node:child_process";
 import os from "node:os";
-import type { Myth, RecipeId, SourcedItem, WriterOutput } from "../types.ts";
+import {
+  isEventRecipe,
+  type EventWriteInfo,
+  type Myth,
+  type RecipeId,
+  type SourcedItem,
+  type WriterOutput,
+} from "../types.ts";
 import { buildWriterPrompt } from "../voice/guide.ts";
 import { lessonsBlock } from "./memory.ts";
 
 export interface WriteInput {
   items: SourcedItem[];
   myth?: Myth;
+  event?: EventWriteInfo;
   weekNumber: number;
 }
 
@@ -65,6 +73,13 @@ export function userPayload(recipe: RecipeId, input: WriteInput): string {
   if (recipe === "myth") {
     return JSON.stringify(
       { myth: input.myth?.text ?? "", weekNumber: input.weekNumber },
+      null,
+      2,
+    );
+  }
+  if (isEventRecipe(recipe)) {
+    return JSON.stringify(
+      { event: input.event, weekNumber: input.weekNumber },
       null,
       2,
     );
@@ -329,7 +344,176 @@ const PAD_LINES: Record<string, string[]> = {
     "The same pattern held across our last 4 rollouts: small scope, one owner, and a number everyone can see at the end.",
     "The team kept the review step. A person still signs off on anything unusual, which is exactly where people beat software.",
   ],
+  eventAnnounce: [
+    "We built the format after watching too many 20-minute pitches bury the one sentence that mattered.",
+    "Investors in the room told us the same thing: the first minute decides the next thirty, so we made the first minute the whole show.",
+    "Bring your co-founder if you like. The room is half the value, and the conversations after the pitches run longer than the pitches themselves.",
+    "There is no jury and no prize money. There is a room that remembers a clear idea, which has outlasted every trophy we have seen handed out.",
+    "Practicing takes one lunch break. Say the idea out loud, time it, cut everything past the first breath, and you are ready for the stage.",
+  ],
+  eventLineup: [
+    "Every pitch gets the same honest 60 seconds, and the room hears them back to back, which makes the clear ones unmissable.",
+    "The conversations after the pitches are where the evening earns its name, so plan to stay past the last timer.",
+    "If your startup belongs on this list, the signup takes 2 minutes and the stage takes 1.",
+    "We publish the lineup ahead of the night on purpose: investors read it, pick the pitches they want to hear, and come with questions ready.",
+    "The order on the night is drawn from a hat, so the list above tells you who is coming, and the evening decides the rest.",
+  ],
+  eventReminder: [
+    "The format stays honest: 60 seconds on the clock, one idea, and a room that came to listen rather than scroll.",
+    "Founders who pitched last time told us the minute on stage was worth more than a month of cold emails, and the follow-ups proved them right.",
+    "Come to listen even if you do not pitch. The room is operators and investors, and the batch is worth hearing.",
+    "Doors open half an hour before the first pitch, and the timer starts on schedule because 80 people gave us their evening.",
+    "One preparation tip from the last edition: say your idea out loud 3 times today, and the stage version finds itself.",
+  ],
+  eventRecap: [
+    "The timer kept everyone honest, and the room repaid every founder who respected it with full attention.",
+    "The conversations after the pitches ran past closing, which is the best review an evening like this gets.",
+    "We took notes all evening, and half our myth bank for next quarter came from the questions investors asked between pitches.",
+    "A pattern we noticed from the side of the stage: the pitches that landed opened with the customer, and the number followed within a sentence.",
+  ],
 };
+
+// ---------- event templates (1 Min AI Pitch) ----------
+
+function eventDateLabel(iso: string): string {
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return iso;
+  return new Date(t).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+const FALLBACK_EVENT = {
+  title: "1 Min AI Pitch",
+  date: "",
+  venue: "our stage",
+  capacity: 60,
+  signups: [] as { name: string; startup: string; idea: string }[],
+};
+
+function eventAnnounceTemplate(input: WriteInput): WriterOutput {
+  const ev = input.event ?? FALLBACK_EVENT;
+  const when = ev.date ? eventDateLabel(ev.date) : "soon";
+  const hook = truncate(
+    `${ev.title}: 1 minute on stage, ${ev.capacity} seats in the room, ${when}.`,
+    140,
+  );
+  const paragraphs = padToBand(
+    "eventAnnounce",
+    [
+      hook,
+      "The format is simple. Each founder gets 60 seconds to pitch one idea to a room of operators and investors, and the timer is honest.",
+      "There are no slides to polish for a week. You bring the one sentence your startup lives on, and you find out in a minute whether it lands.",
+      `The details, in plain words: ${when} at ${ev.venue}, ${ev.capacity} seats, and the seats go to the founders who claim them first.`,
+      "If you run a startup and can say what it does in one breath, take the stage.",
+      "Signup link in the first comment.",
+    ],
+    1200,
+  );
+  return {
+    hook,
+    body: paragraphs.join("\n\n"),
+    hashtags: ["AI", "OneMinPitch"],
+    imageHeadline: `1 minute. One *idea*.`,
+    imageStat: `${ev.capacity} SEATS — 60 SECONDS EACH`,
+  };
+}
+
+function eventLineupTemplate(input: WriteInput): WriterOutput {
+  const ev = input.event ?? FALLBACK_EVENT;
+  const picks = ev.signups.slice(0, 6);
+  const n = picks.length > 0 ? picks.length : ev.signups.length;
+  const when = ev.date ? eventDateLabel(ev.date) : "soon";
+  const hook = truncate(
+    `${n > 0 ? n : "The"} startups, 1 minute each: the ${ev.title} lineup is taking shape.`,
+    140,
+  );
+  const lines = picks.map((s, i) => {
+    const idx = String(i + 1).padStart(2, "0");
+    return `${idx} ${truncate(cleanTitle(s.startup), 50)}: ${truncate(cleanTitle(s.idea), 100)}.`;
+  });
+  const paragraphs = padToBand(
+    "eventLineup",
+    [
+      hook,
+      lines.length > 0
+        ? "One line per startup, the same line they get 60 seconds to prove on stage."
+        : "The signups are open and the first founders are in. The lineup post gets sharper as the list fills.",
+      ...lines,
+      "What connects the batch: every one of these is a working idea a founder can state in one breath, which is exactly the bar the stage sets.",
+      `${when} at ${ev.venue}. Come for the pitches, stay for the room.`,
+      "Signup link in the first comment.",
+    ],
+    1200,
+  );
+  return {
+    hook,
+    body: paragraphs.join("\n\n"),
+    hashtags: ["AI", "OneMinPitch"],
+    imageHeadline: `The *lineup*.`,
+    imageStat: n > 0 ? `${n} STARTUPS — 1 MINUTE EACH` : `1 MINUTE EACH`,
+  };
+}
+
+function eventReminderTemplate(input: WriteInput): WriterOutput {
+  const ev = input.event ?? FALLBACK_EVENT;
+  const when = ev.date ? eventDateLabel(ev.date) : "soon";
+  const daysLeft = ev.date
+    ? Math.max(1, Math.ceil((Date.parse(ev.date) - Date.now()) / (24 * 60 * 60 * 1000)))
+    : 7;
+  const hook = truncate(
+    `${daysLeft} days until ${ev.title}. Here is what happens on the night.`,
+    140,
+  );
+  const paragraphs = padToBand(
+    "eventReminder",
+    [
+      hook,
+      "The evening runs on one rule: each founder gets 60 seconds on stage for one idea, in front of a room of operators and investors who came to listen.",
+      "If you are still deciding whether to pitch, here is the honest math. One minute on stage puts your idea in front of the whole room at once, which beats a month of one-at-a-time introductions.",
+      `${when} at ${ev.venue}, ${ev.capacity} seats. The remaining ones go to the founders who claim them this week.`,
+      "Signup link in the first comment.",
+    ],
+    1200,
+  );
+  return {
+    hook,
+    body: paragraphs.join("\n\n"),
+    hashtags: ["AI", "OneMinPitch"],
+    imageHeadline: `${daysLeft} *days* out.`,
+    imageStat: `${when.toUpperCase()} — ${ev.capacity} SEATS`,
+  };
+}
+
+function eventRecapTemplate(input: WriteInput): WriterOutput {
+  const ev = input.event ?? FALLBACK_EVENT;
+  const n = ev.signups.length > 0 ? ev.signups.length : ev.capacity;
+  const hook = truncate(
+    `${n} pitches, 1 minute each, and a room that stayed past closing. That was ${ev.title}.`,
+    140,
+  );
+  const paragraphs = padToBand(
+    "eventRecap",
+    [
+      hook,
+      "What we watched from the side of the stage: founders compressing months of work into one honest minute, and a room leaning in for every single one.",
+      "What surprised us most was how little the timer hurt. The best pitches used about 50 seconds and spent the rest standing behind one number.",
+      "What we learned, and it holds for any operator: if the idea needs more than a minute to land, the idea is not ready, the telling of it is.",
+      `Thank you to every founder who took the stage at ${ev.venue}, and to the room that made pitching there worth the nerves.`,
+      "The rule of thumb worth saving from the night: one idea, one number, one breath. It works on a stage and it works in a sales call.",
+    ],
+    1200,
+  );
+  return {
+    hook,
+    body: paragraphs.join("\n\n"),
+    hashtags: ["AI", "OneMinPitch"],
+    imageHeadline: `The *recap*.`,
+    imageStat: `${n} PITCHES — 1 NIGHT`,
+  };
+}
 
 function padToBand(recipe: string, paragraphs: string[], min: number): string[] {
   const extras = PAD_LINES[recipe] ?? [];
@@ -442,5 +626,9 @@ function mythTemplate(input: WriteInput): WriterOutput {
 export function templateWrite(recipe: RecipeId, input: WriteInput): WriterOutput {
   if (recipe === "tldr") return tldrTemplate(input);
   if (recipe === "news") return newsTemplate(input);
+  if (recipe === "eventAnnounce") return eventAnnounceTemplate(input);
+  if (recipe === "eventLineup") return eventLineupTemplate(input);
+  if (recipe === "eventReminder") return eventReminderTemplate(input);
+  if (recipe === "eventRecap") return eventRecapTemplate(input);
   return mythTemplate(input);
 }

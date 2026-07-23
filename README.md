@@ -2,7 +2,7 @@
 
 The private marketing machine for Stride AI. Two founders log in, press a button, and get a finished LinkedIn post: sourced from the week's AI news, written in the Stride voice, gated by a deterministic anti-slop linter, rendered into on-brand visuals, and published through a copy-open flow. Nothing ever auto-posts.
 
-This is Phases 0-2 of the marketing machine master plan — the console shell, the full content engine, and the automation layer — running with zero external accounts. No LinkedIn API, no database service. Everything lives in local JSON files under `data/`.
+This is Phases 0-3 of the marketing machine master plan — the console shell, the full content engine, the automation layer, and the event engine — running with zero external accounts. No LinkedIn API, no database service. Everything lives in local JSON files under `data/`.
 
 ## The three buttons
 
@@ -58,13 +58,17 @@ The voice gate blocks "Approve." while any variant has a blocking violation, so 
 
 Every posted draft carries a small form for the LinkedIn numbers: impressions, reactions, comments, saves. Manual entry, two founders, ten seconds. `lib/pipeline/memory.ts` turns the log into a few plain-language lessons ("hooks with a number averaged 2,000 impressions against 700 without one") that ride along in every writer prompt. A lesson only appears when both sides of a comparison have at least 2 posts and the gap is at least 25 percent. The current lessons show on the settings page.
 
+## The event engine (1 Min AI Pitch)
+
+The Events tab creates an event (date, venue, capacity) and generates the T-6-weeks checklist: venue, invites, speakers, investors, catering, photographer, each with a due date counted back from the night. The public signup page at `/pitch` needs no login: name, startup, one-line idea, into `data/signups.json`, rate-limited by IP. Four event recipes run through the same pipeline and voice gate as everything else: announcement, lineup, week-before reminder, day-after recap. Event posts are the promo slice, about 1 in 10 — the runner warns when an event post would be the third post of a week. Myths heard at the event go straight into the myth bank from the event page.
+
 ## LinkedIn API groundwork
 
 `lib/publish/linkedin.ts` has the OAuth, image-upload and create-post flow typed out and documented, behind `STRIDE_LINKEDIN=on` plus credentials. It is inactive: nothing calls it, and every function throws until the flag and keys exist. Publishing stays copy-open until then, and approval stays with the founders either way.
 
 ## Data
 
-Everything is JSON under `data/` (gitignored, auto-created): `drafts.json`, `seen.json` (dedupe cache: URL match + >80% title similarity), `myths.json`, `sources.json` (seeded from `config/sources.default.json` on first run), `postlog.json` (now including manually entered stats), `inbox.json`. Renders land in `data/renders/<draftId>/`.
+Everything is JSON under `data/` (gitignored, auto-created): `drafts.json`, `seen.json` (dedupe cache: URL match + >80% title similarity), `myths.json`, `sources.json` (seeded from `config/sources.default.json` on first run), `postlog.json` (now including manually entered stats), `inbox.json`, `events.json`, `signups.json`. Renders land in `data/renders/<draftId>/`.
 
 ## Tests and the no-network demo
 
@@ -82,7 +86,7 @@ When you run the console's sourcing from a machine with [Agent-Reach](https://gi
 ## Roadmap
 
 - **Phase 2 — Automation:** done. Scheduled pre-generation, ready-banner, stats + feedback memory, LinkedIn API stub.
-- **Phase 3 — Event engine:** the 1 Min AI Pitch tab, signup page, event content recipes.
+- **Phase 3 — Event engine:** done. Events tab with checklist, public /pitch signup, four event recipes.
 - **Phase 4 — Phone app:** installable PWA with a push when a draft is ready.
 
 See `stride-marketing-machine-architecture.md` in the project workspace for the full plan.

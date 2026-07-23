@@ -38,6 +38,12 @@ export function Header({ founder }: { founder?: string }) {
             Console
           </Link>
           <Link
+            href="/events"
+            className="text-sm font-semibold text-ink hover:text-indigo"
+          >
+            Events
+          </Link>
+          <Link
             href="/settings"
             className="text-sm font-semibold text-ink hover:text-indigo"
           >

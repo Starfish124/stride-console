@@ -11,8 +11,13 @@
   manual stats entry on posted drafts + feedback-memory lessons in the writer
   prompt, LinkedIn API stub (lib/publish/linkedin.ts, inert behind env flag).
 
+- Phase 3 — Event engine: Events tab (date/venue/capacity + T-6-weeks checklist
+  with due dates), public /pitch signup (no auth, in-memory IP rate limit,
+  signups.json), four event recipes (eventAnnounce/eventLineup/eventReminder/
+  eventRecap) through the shared runner with a promo-slice warning on the third
+  post of a week, myth quick-add on the event page.
+
 ## Next
-- Phase 3 — Event engine: 1 Min AI Pitch tab, public /pitch signup, event recipes.
 - Phase 4 — Phone app: PWA install, push on draft-ready, one-handed review.
 
 ## Decisions on record
@@ -25,3 +30,8 @@
   a made-up one.
 - Pregen never notifies externally; the inbox banner in the console is the
   notification until Phase 4 adds web push.
+- Signups are one flat list (signups.json), not per-event: the console runs one
+  event cycle at a time, and the lineup recipe reads the whole list. Split it
+  per event when two cycles ever overlap.
+- The promo-slice rule warns, never blocks: founders can post a third time in a
+  week, but the runner says so on the draft.

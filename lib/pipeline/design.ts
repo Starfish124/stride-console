@@ -7,7 +7,12 @@ import path from "node:path";
 import satori from "satori";
 import { Resvg } from "@resvg/resvg-js";
 import { PDFDocument } from "pdf-lib";
-import type { MythSlide } from "../types.ts";
+import {
+  isEventRecipe,
+  type EventRecipeId,
+  type MythSlide,
+  type RecipeId,
+} from "../types.ts";
 
 export const CANVAS = { width: 1200, height: 1500 } as const;
 
@@ -284,6 +289,43 @@ export function mythClosingTree(): Node {
   ]);
 }
 
+const EVENT_EYEBROWS: Record<EventRecipeId, string> = {
+  eventAnnounce: "THE ANNOUNCEMENT",
+  eventLineup: "THE LINEUP",
+  eventReminder: "ONE WEEK OUT",
+  eventRecap: "THE RECAP",
+};
+
+/** 1 Min AI Pitch poster: paper, big ink headline, one indigo word, event date. */
+export function eventTree(
+  recipe: EventRecipeId,
+  headline: string,
+  stat: string | undefined,
+  dateLabel: string | undefined,
+): Node {
+  return frame(C.paper, C.line, [
+    radar(620, C.slate, { right: -180, top: -180, opacity: 0.16 }),
+    el(
+      "div",
+      mono(26, C.slate),
+      `1 MIN AI PITCH — ${EVENT_EYEBROWS[recipe]}${dateLabel ? ` — ${dateLabel}` : ""}`,
+    ),
+    el(
+      "div",
+      { display: "flex", flexWrap: "wrap", marginTop: 120, flexGrow: 1, alignContent: "flex-start" },
+      headlineWords(truncate(headline, 90), C.ink),
+    ),
+    ...(stat
+      ? [el("div", mono(48, C.indigo, { marginBottom: 56 }), stat.toUpperCase())]
+      : []),
+    el(
+      "div",
+      { display: "flex", justifyContent: "space-between", alignItems: "center" },
+      [wordmark(40, C.slate), el("span", mono(22, C.slate), "SIGNUP LINK IN THE FIRST COMMENT")],
+    ),
+  ]);
+}
+
 // ---------- rendering ----------
 
 export async function renderPng(tree: Node): Promise<Buffer> {
@@ -307,7 +349,7 @@ export async function assemblePdf(pngs: Buffer[]): Promise<Buffer> {
 }
 
 export interface RenderSpec {
-  recipe: "tldr" | "news" | "myth";
+  recipe: RecipeId;
   weekNumber: number;
   titles?: string[];
   imageHeadline: string;
@@ -337,6 +379,13 @@ export async function renderToDir(spec: RenderSpec, outDir: string): Promise<Ren
     const png = await renderPng(newsTree(spec.imageHeadline, spec.imageStat, dateLabel));
     fs.writeFileSync(path.join(outDir, "news.png"), png);
     return { images: ["news.png"] };
+  }
+  if (isEventRecipe(spec.recipe)) {
+    const png = await renderPng(
+      eventTree(spec.recipe, spec.imageHeadline, spec.imageStat, spec.dateLabel),
+    );
+    fs.writeFileSync(path.join(outDir, "event.png"), png);
+    return { images: ["event.png"] };
   }
   // Myth carousel: cover + myth/reality pairs + closing slide, plus a PDF.
   const slides = spec.slides ?? [];
