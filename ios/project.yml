@@ -12,7 +12,9 @@ targets:
       - Assets.xcassets
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.strideai.console
+        PRODUCT_BUNDLE_IDENTIFIER: com.netrunner.stride
+        DEVELOPMENT_TEAM: Y74Z8B8A78
+        CODE_SIGN_STYLE: Automatic
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
         TARGETED_DEVICE_FAMILY: "1"
