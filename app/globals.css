@@ -23,6 +23,25 @@ body {
   font-family: var(--font-sans);
   font-size: 15px;
   line-height: 1.6;
+  /* The console lives inside a WKWebView on the phone: no grey tap flash,
+     no rubber-band background peeking through. */
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+/* One visible focus language everywhere, keyboard and screen-reader friendly. */
+:focus-visible {
+  outline: 2px solid var(--color-indigo);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+a,
+button {
+  transition:
+    color 120ms ease,
+    background-color 120ms ease,
+    border-color 120ms ease;
 }
 
 /* Mono label voice: uppercase, +14% tracking, weight 500. */

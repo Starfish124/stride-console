@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { DraftStatus } from "@/lib/types";
+import { NavLinks } from "@/components/NavLinks";
 
 export function Wordmark({ size = "text-xl" }: { size?: string }) {
   return (
@@ -28,28 +29,16 @@ export function StatusBadge({ status }: { status: DraftStatus }) {
 
 export function Header({ founder }: { founder?: string }) {
   return (
-    <header className="border-b border-line bg-white">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+    <header className="sticky top-0 z-20 border-b border-line bg-white/90 pt-[env(safe-area-inset-top)] backdrop-blur">
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-6 py-4">
         <Link href="/">
           <Wordmark />
         </Link>
-        <nav className="flex items-center gap-6">
-          <Link href="/" className="text-sm font-semibold text-ink hover:text-indigo">
-            Console
-          </Link>
-          <Link
-            href="/events"
-            className="text-sm font-semibold text-ink hover:text-indigo"
-          >
-            Events
-          </Link>
-          <Link
-            href="/settings"
-            className="text-sm font-semibold text-ink hover:text-indigo"
-          >
-            Settings
-          </Link>
-          {founder ? <span className="eyebrow text-slate">{founder}</span> : null}
+        <nav className="flex items-center gap-4 sm:gap-6">
+          <NavLinks />
+          {founder ? (
+            <span className="eyebrow hidden text-slate sm:inline">{founder}</span>
+          ) : null}
         </nav>
       </div>
     </header>

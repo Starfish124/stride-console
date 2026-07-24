@@ -74,7 +74,15 @@ export default async function Dashboard() {
             <MythQuickAdd />
           </div>
           <div>
-            <p className="eyebrow text-slate">Recent drafts</p>
+            <div className="flex items-baseline justify-between">
+              <p className="eyebrow text-slate">Recent drafts</p>
+              <Link
+                href="/library"
+                className="text-sm font-semibold text-indigo hover:text-indigo-deep"
+              >
+                The whole library →
+              </Link>
+            </div>
             <h2 className="mt-2 mb-4 text-xl font-bold text-ink">The last runs.</h2>
             {drafts.length === 0 ? (
               <p className="rounded-card border border-line bg-white p-6 text-sm text-slate">
