@@ -70,6 +70,21 @@ The Events tab creates an event (date, venue, capacity) and generates the T-6-we
 
 The console installs as a PWA, so draft review works from a pocket.
 
+**Founder setup (Jort, start here).** The full walkthrough lives in
+[docs/PHONE-INSTALL.md](docs/PHONE-INSTALL.md). The short version:
+
+1. Accept the Tailscale invite from Sarvesh, install the **Tailscale** app
+   on your iPhone, sign in, flip it to **Connected** and accept the VPN
+   prompt. The console is only reachable on our private network — no
+   Tailscale, no console.
+2. In Safari, open `https://mac-mini.tailc91701.ts.net` and log in
+   (password: ask Sarvesh).
+3. Share button → **Add to Home Screen** → open the Stride icon.
+4. In the app: Settings → enable draft-ready notifications.
+
+If it ever says the console is unreachable, the Tailscale switch is off
+nine times out of ten. The troubleshooting list is in the guide.
+
 **Add to Home Screen.** Open the console in the phone's browser (same network as the machine running it, e.g. `http://<your-mac>.local:3000`). On iPhone: Safari, the Share button, "Add to Home Screen." On Android: Chrome, the three-dot menu, "Add to Home screen" or the install prompt. The app opens full screen with the brand mark as its icon.
 
 **Draft-ready pushes.** Settings has a "Draft-ready notifications" toggle per device. Turn it on and pregen sends "Your Monday Stride TLDR is ready to approve." with a tap-through to the draft. Self-hosted: VAPID keys generate themselves into `data/push-keys.json`, subscriptions live in `data/push-subs.json`, and delivery uses the browser's own push service and nothing else. The push carries a title, never draft content. On iPhone this needs iOS 16.4 or later and the app installed on the Home Screen first.
