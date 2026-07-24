@@ -44,6 +44,75 @@ button {
     border-color 120ms ease;
 }
 
+/* Every page eases in instead of popping. Cheap, and it reads as cared-for. */
+main {
+  animation: page-in 240ms ease-out;
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Clearance for the bottom tab bar on phone widths. */
+@media (max-width: 639px) {
+  main {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom));
+  }
+}
+
+/* Cards that are links lift a hair under the pointer. */
+.card-lift {
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    border-color 140ms ease;
+}
+
+.card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px -8px rgba(16, 17, 22, 0.18);
+}
+
+/* Stat tiles: digits that don't wiggle between sweeps. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Loading shimmer, used while the radar sweeps the real internet. */
+.shimmer {
+  background: linear-gradient(
+    100deg,
+    var(--color-line) 40%,
+    var(--color-paper) 50%,
+    var(--color-line) 60%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main,
+  .shimmer {
+    animation: none;
+  }
+  .card-lift:hover {
+    transform: none;
+  }
+}
+
 /* Mono label voice: uppercase, +14% tracking, weight 500. */
 .eyebrow {
   font-family: var(--font-mono);

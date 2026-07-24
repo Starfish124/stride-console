@@ -37,7 +37,7 @@ function Tile({ label, value, hint }: { label: string; value: string; hint?: str
   return (
     <div className="rounded-card border border-line bg-white p-4">
       <p className="eyebrow text-slate">{label}</p>
-      <p className="display mt-1 text-2xl text-ink">{value}</p>
+      <p className="display tabular mt-1 text-2xl text-ink">{value}</p>
       {hint ? <p className="mt-0.5 text-xs text-slate">{hint}</p> : null}
     </div>
   );

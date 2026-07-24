@@ -23,7 +23,7 @@ function Tile({ label, value, hint }: { label: string; value: string; hint?: str
   return (
     <div className="rounded-card border border-line bg-white p-4">
       <p className="eyebrow text-slate">{label}</p>
-      <p className="display mt-1 text-2xl text-ink">{value}</p>
+      <p className="display tabular mt-1 text-2xl text-ink">{value}</p>
       {hint ? <p className="mt-0.5 text-xs text-slate">{hint}</p> : null}
     </div>
   );
@@ -91,10 +91,22 @@ export function RadarView() {
       ) : null}
 
       {scanning && !data ? (
-        <p className="mt-4 rounded-card border border-line bg-white p-6 text-sm text-slate">
-          Reading all sources. This takes a few seconds — it is the real
-          internet, not a cache.
-        </p>
+        <div className="mt-4">
+          <p className="text-sm text-slate">
+            Reading all sources. This takes a few seconds — it is the real
+            internet, not a cache.
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="shimmer h-24 rounded-card" />
+            ))}
+          </div>
+          <div className="mt-8 space-y-px overflow-hidden rounded-card">
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="shimmer h-14" />
+            ))}
+          </div>
+        </div>
       ) : null}
 
       {data ? (

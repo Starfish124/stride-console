@@ -35,10 +35,11 @@ export function Header({ founder }: { founder?: string }) {
           <Wordmark />
         </Link>
         <nav className="flex items-center gap-4 sm:gap-6">
-          <NavLinks />
-          {founder ? (
-            <span className="eyebrow hidden text-slate sm:inline">{founder}</span>
-          ) : null}
+          {/* Phone widths navigate with the bottom tab bar instead. */}
+          <span className="hidden items-center gap-4 sm:flex sm:gap-6">
+            <NavLinks />
+          </span>
+          <span className="eyebrow text-slate">{founder}</span>
         </nav>
       </div>
     </header>

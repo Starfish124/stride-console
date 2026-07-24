@@ -6,6 +6,7 @@ import "@fontsource/archivo/800.css";
 import "@fontsource/ibm-plex-mono/500.css";
 import "./globals.css";
 import { SWRegister } from "@/components/SWRegister";
+import { TabBar } from "@/components/TabBar";
 
 export const metadata: Metadata = {
   title: "Stride Console",
@@ -34,6 +35,7 @@ export default function RootLayout({
       <body className="min-h-full bg-paper text-ink">
         <SWRegister />
         {children}
+        <TabBar />
       </body>
     </html>
   );
