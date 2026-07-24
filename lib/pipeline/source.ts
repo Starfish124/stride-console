@@ -16,6 +16,7 @@ import {
   takeOldestUnusedMyth,
   titleSimilarity,
 } from "../store.ts";
+import { enrichItems } from "./reader.ts";
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -109,6 +110,21 @@ export interface SourceRunResult {
 
 /** Pull, filter to last 7 days, dedupe against seen.json, score, rank. */
 export async function pullItems(limit: number): Promise<SourceRunResult> {
+  return collectItems(limit, { mark: true });
+}
+
+/**
+ * The radar: exactly what a run would pick from, WITHOUT consuming it.
+ * Nothing is marked seen, so the next real run still gets every story.
+ */
+export async function previewItems(limit: number): Promise<SourceRunResult> {
+  return collectItems(limit, { mark: false });
+}
+
+async function collectItems(
+  limit: number,
+  { mark }: { mark: boolean },
+): Promise<SourceRunResult> {
   const sources = listSources();
   const report: SourceReportEntry[] = [];
   const all: SourcedItem[] = [];
@@ -154,13 +170,15 @@ export async function pullItems(limit: number): Promise<SourceRunResult> {
   unique.sort((a, b) => b.score - a.score);
 
   const picked = unique.slice(0, limit);
-  markSeen(picked);
+  if (mark) markSeen(picked);
   return { items: picked, report };
 }
 
-/** TLDR: top 7 items across sources. */
+/** TLDR: top 7 items across sources, the top 3 read in full. */
 export async function sourceTldr(): Promise<SourceRunResult> {
-  return pullItems(7);
+  const result = await pullItems(7);
+  await enrichItems(result.items, 3);
+  return result;
 }
 
 /** News: the top story plus up to 2 related items (title similarity cluster). */
@@ -178,6 +196,9 @@ export async function sourceNews(): Promise<SourceRunResult> {
     if (cluster.length >= 3) break;
     if (!cluster.includes(item)) cluster.push(item);
   }
+  // The lead story and its context get read in full — this is the recipe
+  // that lives or dies on depth.
+  await enrichItems(cluster, 3);
   return { items: cluster, report };
 }
 

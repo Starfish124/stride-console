@@ -93,6 +93,9 @@ export function userPayload(recipe: RecipeId, input: WriteInput): string {
         url: i.url,
         summary: i.summary,
         publishedAt: i.publishedAt,
+        // Top stories arrive with the full article attached. Write from it —
+        // specifics beat headline paraphrase.
+        fullArticle: i.content,
       })),
     },
     null,
@@ -325,6 +328,21 @@ function truncate(s: string, max: number): string {
 
 function cleanTitle(title: string): string {
   return title.replace(/!+/g, ".").replace(/\s+/g, " ").trim().replace(/\.$/, "");
+}
+
+/** The opening sentences of an enriched article, for the template fallback. */
+function firstSentences(text: string | undefined, n: number): string {
+  if (!text) return "";
+  const flat = text
+    .split("\n")
+    .map((l) => l.trim())
+    // Headings and list markers are structure, not prose.
+    .filter((l) => l.length > 0 && !/^[#>*•-]/.test(l))
+    .join(" ")
+    .replace(/\s+/g, " ");
+  const matches = flat.match(/[^.!?]+[.!?]+/g);
+  if (!matches) return "";
+  return matches.slice(0, n).join(" ").trim();
 }
 
 const PAD_LINES: Record<string, string[]> = {
@@ -570,7 +588,7 @@ function newsTemplate(input: WriteInput): WriterOutput {
     "news",
     [
       hook,
-      `What happened, in plain words: ${truncate(top?.summary?.trim().replace(/[.\u2026]+$/, "") || `${title}, reported by ${top?.source ?? "our tier-1 sources"} in the last 7 days`, 260)}.`,
+      `What happened, in plain words: ${truncate((top?.summary?.trim() || firstSentences(top?.content, 2) || `${title}, reported by ${top?.source ?? "our tier-1 sources"} in the last 7 days`).replace(/[.\u2026]+$/, ""), 260)}.`,
       context,
       "What it means if you run a business on AI this quarter: the ground under one of your tools moved. Pricing, capability or access has shifted, and your workflows inherit that change whether you planned for it or not.",
       "The teams that come out ahead treat weeks like this as a budget line, about 2 hours: read the change, test it on one live workflow, decide by Friday.",

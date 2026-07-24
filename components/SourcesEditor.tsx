@@ -48,9 +48,25 @@ export function SourcesEditor() {
 
   return (
     <section>
-      <div className="mb-4 flex items-baseline justify-between">
+      <div className="mb-4 flex items-baseline justify-between gap-3">
         <h2 className="text-xl font-bold text-ink">The source list.</h2>
-        <span className="eyebrow text-slate">{saved ? "Saved." : `${sources.length} sources`}</span>
+        <span className="flex items-baseline gap-3">
+          <button
+            type="button"
+            onClick={async () => {
+              const res = await fetch("/api/sources/defaults", { method: "POST" });
+              if (res.ok) {
+                setSources((await res.json()) as SourceEntry[]);
+                setSaved(true);
+                setTimeout(() => setSaved(false), 2000);
+              }
+            }}
+            className="text-sm font-semibold text-indigo hover:text-indigo-deep"
+          >
+            Add the new defaults.
+          </button>
+          <span className="eyebrow text-slate">{saved ? "Saved." : `${sources.length} sources`}</span>
+        </span>
       </div>
 
       {!loaded ? (

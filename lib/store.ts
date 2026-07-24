@@ -128,6 +128,26 @@ export function saveSources(sources: SourceEntry[]): void {
   writeJson(FILES.sources, sources);
 }
 
+/** Union by id: the user's entries stay exactly as edited, new defaults join. */
+export function mergeSources(
+  current: SourceEntry[],
+  defaults: SourceEntry[],
+): SourceEntry[] {
+  const have = new Set(current.map((s) => s.id));
+  return [...current, ...defaults.filter((d) => !have.has(d.id))];
+}
+
+/** Fold newly shipped default sources into the saved list. Returns the result. */
+export function restoreDefaultSources(): SourceEntry[] {
+  const defaults = readJson<SourceEntry[]>(
+    path.join(process.cwd(), "config", "sources.default.json"),
+    [],
+  );
+  const merged = mergeSources(listSources(), defaults);
+  saveSources(merged);
+  return merged;
+}
+
 // ---------- seen cache / dedupe ----------
 
 export function listSeen(): SeenItem[] {

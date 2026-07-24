@@ -51,6 +51,8 @@ export interface SourcedItem {
   tier: 1 | 2 | 3;
   publishedAt?: string;
   summary?: string;
+  /** Full article text via Jina Reader, attached to top stories only. */
+  content?: string;
   score: number;
 }
 

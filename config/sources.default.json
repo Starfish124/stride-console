@@ -4,9 +4,18 @@
   { "id": "google-ai", "name": "Google AI Blog", "url": "https://blog.google/technology/ai/rss/", "kind": "rss", "tier": 1 },
   { "id": "verge-ai", "name": "The Verge AI", "url": "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml", "kind": "rss", "tier": 1 },
   { "id": "techcrunch-ai", "name": "TechCrunch AI", "url": "https://techcrunch.com/category/artificial-intelligence/feed/", "kind": "rss", "tier": 1 },
+  { "id": "ars-ai", "name": "Ars Technica AI", "url": "https://arstechnica.com/ai/feed/", "kind": "rss", "tier": 1 },
+  { "id": "mittr-ai", "name": "MIT Technology Review AI", "url": "https://www.technologyreview.com/topic/artificial-intelligence/feed", "kind": "rss", "tier": 1 },
   { "id": "hn", "name": "Hacker News Front Page", "url": "https://hnrss.org/frontpage?q=AI", "kind": "rss", "tier": 2 },
   { "id": "import-ai", "name": "Import AI", "url": "https://importai.substack.com/feed", "kind": "rss", "tier": 2 },
   { "id": "bens-bites", "name": "Ben's Bites", "url": "https://bensbites.beehiiv.com/feed", "kind": "rss", "tier": 2 },
   { "id": "hf-papers", "name": "Hugging Face Papers", "url": "https://huggingface.co/papers", "kind": "page", "tier": 2 },
-  { "id": "r-artificial", "name": "Reddit r/artificial", "url": "https://www.reddit.com/r/artificial/.rss", "kind": "rss", "tier": 3 }
+  { "id": "venturebeat-ai", "name": "VentureBeat AI", "url": "https://venturebeat.com/category/ai/feed/", "kind": "rss", "tier": 2 },
+  { "id": "the-decoder", "name": "The Decoder", "url": "https://the-decoder.com/feed/", "kind": "rss", "tier": 2 },
+  { "id": "simonw", "name": "Simon Willison", "url": "https://simonwillison.net/atom/everything/", "kind": "rss", "tier": 2 },
+  { "id": "latent-space", "name": "Latent Space", "url": "https://www.latent.space/feed", "kind": "rss", "tier": 2 },
+  { "id": "sifted", "name": "Sifted (EU startups)", "url": "https://sifted.eu/feed", "kind": "rss", "tier": 2 },
+  { "id": "r-artificial", "name": "Reddit r/artificial", "url": "https://www.reddit.com/r/artificial/.rss", "kind": "rss", "tier": 3 },
+  { "id": "tech-eu", "name": "Tech.eu", "url": "https://tech.eu/feed/", "kind": "rss", "tier": 3 },
+  { "id": "nos-tech", "name": "NOS Tech (NL)", "url": "https://feeds.nos.nl/nosnieuwstech", "kind": "rss", "tier": 3 }
 ]
