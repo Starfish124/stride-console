@@ -1,7 +1,18 @@
 import { NextResponse } from "next/server";
 import { AUTH_COOKIE, FOUNDER_COOKIE, FOUNDERS, getPassword, sessionToken } from "@/lib/auth";
+import { allowRequest } from "@/lib/rateLimit";
 
 export async function POST(request: Request) {
+  // The console faces the public internet through Funnel; the login takes
+  // 10 attempts per IP per 15 minutes and not one more.
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+  if (!allowRequest(`login:${ip}`, Date.now(), 10, 15 * 60 * 1000)) {
+    return NextResponse.json(
+      { error: "Too many attempts. Wait a few minutes." },
+      { status: 429 },
+    );
+  }
   const body = (await request.json().catch(() => ({}))) as {
     password?: string;
     founder?: string;
