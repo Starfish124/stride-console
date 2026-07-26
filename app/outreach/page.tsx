@@ -4,6 +4,7 @@ import { Header } from "@/components/ui";
 import { SequenceEditor } from "@/components/SequenceEditor";
 import { listSequences } from "@/lib/outreach/sequence";
 import { listReplies } from "@/lib/outreach/replies";
+import { AiDraftQueue } from "@/components/AiDraftQueue";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,8 @@ export default async function OutreachPage() {
             </ul>
           </section>
         )}
+
+        <AiDraftQueue />
 
         <SequenceEditor
           initial={

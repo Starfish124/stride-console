@@ -181,6 +181,64 @@ function readAccountDb(file, partitionAccountId) {
  * a second healthy account still shows.
  */
 /**
+ * The messages Linked Helper's AI has written, waiting to be approved.
+ *
+ * This is the one place the console deliberately reads person rows. Everywhere
+ * else takes counts, because the schema is full of third-party profile data we
+ * have no business holding. Here the whole point is a founder reading what is
+ * about to be sent in their name, so the person's name and headline come with
+ * the text. It goes no further than this Mac.
+ *
+ * LH2 writes each message as a custom field on the person, named by the
+ * `outputFieldName` in the campaign's AIPersonalizedMessages config, e.g.
+ * "ai_message_1". Nothing else in the schema holds the draft.
+ */
+export function readAiDrafts({ limit = 200 } = {}) {
+  const dbs = findAccountDbs();
+  const drafts = [];
+
+  for (const { file } of dbs) {
+    const db = open(file);
+    try {
+      const rows = all(
+        db,
+        `SELECT pcf.id, pcf.person_id, pcf.campaign_id, pcf.field_name, pcf.field_content,
+                pcf.updated_at, c.name AS campaign_name,
+                pmp.first_name, pmp.last_name, pmp.headline
+           FROM person_custom_fields pcf
+           LEFT JOIN campaigns c ON c.id = pcf.campaign_id
+           LEFT JOIN person_mini_profile pmp ON pmp.id = pcf.person_id
+          WHERE pcf.field_name LIKE 'ai\\_%' ESCAPE '\\'
+            AND LENGTH(TRIM(pcf.field_content)) > 0
+          ORDER BY pcf.updated_at DESC
+          LIMIT ?`,
+        [limit],
+      );
+
+      for (const row of rows) {
+        drafts.push({
+          id: `${row.campaign_id ?? 0}:${row.person_id}:${row.field_name}`,
+          personId: row.person_id,
+          campaignId: row.campaign_id,
+          campaignName: row.campaign_name ?? null,
+          field: row.field_name,
+          text: row.field_content,
+          name: [row.first_name, row.last_name].filter(Boolean).join(" ") || null,
+          headline: row.headline ?? null,
+          updatedAt: row.updated_at,
+        });
+      }
+    } catch {
+      // A schema that moved is a missing section, not a dead endpoint.
+    } finally {
+      db.close();
+    }
+  }
+
+  return { drafts, at: new Date().toISOString() };
+}
+
+/**
  * How many real people starting this account's runner would begin messaging.
  *
  * Only unpaused campaigns count: a paused one does not send when the runner

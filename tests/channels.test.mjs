@@ -319,13 +319,26 @@ test("a missing Linked Helper profile is a clear message, not a crash", () => {
   }
 });
 
-test("nothing in the campaign read touches a person table", () => {
-  // The schema carries ~40 tables of third-party LinkedIn profiles. The console
-  // needs counts, never rows, and this pins that promise to the source.
+test("the campaign read takes counts, never person rows", () => {
+  /* The schema carries ~40 tables of third-party LinkedIn profiles, and the
+   * campaign view has no business holding any of them.
+   *
+   * The draft queue is the one deliberate exception: reviewing a message means
+   * seeing who it is addressed to, so readAiDrafts joins person_mini_profile
+   * and reads person_custom_fields. That exception is scoped to that function
+   * and this test is what keeps it scoped — if a person table shows up in
+   * readCampaigns, it fails. */
   const source = fs.readFileSync(new URL("../bridge/db.mjs", import.meta.url), "utf8");
-  const selects = source.match(/FROM\s+([a-z_]+)/gi) ?? [];
-  const personTables = selects.filter((s) => /FROM\s+person_|FROM\s+organization_/i.test(s));
-  assert.deepEqual(personTables, [], `db.mjs selects from ${personTables.join(", ")}`);
+
+  const draftsStart = source.indexOf("export function readAiDrafts");
+  const draftsEnd = source.indexOf("export function audienceAtRisk");
+  assert.ok(draftsStart > -1 && draftsEnd > draftsStart, "readAiDrafts must be findable");
+
+  const outsideDrafts = source.slice(0, draftsStart) + source.slice(draftsEnd);
+  const leaked = (outsideDrafts.match(/FROM\s+(person_|organization_)[a-z_]*/gi) ?? []).map((s) =>
+    s.replace(/\s+/g, " "),
+  );
+  assert.deepEqual(leaked, [], `person data read outside the draft queue: ${leaked.join(", ")}`);
 });
 
 // --- clicking safely inside Linked Helper -------------------------------
@@ -435,4 +448,123 @@ test("another account's live campaign is not counted against this one", () => {
 test("a malformed view does not crash the guard into allowing everything", () => {
   assert.equal(audienceAtRisk(undefined, "a@b.com").reach, 0);
   assert.equal(audienceAtRisk({ accounts: [{}] }, "a@b.com").reach, 0);
+});
+
+// --- the AI draft queue ----------------------------------------------------
+//
+// Linked Helper's AI writes one message per person and, with autoApprove off,
+// holds each. It files them as custom fields on the person, named by the
+// campaign's outputFieldName. Nothing else in the schema holds the draft.
+
+function lhHomeWithDrafts() {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), "stride-drafts-"));
+  const dir = path.join(home, "Partitions", "linked-helper-account-579196-main");
+  fs.mkdirSync(dir, { recursive: true });
+  const db = new DatabaseSync(path.join(dir, "lh.db"));
+  db.exec(`
+    CREATE TABLE campaigns(id INTEGER PRIMARY KEY, uuid TEXT, name TEXT, description TEXT,
+      type INTEGER, is_paused INTEGER, is_archived INTEGER, is_valid INTEGER,
+      is_hidden INTEGER, li_account_id INTEGER, created_at TEXT);
+    CREATE TABLE person_mini_profile(id INTEGER PRIMARY KEY, first_name TEXT, last_name TEXT, headline TEXT);
+    CREATE TABLE person_custom_fields(id INTEGER PRIMARY KEY, person_id INTEGER NOT NULL,
+      campaign_id INTEGER, campaign_id_uniq_constrain INTEGER DEFAULT 0, action_id INTEGER,
+      action_id_uniq_constrain INTEGER DEFAULT 0, level TEXT, field_name TEXT NOT NULL,
+      field_content TEXT NOT NULL, field_type TEXT, created_at TEXT, updated_at TEXT);
+
+    INSERT INTO campaigns(id, uuid, name, is_hidden, created_at) VALUES (1,'u','MKB ops Q3',0,'2026-07-26T00:00:00Z');
+    INSERT INTO person_mini_profile VALUES (7,'Marieke','de Vries','Ops lead, Lelystad');
+    INSERT INTO person_custom_fields(id, person_id, campaign_id, field_name, field_content, updated_at)
+      VALUES
+      (1, 7, 1, 'ai_message_1', 'Hi Marieke, I hope this message finds you well. We help companies like yours leverage AI.', '2026-07-26T10:00:00Z'),
+      (2, 7, 1, 'headline', 'not a draft, must be ignored', '2026-07-26T10:00:00Z'),
+      (3, 7, 1, 'ai_message_2', '   ', '2026-07-26T10:00:00Z');
+  `);
+  db.close();
+  return home;
+}
+
+test("AI drafts are read with the person they are addressed to", () => {
+  const home = lhHomeWithDrafts();
+  const previous = process.env.STRIDE_LH_HOME;
+  process.env.STRIDE_LH_HOME = home;
+  try {
+    const found = findAccountDbs(home);
+    const db = new DatabaseSync(found[0].file, { readOnly: true });
+    const rows = db.prepare(
+      `SELECT pcf.field_name, pcf.field_content, pmp.first_name
+         FROM person_custom_fields pcf
+         LEFT JOIN person_mini_profile pmp ON pmp.id = pcf.person_id
+        WHERE pcf.field_name LIKE 'ai\\_%' ESCAPE '\\'
+          AND LENGTH(TRIM(pcf.field_content)) > 0`,
+    ).all();
+    db.close();
+
+    assert.equal(rows.length, 1, "only non-empty ai_* fields are drafts");
+    assert.equal(rows[0].field_name, "ai_message_1");
+    assert.equal(rows[0].first_name, "Marieke", "the draft must carry who it is for");
+  } finally {
+    if (previous === undefined) delete process.env.STRIDE_LH_HOME;
+    else process.env.STRIDE_LH_HOME = previous;
+    fs.rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("the voice gate catches what the machine wrote", async () => {
+  // The whole point of the queue: a fluent, polite, entirely generic message
+  // that a person would send without thinking, and the gate refuses.
+  const { lintMessage } = await import("../lib/outreach/lint.ts");
+  const machineWrote =
+    "Hi Marieke, I hope this message finds you well. We help companies like yours leverage AI.";
+  const result = lintMessage(machineWrote, "message", { isFirstTouch: true });
+
+  assert.ok(result.errors > 0, "this must not pass");
+  const rules = result.violations.map((v) => v.rule);
+  assert.ok(rules.includes("templateTells"), "'I hope this message finds you well'");
+  assert.ok(rules.includes("bannedWords"), "'leverage'");
+  assert.ok(rules.includes("prematurePitch"), "'we help companies like yours'");
+});
+
+// --- reaching the per-account instance -------------------------------------
+//
+// Linked Helper is two Electron apps. The launcher holds no campaign UI; the
+// per-account instance does, and it already runs with a debugger port that
+// Electron assigns and writes to DevToolsActivePort. The port changes every
+// launch, so it is read rather than remembered.
+
+test("the account instance's debug port is read from DevToolsActivePort", async () => {
+  const { accountDebugPort } = await import("../bridge/account.mjs");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stride-port-"));
+  const file = path.join(dir, "DevToolsActivePort");
+  try {
+    // Electron writes the port on the first line and a target path on the next.
+    fs.writeFileSync(file, "63552\n/devtools/browser/abc-123\n");
+    assert.equal(accountDebugPort(file), 63552);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a missing port file says no account is running, rather than crashing", async () => {
+  const { accountDebugPort } = await import("../bridge/account.mjs");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stride-port-"));
+  try {
+    assert.throws(
+      () => accountDebugPort(path.join(dir, "nothing")),
+      (err) => err.code === "no_account_instance",
+    );
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a damaged port file is refused rather than dialled", async () => {
+  const { accountDebugPort } = await import("../bridge/account.mjs");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stride-port-"));
+  const file = path.join(dir, "DevToolsActivePort");
+  try {
+    fs.writeFileSync(file, "not-a-port\n");
+    assert.throws(() => accountDebugPort(file), (err) => err.code === "bad_port");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });

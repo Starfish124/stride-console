@@ -16,8 +16,12 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { probe, readAccounts } from "./lh.mjs";
 import { CdpError } from "./cdp.mjs";
-import { readCampaigns, audienceAtRisk, DbUnavailable } from "./db.mjs";
+import { readCampaigns, audienceAtRisk, readAiDrafts, DbUnavailable } from "./db.mjs";
 import { dismissNotices, clickIconByTooltip, scanRowIcons, ControlError } from "./control.mjs";
+import { AccountSession, readCampaignUi, accountDebugPort } from "./account.mjs";
+
+/** One session against whichever account instance is running. */
+const account = new AccountSession();
 
 /** Read a JSON request body, tolerating an empty one. */
 async function readJsonBody(req) {
@@ -188,6 +192,27 @@ const server = http.createServer(async (req, res) => {
       await dismissNotices();
       const clicked = await clickIconByTooltip(String(body.email ?? ""), "Stop");
       return send(res, 200, { ok: true, clicked });
+    }
+
+    /* The AI drafts Linked Helper has written and is holding for approval.
+     * Only reachable when the campaign's AIPersonalizedMessages step has run
+     * and autoApprove is off, which is exactly the state worth reviewing. */
+    if (url.pathname === "/drafts" && req.method === "GET") {
+      try {
+        return send(res, 200, readAiDrafts());
+      } catch (err) {
+        if (err instanceof DbUnavailable) {
+          return send(res, 200, { drafts: [], unavailable: err.message, at: new Date().toISOString() });
+        }
+        throw err;
+      }
+    }
+
+    /* The campaign window inside the per-account instance: what it shows and
+     * which controls it is offering. This is where campaigns are created. */
+    if (url.pathname === "/campaign-ui" && req.method === "GET") {
+      const port = accountDebugPort();
+      return send(res, 200, { port, ...(await readCampaignUi(account)) });
     }
 
     if (url.pathname === "/account/icons" && req.method === "GET") {

@@ -70,8 +70,10 @@ export class CdpSession {
     if (this.#connecting) return this.#connecting;
 
     this.#connecting = (async () => {
-      const target = await findPageTarget(this.port);
-      const ws = new WebSocket(target.webSocketDebuggerUrl);
+      // The account instance exposes a dozen targets, so callers there pick
+      // the one they want and hand it over. The launcher has exactly one.
+      const url = this.targetUrl ?? (await findPageTarget(this.port)).webSocketDebuggerUrl;
+      const ws = new WebSocket(url);
 
       await new Promise((resolve, reject) => {
         const onOpen = () => { cleanup(); resolve(); };

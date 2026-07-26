@@ -169,6 +169,40 @@ export async function readCampaignsView(): Promise<LhCampaignsView> {
   }
 }
 
+export interface AiDraft {
+  id: string;
+  personId: number;
+  campaignId: number | null;
+  campaignName: string | null;
+  field: string;
+  text: string;
+  name: string | null;
+  headline: string | null;
+  updatedAt: string;
+}
+
+/**
+ * The messages Linked Helper's AI has written and is holding for approval.
+ *
+ * Never throws: a page that cannot reach the bridge should say so calmly.
+ */
+export async function readAiDrafts(): Promise<{ drafts: AiDraft[]; problem?: string }> {
+  const creds = readCredentials();
+  if (!creds) return { drafts: [], problem: "The bridge has never run." };
+  try {
+    const res = await fetch(`http://127.0.0.1:${creds.port}/drafts`, {
+      headers: { Authorization: `Bearer ${creds.token}` },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      cache: "no-store",
+    });
+    if (!res.ok) return { drafts: [], problem: `The bridge answered HTTP ${res.status}.` };
+    const data = (await res.json()) as { drafts?: AiDraft[]; unavailable?: string };
+    return { drafts: data.drafts ?? [], problem: data.unavailable };
+  } catch {
+    return { drafts: [], problem: `Nothing answered on the bridge at 127.0.0.1:${creds.port}.` };
+  }
+}
+
 /** Ask the bridge to act. Returns the bridge's own status so a refusal, which
  *  is a 409 carrying the audience size, reaches the founder intact. */
 async function control(
