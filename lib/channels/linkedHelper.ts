@@ -169,6 +169,43 @@ export async function readCampaignsView(): Promise<LhCampaignsView> {
   }
 }
 
+/** Ask the bridge to act. Returns the bridge's own status so a refusal, which
+ *  is a 409 carrying the audience size, reaches the founder intact. */
+async function control(
+  path: string,
+  payload: Record<string, unknown>,
+): Promise<{ status: number; body: unknown }> {
+  const creds = readCredentials();
+  if (!creds) {
+    return { status: 503, body: { error: "no_bridge", detail: "The bridge has never run." } };
+  }
+  try {
+    const res = await fetch(`http://127.0.0.1:${creds.port}${path}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${creds.token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(60_000),
+    });
+    return { status: res.status, body: await res.json() };
+  } catch (err) {
+    return {
+      status: 503,
+      body: {
+        error: "bridge_unreachable",
+        detail: err instanceof Error ? err.message : "The bridge did not answer.",
+      },
+    };
+  }
+}
+
+export function runAccount(email: string, options: { force?: boolean } = {}) {
+  return control("/account/run", { email, force: options.force === true });
+}
+
+export function stopAccount(email: string) {
+  return control("/account/stop", { email });
+}
+
 export const linkedHelperChannel: Channel = {
   id: "linked-helper",
   label: "Linked Helper 2",

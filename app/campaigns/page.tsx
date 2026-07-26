@@ -2,23 +2,9 @@ import { cookies } from "next/headers";
 import { FOUNDER_COOKIE } from "@/lib/auth";
 import { Header } from "@/components/ui";
 import { readCampaignsView } from "@/lib/channels/linkedHelper";
-import type { LhCampaign } from "@/lib/channels/linkedHelper";
+import { CampaignDeck } from "@/components/CampaignDeck";
 
 export const dynamic = "force-dynamic";
-
-const STATE_STYLES: Record<LhCampaign["state"], string> = {
-  running: "bg-indigo-tint text-indigo border-indigo-tint",
-  paused: "bg-white text-slate border-line",
-  archived: "bg-white text-slate border-line",
-  invalid: "bg-white text-amber-700 border-amber-200",
-};
-
-const STATE_WORDS: Record<LhCampaign["state"], string> = {
-  running: "Running",
-  paused: "Paused",
-  archived: "Archived",
-  invalid: "Not ready",
-};
 
 function when(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", {
@@ -44,10 +30,11 @@ export default async function CampaignsPage() {
           <h1 className="display mt-3 text-3xl text-ink">
             What Linked Helper is doing.
           </h1>
-          <p className="mt-3 text-sm text-slate">
-            Read straight from Linked Helper&apos;s own database, so this is
-            true whether or not the app is open. Nothing on this page starts,
-            pauses or changes a campaign.
+          <p className="mt-3 text-[15px] text-slate">
+            Read straight from Linked Helper&apos;s own database, so the numbers
+            are true whether or not the app is open. The runner controls do
+            reach the real thing: starting it begins every campaign that is not
+            paused, at whatever daily cap the account is set to.
           </p>
         </section>
 
@@ -68,27 +55,7 @@ export default async function CampaignsPage() {
 
         {view.accounts.map((entry) => (
           <section key={String(entry.account.externalId)} className="mb-10">
-            <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-              <h2 className="display text-[19px] text-ink">
-                {entry.account.name?.replace(/\s+/g, " ") ?? "Unknown account"}
-              </h2>
-              <p className="text-[13px] text-slate">{entry.account.email}</p>
-            </div>
-
-            <dl className="mb-5 grid grid-cols-3 gap-3">
-              <div className="card-glass rounded-card border border-line bg-white p-4">
-                <dt className="eyebrow text-slate">Profiles</dt>
-                <dd className="tabular mt-1 text-xl text-ink">{entry.peopleCollected}</dd>
-              </div>
-              <div className="card-glass rounded-card border border-line bg-white p-4">
-                <dt className="eyebrow text-slate">Daily cap</dt>
-                <dd className="tabular mt-1 text-xl text-ink">{entry.dailyMax ?? "—"}</dd>
-              </div>
-              <div className="card-glass rounded-card border border-line bg-white p-4">
-                <dt className="eyebrow text-slate">Campaigns</dt>
-                <dd className="tabular mt-1 text-xl text-ink">{entry.campaigns.length}</dd>
-              </div>
-            </dl>
+            <CampaignDeck entry={entry} />
 
             {entry.error && (
               <p className="mb-4 rounded-card border border-amber-200 bg-white p-4 text-sm text-amber-700">
@@ -96,43 +63,37 @@ export default async function CampaignsPage() {
               </p>
             )}
 
-            <ul className="flex flex-col gap-3">
-              {entry.campaigns.map((campaign) => (
-                <li
-                  key={campaign.uuid}
-                  className="card-lift card-glass rounded-card border border-line bg-white p-5"
-                >
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                    <span className="text-sm font-semibold text-ink">{campaign.name}</span>
-                    <span
-                      className={`eyebrow rounded-full border px-2 py-0.5 ${STATE_STYLES[campaign.state]}`}
+            {/* The deck above carries state and counts. These are the steps,
+                which it deliberately leaves out to stay readable. */}
+            {entry.campaigns.some((c) => c.steps.length > 0) && (
+              <ul className="flex flex-col gap-3">
+                {entry.campaigns
+                  .filter((campaign) => campaign.steps.length > 0)
+                  .map((campaign) => (
+                    <li
+                      key={campaign.uuid}
+                      className="card-glass rounded-card border border-line bg-white p-5"
                     >
-                      {STATE_WORDS[campaign.state]}
-                    </span>
-                    <span className="eyebrow text-slate">{campaign.type}</span>
-                  </div>
-
-                  <p className="tabular mt-2 text-[13px] text-slate">
-                    {campaign.people.toLocaleString("en-GB")} profile
-                    {campaign.people === 1 ? "" : "s"} · {campaign.stepCount} step
-                    {campaign.stepCount === 1 ? "" : "s"} · created {when(campaign.createdAt)}
-                  </p>
-
-                  {campaign.steps.length > 0 && (
-                    <ul className="mt-3 flex flex-col gap-1">
-                      {campaign.steps.map((step, i) => (
-                        <li key={i} className="flex gap-2 text-[13px] text-ink">
-                          <span className="eyebrow text-indigo">
-                            {String(i + 1).padStart(2, "0")}
-                          </span>
-                          <span>{step}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </li>
-              ))}
-            </ul>
+                      <div className="flex flex-wrap items-baseline gap-x-3">
+                        <span className="display text-[17px] text-ink">{campaign.name}</span>
+                        <span className="eyebrow text-slate">
+                          created {when(campaign.createdAt)}
+                        </span>
+                      </div>
+                      <ul className="mt-3 flex flex-col gap-1.5">
+                        {campaign.steps.map((step, i) => (
+                          <li key={i} className="flex gap-2.5 text-[13px] text-ink">
+                            <span className="eyebrow text-indigo">
+                              {String(i + 1).padStart(2, "0")}
+                            </span>
+                            <span>{step}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </li>
+                  ))}
+              </ul>
+            )}
           </section>
         ))}
       </main>

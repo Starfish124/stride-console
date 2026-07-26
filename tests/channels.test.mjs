@@ -19,7 +19,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { parseAccountScreen } from "../bridge/lh.mjs";
-import { findAccountDbs, DbUnavailable } from "../bridge/db.mjs";
+import { findAccountDbs, audienceAtRisk, DbUnavailable } from "../bridge/db.mjs";
 import { isDismissLabel, isForbidden } from "../bridge/control.mjs";
 
 const REPO = path.dirname(fileURLToPath(new URL("../package.json", import.meta.url)));
@@ -381,3 +381,58 @@ async function waitForPing(port, attempts = 50) {
   }
   throw new Error(`bridge did not start on port ${port}`);
 }
+
+// --- the guard on starting a runner ---------------------------------------
+//
+// Linked Helper's row button is "Run campaigns", which starts every campaign
+// on the account that is not paused. So the question the console must answer
+// before clicking is not "which campaign" but "how many real people is this
+// about to message".
+
+test("only unpaused campaigns count toward the audience at risk", () => {
+  const view = {
+    accounts: [
+      {
+        account: { email: "jort.hubers@gmail.com" },
+        campaigns: [
+          { name: "big one", state: "paused", people: 870 },
+          { name: "small one", state: "running", people: 12 },
+          { name: "old one", state: "archived", people: 400 },
+        ],
+      },
+    ],
+  };
+  const { reach, campaigns } = audienceAtRisk(view, "jort.hubers@gmail.com");
+  assert.equal(reach, 12, "a paused 870-person campaign is not about to send");
+  assert.deepEqual(campaigns, [{ name: "small one", people: 12 }]);
+});
+
+test("everything paused means nothing is at risk", () => {
+  const view = {
+    accounts: [
+      {
+        account: { email: "a@b.com" },
+        campaigns: [
+          { name: "one", state: "paused", people: 870 },
+          { name: "two", state: "paused", people: 0 },
+        ],
+      },
+    ],
+  };
+  assert.equal(audienceAtRisk(view, "a@b.com").reach, 0);
+});
+
+test("another account's live campaign is not counted against this one", () => {
+  const view = {
+    accounts: [
+      { account: { email: "mine@x.com" }, campaigns: [{ name: "mine", state: "paused", people: 5 }] },
+      { account: { email: "theirs@x.com" }, campaigns: [{ name: "theirs", state: "running", people: 900 }] },
+    ],
+  };
+  assert.equal(audienceAtRisk(view, "mine@x.com").reach, 0);
+});
+
+test("a malformed view does not crash the guard into allowing everything", () => {
+  assert.equal(audienceAtRisk(undefined, "a@b.com").reach, 0);
+  assert.equal(audienceAtRisk({ accounts: [{}] }, "a@b.com").reach, 0);
+});

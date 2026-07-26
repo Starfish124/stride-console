@@ -180,6 +180,24 @@ function readAccountDb(file, partitionAccountId) {
  * database can be found at all; one unreadable account is reported in place so
  * a second healthy account still shows.
  */
+/**
+ * How many real people starting this account's runner would begin messaging.
+ *
+ * Only unpaused campaigns count: a paused one does not send when the runner
+ * starts. This is the number the console refuses on, so it is kept separate
+ * from the endpoint that uses it and tested on its own.
+ */
+export function audienceAtRisk(view, email) {
+  const armed = (view?.accounts ?? [])
+    .filter((a) => !email || a.account?.email === email)
+    .flatMap((a) => a.campaigns ?? [])
+    .filter((c) => c.state === "running");
+  return {
+    campaigns: armed.map((c) => ({ name: c.name, people: c.people ?? 0 })),
+    reach: armed.reduce((n, c) => n + (c.people ?? 0), 0),
+  };
+}
+
 export function readCampaigns() {
   const dbs = findAccountDbs();
   if (dbs.length === 0) {

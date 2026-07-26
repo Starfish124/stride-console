@@ -16,7 +16,20 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { probe, readAccounts } from "./lh.mjs";
 import { CdpError } from "./cdp.mjs";
-import { readCampaigns, DbUnavailable } from "./db.mjs";
+import { readCampaigns, audienceAtRisk, DbUnavailable } from "./db.mjs";
+import { dismissNotices, clickIconByTooltip, scanRowIcons, ControlError } from "./control.mjs";
+
+/** Read a JSON request body, tolerating an empty one. */
+async function readJsonBody(req) {
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  if (chunks.length === 0) return {};
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  } catch {
+    return {};
+  }
+}
 
 const PORT = Number(process.env.STRIDE_BRIDGE_PORT || 7455);
 const HOST = "127.0.0.1";
@@ -125,8 +138,74 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
+    /* Start or stop an account's campaign runner.
+     *
+     * Linked Helper has no per-campaign start on the launcher screen: the row
+     * button is "Run campaigns", which runs every campaign on that account
+     * that is not paused. So the guard is about the audience it would reach,
+     * not about which button gets clicked.
+     *
+     * Refuses when an unpaused campaign holds more people than `maxAudience`
+     * unless the caller passes force. The console sets that ceiling; a
+     * mistaken tap on a phone must not be able to start six days of
+     * invitations to 870 people. */
+    if (url.pathname === "/account/run" && req.method === "POST") {
+      const body = await readJsonBody(req);
+      const email = String(body.email ?? "");
+      const maxAudience = Number.isFinite(body.maxAudience) ? Number(body.maxAudience) : 25;
+      const force = body.force === true;
+
+      let armed = [];
+      try {
+        const { campaigns, reach } = audienceAtRisk(readCampaigns(), email);
+        armed = campaigns;
+        if (!force && reach > maxAudience) {
+          return send(res, 409, {
+            error: "refused",
+            detail: `Starting this account would begin sending to ${reach} people across ${campaigns.length} unpaused campaign(s). Pause them, or confirm deliberately.`,
+            reach,
+            campaigns,
+          });
+        }
+      } catch {
+        // No database to check against: refuse rather than guess.
+        if (!force) {
+          return send(res, 409, {
+            error: "refused",
+            detail: "Cannot read Linked Helper's database to see what would be sent, so nothing is starting.",
+          });
+        }
+      }
+
+      await dismissNotices();
+      const clicked = await clickIconByTooltip(email, "Run campaigns");
+      return send(res, 200, { ok: true, clicked, armed: armed.length });
+    }
+
+    if (url.pathname === "/account/stop" && req.method === "POST") {
+      // Stopping is always allowed. Nothing is safer than off.
+      const body = await readJsonBody(req);
+      await dismissNotices();
+      const clicked = await clickIconByTooltip(String(body.email ?? ""), "Stop");
+      return send(res, 200, { ok: true, clicked });
+    }
+
+    if (url.pathname === "/account/icons" && req.method === "GET") {
+      // What the row actually offers, by label. Useful when LH2 moves things.
+      await dismissNotices();
+      const icons = await scanRowIcons(url.searchParams.get("email") ?? "");
+      return send(res, 200, { icons: icons.map((i) => i.tooltip).filter(Boolean) });
+    }
+
     return send(res, 404, { error: `no route for ${req.method} ${url.pathname}` });
   } catch (err) {
+    // A control failure is the app's state, not a server fault: say which.
+    if (err instanceof ControlError) {
+      return send(res, 409, { error: err.code, detail: err.message });
+    }
+    if (err instanceof CdpError) {
+      return send(res, 409, { error: err.code, detail: err.message });
+    }
     return send(res, 500, { error: err?.message ?? "bridge failed" });
   }
 });

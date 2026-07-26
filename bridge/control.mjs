@@ -249,6 +249,14 @@ export async function scanRowIcons(rowText) {
       .map(e => (e.innerText||'').trim())
       .filter(t => t && t.length < 30)
   `;
+
+  // Park the pointer clear of every icon before reading the baseline, and wait
+  // for any tooltip already open to fade. Reading it while still hovering the
+  // first icon put that icon's own label into the baseline, so it filtered
+  // itself out and came back "?" — which happened to be Stop, the one control
+  // that must never be unfindable.
+  await hover(200, y);
+  await new Promise((r) => setTimeout(r, 700));
   const baseline = new Set(JSON.parse(await session.evaluate(`JSON.stringify(${SHORT_TEXTS})`)));
 
   const icons = [];

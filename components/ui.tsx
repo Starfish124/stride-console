@@ -44,11 +44,10 @@ export function StatusBadge({ status }: { status: DraftStatus }) {
 
 export function Header({ founder }: { founder?: string }) {
   return (
-    // A UINavigationBar: translucent, hairline-thin, content passes beneath it.
-    // The bar itself stays shallow. On a Dynamic Island phone the safe-area
-    // inset is already ~59px of dead height, so anything generous on top of
-    // that eats the screen before a single word of content appears.
-    <header className="material sticky top-0 z-20 border-b border-line/70 pt-[env(safe-area-inset-top)]">
+    // A UINavigationBar: translucent, content passes beneath it. No rule under
+    // it — a hairline there reads as a web page's header bar. iOS lets the
+    // blur and the content sliding under do that work instead.
+    <header className="material sticky top-0 z-20 pt-[env(safe-area-inset-top)]">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-1.5 sm:px-6 sm:py-2.5">
         <Link href="/" className="pressable -m-2 p-2" aria-label="Stride console">
           <StrideMark className="size-[26px]" />

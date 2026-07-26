@@ -202,6 +202,52 @@ button:active:not(:disabled) {
     0 18px 40px -20px rgba(16, 17, 22, 0.34);
 }
 
+/* ——— the house signature ——————————————————————————————————————
+ *
+ * The Stride mark is two parallelograms sheared about 12 degrees. That shear
+ * is the one shape the brand owns, so it repeats: on state pills, on the rule
+ * under a number, on the marker beside a running campaign. Cards and text stay
+ * upright. A whole interface on a slant is a novelty; a slant that only ever
+ * appears on the things that mean something is a signature.
+ */
+.slant {
+  transform: skewX(-12deg);
+}
+
+/* Undoes the shear for text sitting inside a sheared container. */
+.slant > * {
+  transform: skewX(12deg);
+}
+
+/* The mark itself, reduced to one bar, used as a rule or a marker. */
+.slant-rule {
+  height: 3px;
+  border-radius: 1px;
+  background: currentColor;
+  transform: skewX(-12deg);
+}
+
+/* A number that carries the page: Playfair, not the UI sans. Stat tiles set
+   in the body face read like a bootstrap dashboard; set in the display face
+   they read like the rest of the brand. */
+.figure {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* Control-room surface. The editorial white is right for reading and wrong
+   for machine state, so anything reporting what a machine is doing sits on
+   midnight instead. */
+.deck {
+  background:
+    radial-gradient(120% 140% at 85% -10%, rgba(61, 68, 217, 0.35) 0%, transparent 55%),
+    var(--color-midnight);
+  color: #fff;
+}
+
 /* Stat tiles: digits that don't wiggle between sweeps. */
 .tabular {
   font-variant-numeric: tabular-nums;
