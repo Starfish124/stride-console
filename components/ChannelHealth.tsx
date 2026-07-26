@@ -1,4 +1,5 @@
 import { channelHealth } from "@/lib/channels";
+import { IconIntegration } from "@/components/icons";
 import type { ChannelState } from "@/lib/channels";
 
 const DOT: Record<ChannelState, string> = {
@@ -24,7 +25,7 @@ export async function ChannelHealth() {
 
   return (
     <section className="mb-10 card-glass rounded-card border border-line bg-white p-6">
-      <p className="eyebrow text-slate">Channels</p>
+      <p className="eyebrow flex items-center gap-2 text-slate"><IconIntegration size={15} className="text-indigo" />Channels</p>
       <p className="mt-2 text-sm text-slate">
         How posts and campaigns actually reach LinkedIn.
       </p>

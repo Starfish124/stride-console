@@ -1,4 +1,5 @@
 import { webhookSecret } from "@/lib/outreach/replies";
+import { IconKey } from "@/components/icons";
 
 /**
  * The URL Linked Helper posts replies to.
@@ -12,7 +13,7 @@ export function WebhookCard({ origin }: { origin: string }) {
 
   return (
     <section className="card-glass mb-10 rounded-card border border-line bg-white p-6">
-      <p className="eyebrow text-slate">Replies webhook</p>
+      <p className="eyebrow flex items-center gap-2 text-slate"><IconKey size={15} className="text-indigo" />Replies webhook</p>
       <p className="mt-2 text-sm text-slate">
         In Linked Helper, add a &quot;send to webhook&quot; action to a campaign
         and paste this as the URL. Replies then land in Outreach.

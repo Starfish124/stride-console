@@ -1,4 +1,4 @@
-import { Header, Radar } from "@/components/ui";
+import { Header } from "@/components/ui";
 import { VOICE_GUIDE, RECIPE_FORMULAS } from "@/lib/voice/guide";
 import { RECIPE_LABELS } from "@/lib/types";
 import type { RecipeId } from "@/lib/types";
@@ -75,7 +75,6 @@ export default async function PlaybookPage() {
       <Header />
       <main className="mx-auto max-w-5xl px-6 pb-20">
         <section className="relative overflow-hidden py-10">
-          <Radar className="pointer-events-none absolute -right-24 -top-28 h-80 w-80 text-slate opacity-30" />
           <p className="eyebrow text-slate">Playbook</p>
           <h1 className="display mt-3 text-4xl text-ink">How Stride sounds.</h1>
           <p className="mt-2 max-w-lg text-slate">

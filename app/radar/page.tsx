@@ -1,4 +1,4 @@
-import { Header, Radar } from "@/components/ui";
+import { Header } from "@/components/ui";
 import { RadarView } from "@/components/RadarView";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +10,6 @@ export default async function RadarPage() {
       <Header />
       <main className="mx-auto max-w-5xl px-6 pb-20">
         <section className="relative overflow-hidden py-10">
-          <Radar className="pointer-events-none absolute -right-24 -top-28 h-80 w-80 text-slate opacity-30" />
           <p className="eyebrow text-slate">Radar</p>
           <h1 className="display mt-3 text-4xl text-ink">
             What the machine is reading.

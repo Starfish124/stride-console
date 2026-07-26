@@ -5,6 +5,7 @@ import { SourcesEditor } from "@/components/SourcesEditor";
 import { PushToggle } from "@/components/PushToggle";
 import { ChannelHealth } from "@/components/ChannelHealth";
 import { WebhookCard } from "@/components/WebhookCard";
+import { IconAskStride, IconTime, IconTuneLoop } from "@/components/icons";
 import { headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +29,7 @@ export default async function SettingsPage() {
         </section>
 
         <section className="mb-10 card-glass rounded-card border border-line bg-white p-6">
-          <p className="eyebrow text-slate">Writing engine</p>
+          <p className="eyebrow flex items-center gap-2 text-slate"><IconAskStride size={15} className="text-indigo" />Writing engine</p>
           {mode === "subscription" ? (
             <p className="mt-2 text-sm text-ink">
               Claude subscription, via the Claude Code CLI at{" "}
@@ -59,12 +60,12 @@ export default async function SettingsPage() {
         <WebhookCard origin={origin} />
 
         <section className="mb-10 card-glass rounded-card border border-line bg-white p-6">
-          <p className="eyebrow text-slate">Draft-ready notifications</p>
+          <p className="eyebrow flex items-center gap-2 text-slate"><IconTime size={15} className="text-indigo" />Draft-ready notifications</p>
           <PushToggle />
         </section>
 
         <section className="mb-10 card-glass rounded-card border border-line bg-white p-6">
-          <p className="eyebrow text-slate">Feedback memory</p>
+          <p className="eyebrow flex items-center gap-2 text-slate"><IconTuneLoop size={15} className="text-indigo" />Feedback memory</p>
           {learned.length > 0 ? (
             <>
               <p className="mt-2 text-sm text-slate">

@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { RECIPE_LABELS } from "@/lib/types";
 import { listDrafts, listInbox, listMyths } from "@/lib/store";
-import { Header, Radar, StatusBadge } from "@/components/ui";
+import { Header, StatusBadge } from "@/components/ui";
 import { RecipeCard } from "@/components/RecipeCard";
 import { MythQuickAdd } from "@/components/MythQuickAdd";
 import { InboxBanner } from "@/components/InboxBanner";
 import { LhPulsePanel } from "@/components/LhPulsePanel";
+import { Ramp } from "@/components/Ramp";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +41,7 @@ export default async function Dashboard() {
       <Header />
       <main className="mx-auto max-w-5xl px-6 pb-20">
         <section className="relative overflow-hidden py-12">
-          <Radar className="pointer-events-none absolute -right-24 -top-28 h-80 w-80 text-slate opacity-30" />
+          <Ramp width={52} className="mb-4 text-indigo" />
           <p className="eyebrow text-slate">Stride console · marketing machine</p>
           <h1 className="display mt-3 text-4xl text-ink">
             Press a button. Get a post.

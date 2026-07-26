@@ -1,5 +1,5 @@
 import { upcomingEvent } from "@/lib/store";
-import { Wordmark, Radar } from "@/components/ui";
+import { Wordmark } from "@/components/ui";
 import { PitchForm } from "./PitchForm";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +11,6 @@ export default async function PitchPage() {
   return (
     <div className="min-h-screen bg-paper">
       <main className="relative mx-auto max-w-xl overflow-hidden px-6 pb-20">
-        <Radar className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 text-slate opacity-30" />
         <section className="py-14">
           <Wordmark />
           <p className="eyebrow mt-8 text-slate">1 Min AI Pitch</p>

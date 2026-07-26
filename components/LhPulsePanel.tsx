@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { readPulse } from "@/lib/channels/attention";
 import type { Urgency } from "@/lib/channels/attention";
-import { Ramp } from "@/components/Ramp";
 import {
   IconApproved,
   IconEscalate,
@@ -32,7 +31,7 @@ export async function LhPulsePanel() {
   return (
     <section className="mb-10">
       <div className="mb-4 flex items-center gap-3">
-        <Ramp width={44} className="shrink-0 text-indigo" />
+        <IconPipeline size={22} className="shrink-0 text-indigo" />
         <div className="min-w-0 flex-1">
           <h2 className="display text-[22px] text-ink">The LinkedIn machine.</h2>
         </div>
