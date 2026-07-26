@@ -212,6 +212,21 @@ export function lintArticle(
     });
   }
 
+  /* ---------- falseRange ----------
+   * "from strategy to execution", where the two ends sit on no shared scale.
+   * Reads comprehensive, says nothing. Kept a warning to match the post gate,
+   * because a genuine numeric range trips the same shape. */
+  const rangeRe = /\bfrom\s+[\w'-]+(?:\s+[\w'-]+){0,3}\s+to\s+[\w'-]+/gi;
+  const rangeMatch = rangeRe.exec(text);
+  if (rangeMatch && !/\d/.test(rangeMatch[0])) {
+    add({
+      rule: "falseRange",
+      severity: "warn",
+      excerpt: excerptAround(text, rangeMatch.index, rangeMatch[0].length),
+      fix: "Name the two or three things you mean, or give the range real numbers.",
+    });
+  }
+
   // ---------- em dashes ----------
 
   const emDashes = (text.match(/[—–]/g) ?? []).length;

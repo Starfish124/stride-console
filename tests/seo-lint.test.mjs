@@ -204,3 +204,15 @@ test("an article with no numbers is warned about", () => {
   const r = lintArticle(noDigits, { minWords: 50 });
   assert.ok(r.violations.some((v) => v.rule === "needsNumber"));
 });
+
+test("falseRange matches the post gate, as a warning not a block", () => {
+  const r = lintArticle(`${GOOD}\n\nWe work from strategy to execution for clients.`, { minWords: 50 });
+  const v = r.violations.find((x) => x.rule === "falseRange");
+  assert.ok(v, "the long-form gate must catch what the post gate catches");
+  assert.equal(v.severity, "warn");
+});
+
+test("falseRange leaves a real numeric range alone", () => {
+  const r = lintArticle(`${GOOD}\n\nBuilds run from 3 to 6 weeks.`, { minWords: 50 });
+  assert.equal(r.violations.filter((x) => x.rule === "falseRange").length, 0);
+});

@@ -13,7 +13,8 @@
     "agents": "node scripts/agents.mjs",
     "backend": "node scripts/backend.mjs",
     "seo:sweep": "node scripts/seo-sweep.mjs",
-    "seo:articles": "node scripts/seo-articles.mjs"
+    "seo:articles": "node scripts/seo-articles.mjs",
+    "seo:gsc": "node scripts/seo-gsc-check.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.113.0",
