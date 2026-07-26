@@ -1,5 +1,7 @@
 // The publisher. Writes approved articles and applied metadata into the
-// website checkout, commits, and pushes so Netlify rebuilds.
+// website checkout, commits, and pushes so the host rebuilds.
+// (stride-ai.nl is on Cloudflare Pages; the netlify.toml in that repo is a
+// leftover and is not what builds it.)
 //
 // Publishing through git rather than a database is deliberate. Every article
 // and every title change lands as a reviewable diff with an author and a

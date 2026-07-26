@@ -55,7 +55,7 @@ export async function PATCH(
  * The publish button.
  *
  * action "publish" writes the markdown into the website checkout, commits and
- * pushes, so Netlify rebuilds. action "reject" drops the draft out of the
+ * pushes, so the site rebuilds. action "reject" drops the draft out of the
  * queue without touching the site.
  *
  * Publishing is refused while the voice gate still reports errors. The whole
@@ -126,7 +126,7 @@ export async function POST(
     commit: result.commit,
     pushed: result.pushed,
     message: result.pushed
-      ? `Published as ${result.commit}. Netlify is rebuilding.`
+      ? `Published as ${result.commit}. The site is rebuilding.`
       : `Committed as ${result.commit}. Push it when ready.`,
     remaining: listArticles().filter((a) => a.status === "drafted").length,
   });

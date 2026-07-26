@@ -72,12 +72,35 @@ already close, and moving it up converts traffic Google is already showing you.
 It also harvests the queries people actually used, which is better data than
 any keyword tool.
 
-### 1. Verify the domain
+### 1. Verify the property
 
-Go to [Search Console](https://search.google.com/search-console), add a
-**Domain** property for `stride-ai.nl`, and verify with the DNS TXT record it
-gives you. Domain properties cover both `stride-ai.nl` and `www`, and every
-path under them, so this only has to happen once.
+Two routes. Pick by which access you have.
+
+**By meta tag (no DNS access needed, recommended).** In
+[Search Console](https://search.google.com/search-console) choose **URL prefix**
+and enter `https://stride-ai.nl`. Pick the **HTML tag** method and copy the
+`content="..."` value. Put it in the website repo at
+`content/seo/pages.json` under `site.googleSiteVerification`, deploy, then press
+Verify. The site's root layout renders the tag from that value, so verifying is
+a data change rather than a code change.
+
+Then set the property, because a URL-prefix property is not the default:
+
+```bash
+export GSC_SITE_URL="https://stride-ai.nl/"
+```
+
+Add it to the console's launchd plist so scheduled runs see it too.
+
+**By DNS (Domain property).** Covers `stride-ai.nl`, `www`, and every path in
+one go, which is tidier. It needs a TXT record, and the nameservers are
+`kai.ns.cloudflare.com` / `walk.ns.cloudflare.com`, so the record goes in
+**Cloudflare**, not at mijndomein. Mijndomein is only the registrar. If the
+Cloudflare zone sits on Jort's account, you need him to invite you as a member
+first; signing in as yourself will not show a zone you are not on.
+
+With this route the default `sc-domain:stride-ai.nl` is already correct and
+`GSC_SITE_URL` can stay unset.
 
 ### 2. Create a service account
 
@@ -156,7 +179,7 @@ message. A bad run is undone with `git revert`.
 | `locales` | `["en","nl"]` | Languages tracked. |
 | `weeklyArticleTarget` | `3` | Drafts per Monday. |
 | `autoApplyMetadata` | `true` | Apply title and description fixes without asking. Reversible with one git revert; holding them for approval means the site never improves between Mondays. |
-| `autoPublishOnApproval` | `true` | Push after you press publish, so Netlify rebuilds. Set false to commit locally only. |
+| `autoPublishOnApproval` | `true` | Push after you press publish, so the site rebuilds. Set false to commit locally only. |
 
 Seed keywords live in the same file under `seeds`. They are the starting point
 for discovery, not the whole set: each seed is expanded through Google's
