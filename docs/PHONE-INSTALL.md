@@ -54,7 +54,7 @@ app binary.
 2. On the Mac, in Terminal:
 
    ```bash
-   cd ~/Desktop/standalone/stride-console/ios
+   cd ~/stride-console/ios
    xcodegen generate
    xcodebuild -project StrideConsole.xcodeproj -scheme StrideConsole \
      -destination 'generic/platform=iOS' -allowProvisioningUpdates build
