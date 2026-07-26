@@ -44,10 +44,10 @@ export function StatusBadge({ status }: { status: DraftStatus }) {
 
 export function Header({ founder }: { founder?: string }) {
   return (
-    // A UINavigationBar: translucent, content passes beneath it. No rule under
-    // it — a hairline there reads as a web page's header bar. iOS lets the
-    // blur and the content sliding under do that work instead.
-    <header className="material sticky top-0 z-20 pt-[env(safe-area-inset-top)]">
+    // No bar at all. A white strip pinned to the top, blurred or not, is the
+    // most web-page thing an interface can do. The mark and the avatar sit
+    // straight on the paper and scroll away with everything else.
+    <header className="pt-[env(safe-area-inset-top)]">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-1.5 sm:px-6 sm:py-2.5">
         <Link href="/" className="pressable -m-2 p-2" aria-label="Stride console">
           <StrideMark className="size-[26px]" />

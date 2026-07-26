@@ -116,9 +116,11 @@ export interface LhCampaign {
   state: "running" | "paused" | "archived" | "invalid";
   createdAt: string;
   stepCount: number;
+  /** How many steps Linked Helper will actually run (isDraft = 0). */
+  armedSteps: number;
   /** Distinct profiles this campaign is working on. */
   people: number;
-  steps: string[];
+  steps: Array<{ name: string | null; type: string | null; armed: boolean }>;
 }
 
 export interface LhAccountCampaigns {

@@ -111,11 +111,30 @@ function readAccountDb(file, partitionAccountId) {
         WHERE is_hidden = 0
         ORDER BY created_at DESC`,
     ).map((row) => {
+      /* Each step, with what it actually does and whether it is armed.
+       * isDraft is the field that matters: Linked Helper will not run a step
+       * still marked draft, which is why a "running" campaign can sit there
+       * doing only its first action. Showing the type without that flag would
+       * imply the whole sequence is live when it is not. */
       const steps = all(
         db,
-        `SELECT action_name FROM campaign_actions WHERE campaign_id = ? ORDER BY rowid`,
+        `SELECT a.id,
+                MAX(ca.action_name) AS action_name,
+                MAX(ac.actionType)  AS action_type,
+                MIN(ac.isDraft)     AS is_draft
+           FROM actions a
+           LEFT JOIN campaign_actions ca ON ca.action_id = a.id
+           LEFT JOIN action_versions av  ON av.action_id = a.id
+           LEFT JOIN action_configs ac   ON ac.id = av.config_id
+          WHERE a.campaign_id = ?
+          GROUP BY a.id
+          ORDER BY a.id`,
         [row.id],
-      );
+      ).map((s) => ({
+        name: s.action_name || null,
+        type: s.action_type || null,
+        armed: s.is_draft === 0,
+      }));
       // How many profiles this campaign is working on. NOT collection_people —
       // LH2 leaves that table empty and files the real thing under the actions,
       // which is how the console came to report 0 against 870 real profiles.
@@ -138,9 +157,9 @@ function readAccountDb(file, partitionAccountId) {
         state: campaignState(row),
         createdAt: row.created_at,
         stepCount: steps.length,
+        armedSteps: steps.filter((s) => s.armed).length,
         people,
-        // Most steps carry no label in LH2; keep the ones that do.
-        steps: steps.map((s) => s.action_name).filter(Boolean),
+        steps,
       };
     });
 
