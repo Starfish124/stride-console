@@ -35,7 +35,7 @@ function formatCount(n: number): string {
 
 function Tile({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded-card border border-line bg-white p-4">
+    <div className="card-glass rounded-card border border-line bg-white p-4">
       <p className="eyebrow text-slate">{label}</p>
       <p className="display tabular mt-1 text-2xl text-ink">{value}</p>
       {hint ? <p className="mt-0.5 text-xs text-slate">{hint}</p> : null}
@@ -142,7 +142,7 @@ export function LibraryBrowser({
       </section>
 
       {shelves.length === 0 ? (
-        <p className="mt-6 rounded-card border border-line bg-white p-8 text-sm text-slate">
+        <p className="mt-6 card-glass rounded-card border border-line bg-white p-8 text-sm text-slate">
           {entries.length === 0
             ? "Nothing in the library yet. Run a recipe on the console and it lands here forever."
             : "No posts match that. Loosen the filters or clear the search."}
@@ -151,7 +151,7 @@ export function LibraryBrowser({
         shelves.map((shelf) => (
           <section key={shelf.month} className="mt-8">
             <h2 className="eyebrow text-slate">{shelf.month}</h2>
-            <ul className="mt-3 overflow-hidden rounded-card border border-line bg-white">
+            <ul className="mt-3 overflow-hidden card-glass rounded-card border border-line bg-white">
               {shelf.items.map((entry, i) => {
                 const { draft } = entry;
                 const preview =

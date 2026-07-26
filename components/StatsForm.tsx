@@ -51,7 +51,7 @@ export function StatsForm({
   return (
     <form
       onSubmit={save}
-      className="mt-6 rounded-card border border-line bg-white p-5"
+      className="mt-6 card-glass rounded-card border border-line bg-white p-5"
     >
       <p className="eyebrow text-slate">The numbers</p>
       <p className="mt-2 text-sm text-slate">

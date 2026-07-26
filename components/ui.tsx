@@ -45,10 +45,13 @@ export function StatusBadge({ status }: { status: DraftStatus }) {
 export function Header({ founder }: { founder?: string }) {
   return (
     // A UINavigationBar: translucent, hairline-thin, content passes beneath it.
+    // The bar itself stays shallow. On a Dynamic Island phone the safe-area
+    // inset is already ~59px of dead height, so anything generous on top of
+    // that eats the screen before a single word of content appears.
     <header className="material sticky top-0 z-20 border-b border-line/70 pt-[env(safe-area-inset-top)]">
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-3 sm:px-6 sm:py-4">
-        <Link href="/" className="pressable">
-          <Wordmark size="text-[19px]" />
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-1.5 sm:px-6 sm:py-2.5">
+        <Link href="/" className="pressable -m-2 p-2" aria-label="Stride console">
+          <StrideMark className="size-[26px]" />
         </Link>
         <nav className="flex items-center gap-4 sm:gap-6">
           {/* Phone widths navigate with the bottom tab bar instead. */}
@@ -57,7 +60,7 @@ export function Header({ founder }: { founder?: string }) {
           </span>
           {founder ? (
             <span
-              className="grid size-8 place-items-center rounded-full bg-indigo-tint text-[13px] font-semibold text-indigo"
+              className="grid size-7 place-items-center rounded-full bg-indigo-tint text-[12px] font-semibold text-indigo"
               title={founder}
             >
               {founder.slice(0, 1).toUpperCase()}

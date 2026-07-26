@@ -85,11 +85,11 @@ export default async function Dashboard() {
             </div>
             <h2 className="display mt-2 mb-4 text-[22px] text-ink">The last runs.</h2>
             {drafts.length === 0 ? (
-              <p className="rounded-card border border-line bg-white p-6 text-sm text-slate">
+              <p className="card-glass rounded-card border border-line bg-white p-6 text-sm text-slate">
                 Nothing yet. Run a recipe above and the draft lands here.
               </p>
             ) : (
-              <ul className="overflow-hidden rounded-card border border-line bg-white">
+              <ul className="overflow-hidden card-glass rounded-card border border-line bg-white">
                 {drafts.map((d, i) => (
                   <li key={d.id} className={i > 0 ? "border-t border-line" : ""}>
                     <Link

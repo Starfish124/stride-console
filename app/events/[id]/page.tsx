@@ -56,7 +56,7 @@ export default async function EventPage({
 
           <div className="flex flex-col gap-8">
             <EventRecipeButtons eventId={event.id} />
-            <div className="rounded-card border border-line bg-white p-6">
+            <div className="card-glass rounded-card border border-line bg-white p-6">
               <p className="eyebrow text-slate">
                 Signups — {signups.length}
               </p>

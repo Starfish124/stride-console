@@ -137,3 +137,57 @@ test("a good on-voice sample passes with zero errors", () => {
   assert.equal(result.errors, 0, JSON.stringify(result.violations, null, 2));
   assert.ok(result.ok);
 });
+
+/* The AI-writing tells, from Wikipedia's WikiProject AI Cleanup list. These
+   are the ones that survive every other edit because none of them looks like
+   a mistake: they read as competent writing until you notice every LinkedIn
+   post has them. */
+
+test("ceremonyVerbs: 'serves as' where 'is' belongs", () => {
+  const bad = `Our intake tool serves as the front door for 40 invoices a day.${FILLER}`;
+  assert.ok(errorsFor(bad, "ceremonyVerbs").length > 0);
+});
+
+test("ceremonyVerbs: 'boasts a' is refused too", () => {
+  const bad = `The workflow boasts a 92% match rate on 300 documents.${FILLER}`;
+  assert.ok(errorsFor(bad, "ceremonyVerbs").length > 0);
+});
+
+test("ingAnalysis: a participle clause bolted on the end", () => {
+  const bad = `We cut the review queue to 20 minutes, highlighting the value of a tight scope.${FILLER}`;
+  assert.ok(errorsFor(bad, "ingAnalysis").length > 0);
+});
+
+test("ingAnalysis: 'ensuring' is the same trick", () => {
+  const bad = `A person still checks anything above the threshold, ensuring nothing slips.${FILLER}`;
+  assert.ok(errorsFor(bad, "ingAnalysis").length > 0);
+});
+
+test("falseDepth: phrases that promise a depth the next line never pays", () => {
+  const bad = `At its core, the work took 3 weeks and one workflow.${FILLER}`;
+  assert.ok(errorsFor(bad, "falseDepth").length > 0);
+});
+
+test("fakeCandour: announcing honesty is not being direct", () => {
+  const bad = `Let's be honest, most teams never measure the 6 hours they lose.${FILLER}`;
+  assert.ok(errorsFor(bad, "fakeCandour").length > 0);
+});
+
+test("falseRange: 'from X to Y' across no real scale warns", () => {
+  const bad = `We handle everything from strategy to execution.${FILLER}`;
+  const found = lint(bad).violations.filter((v) => v.rule === "falseRange");
+  assert.ok(found.length > 0);
+});
+
+test("curlyQuotes: a paste from a chat window warns", () => {
+  const bad = `The ops lead called it “the boring 6 hours” and she was right.${FILLER}`;
+  const found = lint(bad).violations.filter((v) => v.rule === "curlyQuotes");
+  assert.ok(found.length > 0);
+});
+
+test("the good sample still passes every new rule", () => {
+  // The guard that matters: new rules must not start failing honest writing.
+  const good = `An ops lead got 6 hours a week back from one small automation.${FILLER}\n\n#AI #Automation`;
+  const result = lint(good);
+  assert.equal(result.errors, 0, JSON.stringify(result.violations, null, 2));
+});

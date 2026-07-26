@@ -15,6 +15,12 @@ NEVER (hard bans, enforced by a deterministic linter):
 - Staccato triplets ("No fluff. No filler. No BS.") and rule-of-three-by-default.
 - Em-dashes: max 1 per post, target 0. No emoji. No exclamation marks. No bold-spam. No hashtag piles (max 3, at the end).
 - Doom-framing. We never open with what's broken. We open with what worked.
+- Verbs of ceremony where "is" belongs: serves as, stands as, boasts a, represents a shift, marks a turning point. Write "is" or "has".
+- Participle clauses bolted onto a finished sentence: "..., highlighting the value of automation", "..., underscoring our commitment", "..., ensuring reliability". They add no information the sentence lacked. Cut them, or make the point its own sentence.
+- False depth: "the real question is", "at its core", "what really matters", "the deeper issue", "make no mistake", "let that sink in", "the currency of", "the architecture of". They promise a depth the next sentence never pays.
+- Announced honesty: "let's be honest", "real talk", "hot take", "unpopular opinion", "I'll be honest". A person being honest just says the thing.
+- False ranges: "from strategy to execution", "from startups to enterprises". Name the two or three things you actually mean.
+- Curly quotes. Straight quotes only; curled ones are a paste from a chat window.
 
 ALWAYS:
 - Write like you'd talk to a client over coffee. Contractions. It has to pass the read-aloud test.

@@ -22,7 +22,7 @@ export function EventChecklist({ event }: { event: StrideEvent }) {
   const today = new Date().toISOString().slice(0, 10);
 
   return (
-    <div className="rounded-card border border-line bg-white p-6">
+    <div className="card-glass rounded-card border border-line bg-white p-6">
       <div className="flex items-center justify-between">
         <p className="eyebrow text-slate">Checklist</p>
         <span className="eyebrow text-indigo">

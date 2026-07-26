@@ -52,6 +52,52 @@ const BANNED_WORDS: string[] = [
   "plays a significant role",
 ];
 
+/**
+ * Copula avoidance. A model reaches for a verb of ceremony where a person
+ * would write "is". Wikipedia's AI-cleanup project lists this as one of the
+ * most reliable tells, and it survives every other edit because it never
+ * looks like a mistake.
+ */
+const CEREMONY_VERBS: string[] = [
+  "serves as",
+  "stands as",
+  "acts as a bridge",
+  "boasts a",
+  "boasts an",
+  "boasts over",
+  "represents a shift",
+  "marks a turning point",
+];
+
+/**
+ * Phrases that pretend to cut through noise to a deeper truth, then restate
+ * an ordinary point with ceremony. On LinkedIn they are everywhere, which is
+ * exactly why they read as written by nobody.
+ */
+const FALSE_DEPTH: string[] = [
+  "the real question is",
+  "at its core",
+  "what really matters",
+  "the deeper issue",
+  "the heart of the matter",
+  "make no mistake",
+  "let that sink in",
+  "here's the kicker",
+  "the currency of",
+  "the architecture of",
+  "the language of trust",
+];
+
+/** Fake-candid hooks. A person being honest usually just says the thing. */
+const FAKE_CANDOUR: string[] = [
+  "let's be honest",
+  "real talk",
+  "hot take",
+  "unpopular opinion",
+  "i'll be honest",
+  "truth bomb",
+];
+
 const PHANTOM_SOURCES: string[] = [
   "studies show",
   "experts say",
@@ -140,6 +186,87 @@ export function lint(text: string): LintResult {
         fix: `Cut "${m[0]}". Say it plainly.`,
       });
     }
+  }
+
+  // --- ceremonyVerbs: "serves as" where a person writes "is" ---
+  for (const phrase of CEREMONY_VERBS) {
+    const m = phraseRegex(phrase).exec(text);
+    if (m) {
+      add({
+        rule: "ceremonyVerbs",
+        severity: "error",
+        excerpt: excerptAround(text, m.index, m[0].length),
+        fix: `Write "is" or "has". "${m[0]}" is a machine avoiding a plain verb.`,
+      });
+    }
+  }
+
+  // --- falseDepth ---
+  for (const phrase of FALSE_DEPTH) {
+    const m = phraseRegex(phrase).exec(text);
+    if (m) {
+      add({
+        rule: "falseDepth",
+        severity: "error",
+        excerpt: excerptAround(text, m.index, m[0].length),
+        fix: "Make the actual claim. This phrase promises a depth the next sentence never pays.",
+      });
+    }
+  }
+
+  // --- fakeCandour ---
+  for (const phrase of FAKE_CANDOUR) {
+    const m = phraseRegex(phrase).exec(text);
+    if (m) {
+      add({
+        rule: "fakeCandour",
+        severity: "error",
+        excerpt: excerptAround(text, m.index, m[0].length),
+        fix: "Just say the thing. Announcing honesty is not the same as being direct.",
+      });
+    }
+  }
+
+  /* --- ingAnalysis ---
+   * A participle clause bolted onto a finished sentence to fake depth:
+   * "...cut the review queue to 20 minutes, highlighting the value of
+   * automation." The clause never carries information the sentence lacked. */
+  const ingRe =
+    /,\s+(highlighting|underscoring|emphasizing|showcasing|reflecting|symbolizing|demonstrating|illustrating|ensuring|fostering|cultivating|contributing to|encompassing|solidifying|cementing)\b/gi;
+  let ingMatch: RegExpExecArray | null;
+  while ((ingMatch = ingRe.exec(text)) !== null) {
+    add({
+      rule: "ingAnalysis",
+      severity: "error",
+      excerpt: excerptAround(text, ingMatch.index, ingMatch[0].length),
+      fix: "Cut the clause. If it carries a real point, make it its own sentence.",
+    });
+  }
+
+  /* --- falseRange ---
+   * "from X to Y" where X and Y sit on no shared scale. Reads comprehensive,
+   * says nothing. */
+  const rangeRe = /\bfrom\s+[\w'-]+(?:\s+[\w'-]+){0,3}\s+to\s+[\w'-]+/gi;
+  const rangeMatch = rangeRe.exec(text);
+  if (rangeMatch && !/\d/.test(rangeMatch[0])) {
+    add({
+      rule: "falseRange",
+      severity: "warn",
+      excerpt: excerptAround(text, rangeMatch.index, rangeMatch[0].length),
+      fix: "Name the two or three things you mean, or give the range real numbers.",
+    });
+  }
+
+  /* --- curlyQuotes ---
+   * Straight quotes everywhere: curled ones are a paste from a chat window. */
+  const curly = /[“”‘’]/.exec(text);
+  if (curly) {
+    add({
+      rule: "curlyQuotes",
+      severity: "warn",
+      excerpt: excerptAround(text, curly.index, 1),
+      fix: "Use straight quotes.",
+    });
   }
 
   // --- phantomSources ---

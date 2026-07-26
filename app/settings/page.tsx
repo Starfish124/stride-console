@@ -26,7 +26,7 @@ export default async function SettingsPage() {
           <h1 className="display mt-3 text-3xl text-ink">Sources and keys.</h1>
         </section>
 
-        <section className="mb-10 rounded-card border border-line bg-white p-6">
+        <section className="mb-10 card-glass rounded-card border border-line bg-white p-6">
           <p className="eyebrow text-slate">Writing engine</p>
           {mode === "subscription" ? (
             <p className="mt-2 text-sm text-ink">
@@ -55,12 +55,12 @@ export default async function SettingsPage() {
 
         <ChannelHealth />
 
-        <section className="mb-10 rounded-card border border-line bg-white p-6">
+        <section className="mb-10 card-glass rounded-card border border-line bg-white p-6">
           <p className="eyebrow text-slate">Draft-ready notifications</p>
           <PushToggle />
         </section>
 
-        <section className="mb-10 rounded-card border border-line bg-white p-6">
+        <section className="mb-10 card-glass rounded-card border border-line bg-white p-6">
           <p className="eyebrow text-slate">Feedback memory</p>
           {learned.length > 0 ? (
             <>

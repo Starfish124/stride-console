@@ -29,7 +29,7 @@ export function PitchForm() {
 
   if (state === "done") {
     return (
-      <div className="rounded-card border border-line bg-white p-8">
+      <div className="card-glass rounded-card border border-line bg-white p-8">
         <p className="eyebrow text-indigo">You are in</p>
         <h2 className="display mt-3 text-[22px] text-ink">
           Your minute is reserved.
@@ -46,7 +46,7 @@ export function PitchForm() {
     "rounded-input border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none placeholder:text-slate/60 focus:border-indigo";
 
   return (
-    <form onSubmit={submit} className="rounded-card border border-line bg-white p-8">
+    <form onSubmit={submit} className="card-glass rounded-card border border-line bg-white p-8">
       {error ? (
         <p className="mb-4 rounded-input border border-indigo bg-indigo-tint px-4 py-2 text-sm text-indigo-deep">
           {error}

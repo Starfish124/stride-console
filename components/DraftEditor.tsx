@@ -54,7 +54,7 @@ function CharCounter({ text }: { text: string }) {
 function LintPanel({ result }: { result: LintResult }) {
   if (result.violations.length === 0) {
     return (
-      <div className="rounded-card border border-line bg-white p-5">
+      <div className="card-glass rounded-card border border-line bg-white p-5">
         <p className="eyebrow text-indigo">Voice gate — clear</p>
         <p className="mt-2 text-sm text-slate">
           Zero violations. This variant reads like Stride.
@@ -63,7 +63,7 @@ function LintPanel({ result }: { result: LintResult }) {
     );
   }
   return (
-    <div className="rounded-card border border-line bg-white p-5">
+    <div className="card-glass rounded-card border border-line bg-white p-5">
       <p className="eyebrow text-slate">
         Voice gate — {result.errors} blocking, {result.warns} amber
       </p>
@@ -204,7 +204,7 @@ export function DraftEditor({
       ) : null}
 
       {draft.needsPolish && draft.claudePrompt ? (
-        <div className="mt-4 flex items-center gap-3 rounded-card border border-line bg-white px-5 py-4">
+        <div className="mt-4 flex items-center gap-3 card-glass rounded-card border border-line bg-white px-5 py-4">
           <p className="flex-1 text-sm text-slate">
             No API key configured, so this draft came from the deterministic
             template. Copy the full Claude prompt and run it manually for a
@@ -266,7 +266,7 @@ export function DraftEditor({
             </button>
           </div>
 
-          <div className="mt-6 rounded-card border border-line bg-white p-5">
+          <div className="mt-6 card-glass rounded-card border border-line bg-white p-5">
             <p className="eyebrow text-slate">Publish — {TABS.find((t) => t.id === tab)?.label}</p>
             <p className="mt-2 text-sm text-slate">
               Copy the text, open LinkedIn, paste, attach the{" "}
@@ -329,11 +329,11 @@ export function DraftEditor({
           <div>
             <p className="eyebrow mb-3 text-slate">The visual</p>
             {draft.renders.error ? (
-              <p className="rounded-card border border-line bg-white p-5 text-sm text-slate">
+              <p className="card-glass rounded-card border border-line bg-white p-5 text-sm text-slate">
                 Rendering failed: {draft.renders.error}
               </p>
             ) : draft.renders.images.length === 0 ? (
-              <p className="rounded-card border border-line bg-white p-5 text-sm text-slate">
+              <p className="card-glass rounded-card border border-line bg-white p-5 text-sm text-slate">
                 No render yet.
               </p>
             ) : (
@@ -342,7 +342,7 @@ export function DraftEditor({
                 <img
                   src={`${renderBase}/${draft.renders.images[0]}`}
                   alt="Post visual"
-                  className="w-full rounded-card border border-line bg-white"
+                  className="w-full card-glass rounded-card border border-line bg-white"
                 />
                 {isCarousel && draft.renders.images.length > 1 ? (
                   <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
@@ -362,7 +362,7 @@ export function DraftEditor({
           </div>
           <LintPanel result={lintResult} />
           {draft.sourceReport.length > 0 ? (
-            <div className="rounded-card border border-line bg-white p-5">
+            <div className="card-glass rounded-card border border-line bg-white p-5">
               <p className="eyebrow text-slate">Source health</p>
               <ul className="mt-2 flex flex-col gap-1">
                 {draft.sourceReport.map((s) => (

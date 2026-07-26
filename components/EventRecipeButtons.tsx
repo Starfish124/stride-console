@@ -38,7 +38,7 @@ export function EventRecipeButtons({ eventId }: { eventId: string }) {
   }
 
   return (
-    <div className="rounded-card border border-line bg-white p-6">
+    <div className="card-glass rounded-card border border-line bg-white p-6">
       <p className="eyebrow text-slate">Event posts</p>
       <p className="mt-2 text-sm text-slate">
         Four recipes, same pipeline, same voice gate. The runner warns when an

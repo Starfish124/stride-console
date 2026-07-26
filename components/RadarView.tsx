@@ -21,7 +21,7 @@ function age(publishedAt?: string): string {
 
 function Tile({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded-card border border-line bg-white p-4">
+    <div className="card-glass rounded-card border border-line bg-white p-4">
       <p className="eyebrow text-slate">{label}</p>
       <p className="display tabular mt-1 text-2xl text-ink">{value}</p>
       {hint ? <p className="mt-0.5 text-xs text-slate">{hint}</p> : null}
@@ -85,7 +85,7 @@ export function RadarView() {
       </div>
 
       {error ? (
-        <p className="mt-4 rounded-card border border-line bg-white p-6 text-sm text-slate">
+        <p className="mt-4 card-glass rounded-card border border-line bg-white p-6 text-sm text-slate">
           The sweep failed ({error}). The sources are probably fine — try again.
         </p>
       ) : null}
@@ -163,12 +163,12 @@ export function RadarView() {
               What a run would pick from — ranked
             </h2>
             {data.items.length === 0 ? (
-              <p className="mt-3 rounded-card border border-line bg-white p-6 text-sm text-slate">
+              <p className="mt-3 card-glass rounded-card border border-line bg-white p-6 text-sm text-slate">
                 Nothing fresh survived the filters. Either the week is quiet or
                 every story was already used.
               </p>
             ) : (
-              <ul className="mt-3 overflow-hidden rounded-card border border-line bg-white">
+              <ul className="mt-3 overflow-hidden card-glass rounded-card border border-line bg-white">
                 {data.items.map((item, i) => (
                   <li key={item.url} className={i > 0 ? "border-t border-line" : ""}>
                     <a

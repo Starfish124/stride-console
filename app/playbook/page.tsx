@@ -98,7 +98,7 @@ export default async function PlaybookPage() {
           ))}
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             {sections.map((s) => (
-              <div key={s.title} className="rounded-card border border-line bg-white p-5">
+              <div key={s.title} className="card-glass rounded-card border border-line bg-white p-5">
                 <h3 className="display text-lg text-ink">
                   {s.title === "NEVER" ? "Never." : "Always."}
                 </h3>
@@ -130,7 +130,7 @@ export default async function PlaybookPage() {
             {recipes.map(([id, formula]) => {
               const [, ...steps] = formula.split("\n");
               return (
-                <div key={id} className="rounded-card border border-line bg-white p-5">
+                <div key={id} className="card-glass rounded-card border border-line bg-white p-5">
                   <h3 className="display text-[17px] text-ink">{RECIPE_LABELS[id]}.</h3>
                   <ol className="mt-2.5 space-y-1.5">
                     {steps
@@ -159,7 +159,7 @@ export default async function PlaybookPage() {
 
         <section className="mt-12">
           <h2 className="eyebrow text-slate">The look</h2>
-          <div className="mt-3 rounded-card border border-line bg-white p-5">
+          <div className="mt-3 card-glass rounded-card border border-line bg-white p-5">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
               {PALETTE.map((c) => (
                 <div key={c.name}>
@@ -201,7 +201,7 @@ export default async function PlaybookPage() {
         <section className="mt-12 grid gap-8 md:grid-cols-2">
           <div>
             <h2 className="eyebrow text-slate">The cadence</h2>
-            <ul className="mt-3 overflow-hidden rounded-card border border-line bg-white">
+            <ul className="mt-3 overflow-hidden card-glass rounded-card border border-line bg-white">
               {CADENCE.map((c, i) => (
                 <li
                   key={c.when}
@@ -215,7 +215,7 @@ export default async function PlaybookPage() {
           </div>
           <div>
             <h2 className="eyebrow text-slate">The workflow</h2>
-            <ol className="mt-3 overflow-hidden rounded-card border border-line bg-white">
+            <ol className="mt-3 overflow-hidden card-glass rounded-card border border-line bg-white">
               {WORKFLOW.map((w, i) => (
                 <li
                   key={w.step}

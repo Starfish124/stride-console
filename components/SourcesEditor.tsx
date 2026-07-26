@@ -70,11 +70,11 @@ export function SourcesEditor() {
       </div>
 
       {!loaded ? (
-        <p className="rounded-card border border-line bg-white p-5 text-sm text-slate">
+        <p className="card-glass rounded-card border border-line bg-white p-5 text-sm text-slate">
           Loading the sources.
         </p>
       ) : (
-        <ul className="overflow-hidden rounded-card border border-line bg-white">
+        <ul className="overflow-hidden card-glass rounded-card border border-line bg-white">
           {sources.map((s, i) => (
             <li
               key={s.id}
@@ -105,7 +105,7 @@ export function SourcesEditor() {
 
       <form
         onSubmit={add}
-        className="mt-4 grid gap-2 rounded-card border border-line bg-white p-5 sm:grid-cols-[1fr_1.6fr_auto_auto_auto]"
+        className="mt-4 grid gap-2 card-glass rounded-card border border-line bg-white p-5 sm:grid-cols-[1fr_1.6fr_auto_auto_auto]"
       >
         <input
           value={draft.name}

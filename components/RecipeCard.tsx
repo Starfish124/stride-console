@@ -37,7 +37,7 @@ export function RecipeCard({
   }
 
   return (
-    <div className="card-lift flex flex-col rounded-card border border-line bg-white p-6">
+    <div className="card-lift flex flex-col card-glass rounded-card border border-line bg-white p-6">
       <span className="eyebrow text-indigo">{index}</span>
       <h2 className="display mt-3 text-[22px] text-ink">{title}</h2>
       <p className="mt-1 flex-1 text-sm text-slate">{description}</p>

@@ -33,7 +33,7 @@ export function LoginForm() {
   return (
     <form
       onSubmit={submit}
-      className="flex flex-col gap-4 rounded-card border border-line bg-white p-6"
+      className="flex flex-col gap-4 card-glass rounded-card border border-line bg-white p-6"
     >
       <label className="flex flex-col gap-1.5">
         <span className="eyebrow text-slate">Shared password</span>

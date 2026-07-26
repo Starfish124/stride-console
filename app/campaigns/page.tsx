@@ -52,14 +52,14 @@ export default async function CampaignsPage() {
         </section>
 
         {problem && (
-          <section className="mb-10 rounded-card border border-line bg-white p-6">
+          <section className="mb-10 card-glass rounded-card border border-line bg-white p-6">
             <p className="eyebrow text-slate">Not reading</p>
             <p className="mt-2 text-sm text-ink">{problem}</p>
           </section>
         )}
 
         {!problem && view.campaignCount === 0 && (
-          <section className="mb-10 rounded-card border border-line bg-white p-6">
+          <section className="mb-10 card-glass rounded-card border border-line bg-white p-6">
             <p className="text-sm text-ink">
               No campaigns yet. Make one in Linked Helper and it appears here.
             </p>
@@ -76,15 +76,15 @@ export default async function CampaignsPage() {
             </div>
 
             <dl className="mb-5 grid grid-cols-3 gap-3">
-              <div className="rounded-card border border-line bg-white p-4">
+              <div className="card-glass rounded-card border border-line bg-white p-4">
                 <dt className="eyebrow text-slate">Profiles</dt>
                 <dd className="tabular mt-1 text-xl text-ink">{entry.peopleCollected}</dd>
               </div>
-              <div className="rounded-card border border-line bg-white p-4">
+              <div className="card-glass rounded-card border border-line bg-white p-4">
                 <dt className="eyebrow text-slate">Daily cap</dt>
                 <dd className="tabular mt-1 text-xl text-ink">{entry.dailyMax ?? "—"}</dd>
               </div>
-              <div className="rounded-card border border-line bg-white p-4">
+              <div className="card-glass rounded-card border border-line bg-white p-4">
                 <dt className="eyebrow text-slate">Campaigns</dt>
                 <dd className="tabular mt-1 text-xl text-ink">{entry.campaigns.length}</dd>
               </div>
@@ -100,7 +100,7 @@ export default async function CampaignsPage() {
               {entry.campaigns.map((campaign) => (
                 <li
                   key={campaign.uuid}
-                  className="card-lift rounded-card border border-line bg-white p-5"
+                  className="card-lift card-glass rounded-card border border-line bg-white p-5"
                 >
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                     <span className="text-sm font-semibold text-ink">{campaign.name}</span>

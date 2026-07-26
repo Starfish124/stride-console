@@ -36,7 +36,7 @@ export function EventCreateForm() {
     "rounded-input border border-line bg-white px-3 py-2 text-sm text-ink outline-none placeholder:text-slate/60 focus:border-indigo";
 
   return (
-    <form onSubmit={create} className="rounded-card border border-line bg-white p-6">
+    <form onSubmit={create} className="card-glass rounded-card border border-line bg-white p-6">
       <p className="eyebrow text-slate">New event</p>
       <p className="mt-2 text-sm text-slate">
         Set the date and the T-6-weeks checklist writes itself.

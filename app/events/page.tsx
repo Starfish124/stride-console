@@ -34,12 +34,12 @@ export default async function EventsPage() {
               Events — {signupCount} signups in the bank
             </p>
             {events.length === 0 ? (
-              <p className="rounded-card border border-line bg-white p-6 text-sm text-slate">
+              <p className="card-glass rounded-card border border-line bg-white p-6 text-sm text-slate">
                 No events yet. Create the first one and the checklist starts
                 counting down.
               </p>
             ) : (
-              <ul className="overflow-hidden rounded-card border border-line bg-white">
+              <ul className="overflow-hidden card-glass rounded-card border border-line bg-white">
                 {events.map((e, i) => {
                   const done = e.checklist.filter((c) => c.done).length;
                   return (
