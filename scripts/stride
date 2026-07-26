@@ -48,10 +48,44 @@ LH_APP="/Applications/linked-helper.app"
 LH_DEBUG_PORT=9222
 PUBLIC_URL="https://mac-mini.tailc91701.ts.net"
 
-ok()   { printf "  \033[32m●\033[0m %-16s %s\n" "$1" "$2"; }
-bad()  { printf "  \033[31m○\033[0m %-16s %s\n" "$1" "$2"; }
-warn() { printf "  \033[33m◐\033[0m %-16s %s\n" "$1" "$2"; }
-head_() { printf "\n\033[1m%s\033[0m\n" "$1"; }
+# ——— the brand, in a terminal ————————————————————————————————————
+#
+# Colours are the library's, in 24-bit ANSI: stride blue, partner lime, alert
+# amber, and the muted grey for anything secondary. All of it goes quiet when
+# output is not a terminal, so piping this into a file or a log gives plain
+# text rather than a screenful of escape codes.
+
+if [[ -t 1 ]]; then
+  BLUE=$'\033[38;2;46;48;248m'
+  LIME=$'\033[38;2;118;185;0m'
+  AMBER=$'\033[38;2;255;169;43m'
+  MUTE=$'\033[38;2;138;144;160m'
+  INK=$'\033[38;2;230;232;240m'
+  BOLD=$'\033[1m'
+  DIM=$'\033[2m'
+  OFF=$'\033[0m'
+else
+  BLUE=""; LIME=""; AMBER=""; MUTE=""; INK=""; BOLD=""; DIM=""; OFF=""
+fi
+
+ok()   { printf "  ${LIME}●${OFF} %-17s ${MUTE}%s${OFF}\n" "$1" "$2"; }
+bad()  { printf "  ${MUTE}○${OFF} %-17s ${AMBER}%s${OFF}\n" "$1" "$2"; }
+warn() { printf "  ${AMBER}◐${OFF} %-17s ${MUTE}%s${OFF}\n" "$1" "$2"; }
+head_() { printf "\n  ${DIM}%s${OFF}\n" "$1"; }
+
+# The mark: two bars on the same shear as the logo, stepped left as they fall.
+banner() {
+  printf "\n"
+  printf "   ${BLUE}▟██████▛${OFF}\n"
+  printf "  ${BLUE}▟██████▛${OFF}     ${BOLD}${INK}STRIDE${OFF}\n"
+  printf " ${BLUE}▟██████▛${OFF}      ${MUTE}console · marketing machine${OFF}\n"
+  printf "      ${BLUE}▟██████▛${OFF}\n"
+  printf "     ${BLUE}▟██████▛${OFF}\n"
+  printf "    ${BLUE}▟██████▛${OFF}\n"
+}
+
+# The library's accent: five bars fading back. Used once, under the summary.
+rule() { printf "  ${BLUE}▰▰▰▰${OFF}${MUTE}▰▰▰${OFF}${DIM}▰▰${OFF}\n"; }
 
 agent_installed() { [[ -f "$HOME/Library/LaunchAgents/$1.plist" ]]; }
 agent_loaded()    { launchctl print "gui/$(id -u)/$1" >/dev/null 2>&1; }
@@ -84,7 +118,8 @@ funnel_on() {
 }
 
 cmd_status() {
-  head_ "Stride"
+  banner
+  head_ "services"
   console_up && ok "console" "http://localhost:$CONSOLE_PORT" || bad "console" "down — run: stride"
   funnel_on  && ok "funnel"  "$PUBLIC_URL" || bad "funnel" "off — tailscale funnel --bg $CONSOLE_PORT"
   bridge_up  && ok "bridge"  "127.0.0.1:$BRIDGE_PORT" || bad "bridge" "down — run: stride"
@@ -109,19 +144,35 @@ cmd_status() {
     warn "linkedin session" "not running — start the account in Linked Helper to create campaigns"
   fi
 
-  head_ "At login"
+  head_ "at login"
+  local missing=0
   for job in com.stride.console com.stride.bridge com.stride.pregen com.stride.linkedhelper; do
     if [[ -f "$HOME/Library/LaunchAgents/$job.plist" ]]; then
-      ok "$job" "installed"
+      ok "${job#com.stride.}" "starts automatically"
     else
-      bad "$job" "not installed — run: stride install"
+      bad "${job#com.stride.}" "not installed"
+      missing=1
     fi
   done
+
+  # One line that says whether the thing works, so the detail above is only
+  # read when it does not.
+  echo
+  rule
+  if console_up && funnel_on && bridge_up && lh_debug_up; then
+    printf "  ${LIME}everything is up${OFF}  ${MUTE}%s${OFF}\n" "$PUBLIC_URL"
+  elif console_up; then
+    printf "  ${AMBER}the app is up, part of the machine is not${OFF}  ${MUTE}run: stride${OFF}\n"
+  else
+    printf "  ${AMBER}the app is down${OFF}  ${MUTE}run: stride${OFF}\n"
+  fi
+  [[ $missing -eq 1 ]] && printf "  ${MUTE}some services will not come back after a restart. run: stride install${OFF}\n"
   echo
 }
 
 cmd_up() {
-  head_ "Starting"
+  banner
+  head_ "starting"
 
   if console_up; then
     ok "console" "already up"
@@ -171,11 +222,17 @@ cmd_up() {
     bridge_up && ok "bridge" "up" || bad "bridge" "failed — tail /tmp/stride-bridge.log"
   fi
 
-  printf "\n  %s\n\n" "$PUBLIC_URL"
+  echo
+  rule
+  if console_up && bridge_up && lh_debug_up; then
+    printf "  ${LIME}ready${OFF}  ${MUTE}%s${OFF}\n\n" "$PUBLIC_URL"
+  else
+    printf "  ${AMBER}partly up${OFF}  ${MUTE}stride status, or stride logs${OFF}\n\n"
+  fi
 }
 
 cmd_down() {
-  head_ "Stopping"
+  head_ "stopping"
   launchctl bootout "gui/$(id -u)/com.stride.console" 2>/dev/null
   launchctl bootout "gui/$(id -u)/com.stride.bridge" 2>/dev/null
   pkill -f "bridge/server.mjs" 2>/dev/null
@@ -186,7 +243,8 @@ cmd_down() {
 }
 
 cmd_install() {
-  head_ "Installing login agents"
+  banner
+  head_ "installing login agents"
   mkdir -p "$HOME/Library/LaunchAgents"
 
   # The console's password lives only in the installed agent, never in git.
@@ -242,7 +300,7 @@ cmd_logs() {
 }
 
 cmd_link() {
-  head_ "Linking"
+  head_ "linking"
   local target="$HOME/.local/bin/stride"
   mkdir -p "$HOME/.local/bin"
   ln -sf "$ROOT/scripts/stride" "$target"
