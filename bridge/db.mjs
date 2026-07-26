@@ -116,6 +116,19 @@ function readAccountDb(file, partitionAccountId) {
         `SELECT action_name FROM campaign_actions WHERE campaign_id = ? ORDER BY rowid`,
         [row.id],
       );
+      // How many profiles this campaign is working on. NOT collection_people —
+      // LH2 leaves that table empty and files the real thing under the actions,
+      // which is how the console came to report 0 against 870 real profiles.
+      const people =
+        one(
+          db,
+          `SELECT COUNT(DISTINCT atp.person_id) AS n
+             FROM action_target_people atp
+             JOIN actions a ON a.id = atp.action_id
+            WHERE a.campaign_id = ?`,
+          [row.id],
+        )?.n ?? 0;
+
       return {
         id: row.id,
         uuid: row.uuid,
@@ -125,13 +138,14 @@ function readAccountDb(file, partitionAccountId) {
         state: campaignState(row),
         createdAt: row.created_at,
         stepCount: steps.length,
+        people,
         // Most steps carry no label in LH2; keep the ones that do.
         steps: steps.map((s) => s.action_name).filter(Boolean),
       };
     });
 
     // Aggregates only — never a row out of the person tables.
-    const peopleCollected = one(db, "SELECT COUNT(*) AS n FROM collection_people")?.n ?? 0;
+    const peopleCollected = one(db, "SELECT COUNT(*) AS n FROM people")?.n ?? 0;
     const dailyMax = one(db, "SELECT max_limit AS n FROM daily_limits LIMIT 1")?.n ?? null;
 
     const usedToday = one(

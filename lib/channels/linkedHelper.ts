@@ -116,6 +116,8 @@ export interface LhCampaign {
   state: "running" | "paused" | "archived" | "invalid";
   createdAt: string;
   stepCount: number;
+  /** Distinct profiles this campaign is working on. */
+  people: number;
   steps: string[];
 }
 

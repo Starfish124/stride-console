@@ -112,9 +112,10 @@ export default async function CampaignsPage() {
                     <span className="eyebrow text-slate">{campaign.type}</span>
                   </div>
 
-                  <p className="mt-2 text-[13px] text-slate">
-                    {campaign.stepCount} step{campaign.stepCount === 1 ? "" : "s"} · created{" "}
-                    {when(campaign.createdAt)}
+                  <p className="tabular mt-2 text-[13px] text-slate">
+                    {campaign.people.toLocaleString("en-GB")} profile
+                    {campaign.people === 1 ? "" : "s"} · {campaign.stepCount} step
+                    {campaign.stepCount === 1 ? "" : "s"} · created {when(campaign.createdAt)}
                   </p>
 
                   {campaign.steps.length > 0 && (
