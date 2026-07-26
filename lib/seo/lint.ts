@@ -264,11 +264,14 @@ export function lintArticle(
     }
   }
 
-  if (heads.some((h) => h.level === 1)) {
+  // Find once and test the result: `some` then `find` reads as safe but does
+  // not narrow, so the build failed on a value that can never be undefined.
+  const bodyH1 = heads.find((h) => h.level === 1);
+  if (bodyH1) {
     add({
       rule: "h1InBody",
       severity: "error",
-      excerpt: heads.find((h) => h.level === 1).text,
+      excerpt: bodyH1.text,
       fix: "The page renders the title as the H1. Start body headings at H2.",
     });
   }
