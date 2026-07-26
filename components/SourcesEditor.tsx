@@ -49,7 +49,7 @@ export function SourcesEditor() {
   return (
     <section>
       <div className="mb-4 flex items-baseline justify-between gap-3">
-        <h2 className="text-xl font-bold text-ink">The source list.</h2>
+        <h2 className="display text-[22px] text-ink">The source list.</h2>
         <span className="flex items-baseline gap-3">
           <button
             type="button"

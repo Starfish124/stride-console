@@ -69,7 +69,7 @@ export default async function CampaignsPage() {
         {view.accounts.map((entry) => (
           <section key={String(entry.account.externalId)} className="mb-10">
             <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-              <h2 className="text-base font-semibold text-ink">
+              <h2 className="display text-[19px] text-ink">
                 {entry.account.name?.replace(/\s+/g, " ") ?? "Unknown account"}
               </h2>
               <p className="text-[13px] text-slate">{entry.account.email}</p>

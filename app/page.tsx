@@ -64,7 +64,7 @@ export default async function Dashboard() {
         <section className="mt-12 grid gap-8 md:grid-cols-2">
           <div>
             <p className="eyebrow text-slate">Myth bank</p>
-            <h2 className="mt-2 text-xl font-bold text-ink">
+            <h2 className="display mt-2 text-[22px] text-ink">
               Heard a myth in a client call.
             </h2>
             <p className="mb-4 mt-1 text-sm text-slate">
@@ -83,7 +83,7 @@ export default async function Dashboard() {
                 The whole library →
               </Link>
             </div>
-            <h2 className="mt-2 mb-4 text-xl font-bold text-ink">The last runs.</h2>
+            <h2 className="display mt-2 mb-4 text-[22px] text-ink">The last runs.</h2>
             {drafts.length === 0 ? (
               <p className="rounded-card border border-line bg-white p-6 text-sm text-slate">
                 Nothing yet. Run a recipe above and the draft lands here.

@@ -2,12 +2,27 @@ import Link from "next/link";
 import type { DraftStatus } from "@/lib/types";
 import { NavLinks } from "@/components/NavLinks";
 
+/** The mark, then the name. Playfair, with "AI" carrying the italic accent. */
 export function Wordmark({ size = "text-xl" }: { size?: string }) {
   return (
-    <span className={`display ${size} leading-none`}>
-      <span className="text-indigo">Stride</span>{" "}
-      <span className="text-slate">AI</span>
+    <span className="inline-flex items-center gap-2">
+      <StrideMark />
+      <span className={`display ${size} leading-none text-ink`}>
+        Stride <span className="accent">AI</span>
+      </span>
     </span>
+  );
+}
+
+/** The two offset bars of the Stride logo, drawn rather than fetched. */
+export function StrideMark({ className = "size-[18px]" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true" fill="currentColor">
+      <g className="text-indigo" fill="currentColor">
+        <path d="M9.6 2.5h10.2a1 1 0 0 1 .82 1.57L15.1 12.2a1 1 0 0 1-.82.43H4.08a1 1 0 0 1-.82-1.57l5.52-8.13a1 1 0 0 1 .82-.43Z" />
+        <path d="M9.72 11.37h10.2a1 1 0 0 1 .82 1.57l-5.52 8.13a1 1 0 0 1-.82.43H4.2a1 1 0 0 1-.82-1.57l5.52-8.13a1 1 0 0 1 .82-.43Z" />
+      </g>
+    </svg>
   );
 }
 
@@ -29,17 +44,25 @@ export function StatusBadge({ status }: { status: DraftStatus }) {
 
 export function Header({ founder }: { founder?: string }) {
   return (
-    <header className="sticky top-0 z-20 border-b border-line bg-white/90 pt-[env(safe-area-inset-top)] backdrop-blur">
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-6 py-4">
-        <Link href="/">
-          <Wordmark />
+    // A UINavigationBar: translucent, hairline-thin, content passes beneath it.
+    <header className="material sticky top-0 z-20 border-b border-line/70 pt-[env(safe-area-inset-top)]">
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-3 sm:px-6 sm:py-4">
+        <Link href="/" className="pressable">
+          <Wordmark size="text-[19px]" />
         </Link>
         <nav className="flex items-center gap-4 sm:gap-6">
           {/* Phone widths navigate with the bottom tab bar instead. */}
           <span className="hidden items-center gap-4 sm:flex sm:gap-6">
             <NavLinks />
           </span>
-          <span className="eyebrow text-slate">{founder}</span>
+          {founder ? (
+            <span
+              className="grid size-8 place-items-center rounded-full bg-indigo-tint text-[13px] font-semibold text-indigo"
+              title={founder}
+            >
+              {founder.slice(0, 1).toUpperCase()}
+            </span>
+          ) : null}
         </nav>
       </div>
     </header>

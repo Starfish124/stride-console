@@ -12,13 +12,13 @@ import { useState } from "react";
 
 const TABS = [
   { href: "/", label: "Console", icon: ConsoleIcon },
+  { href: "/campaigns", label: "Campaigns", icon: CampaignsIcon },
   { href: "/library", label: "Library", icon: LibraryIcon },
   { href: "/radar", label: "Radar", icon: RadarIcon },
-  { href: "/events", label: "Events", icon: EventsIcon },
 ] as const;
 
 const MORE = [
-  { href: "/campaigns", label: "Campaigns", hint: "What Linked Helper is running on LinkedIn." },
+  { href: "/events", label: "Events", hint: "The 1 Min AI Pitch nights, and who signed up." },
   { href: "/playbook", label: "Playbook", hint: "How Stride sounds — voice, formulas, the look." },
   { href: "/settings", label: "Settings", hint: "Sources, notifications, the machine room." },
 ] as const;
@@ -45,33 +45,38 @@ export function TabBar() {
 
   return (
     <>
-      {moreOpen ? (
-        <button
-          type="button"
-          aria-label="Close menu"
-          onClick={() => setMoreOpen(false)}
-          className="fixed inset-0 z-30 bg-ink/30 sm:hidden"
-        />
-      ) : null}
+      {/* Scrim: fades rather than snaps, so the sheet feels lifted not swapped. */}
+      <button
+        type="button"
+        aria-label="Close menu"
+        onClick={() => setMoreOpen(false)}
+        className={`fixed inset-0 z-30 bg-ink/25 backdrop-blur-[2px] transition-opacity duration-300 sm:hidden ${
+          moreOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      />
 
+      {/* An action sheet: rises from behind the bar, grabber and all. */}
       <div
-        className={`fixed inset-x-0 z-40 px-4 transition-all duration-200 sm:hidden ${
+        className={`fixed inset-x-0 z-40 px-3 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] sm:hidden ${
           moreOpen
-            ? "bottom-[calc(76px+env(safe-area-inset-bottom))] opacity-100"
-            : "pointer-events-none bottom-[calc(56px+env(safe-area-inset-bottom))] opacity-0"
+            ? "bottom-[calc(74px+env(safe-area-inset-bottom))] translate-y-0 opacity-100"
+            : "pointer-events-none bottom-[calc(58px+env(safe-area-inset-bottom))] translate-y-3 opacity-0"
         }`}
       >
-        <div className="mx-auto max-w-md overflow-hidden rounded-card border border-line bg-white shadow-lg">
+        <div className="mx-auto max-w-md overflow-hidden rounded-[20px] border border-line bg-white shadow-[0_1px_2px_rgba(16,17,22,0.05),0_24px_48px_-16px_rgba(16,17,22,0.28)]">
+          <div className="flex justify-center pt-2.5">
+            <span aria-hidden className="h-1 w-9 rounded-full bg-line" />
+          </div>
           {MORE.map((m, i) => (
             <Link
               key={m.href}
               href={m.href}
-              className={`block px-5 py-3.5 ${i > 0 ? "border-t border-line" : ""} ${
+              className={`block px-5 py-3.5 active:bg-paper ${i > 0 ? "border-t border-line" : ""} ${
                 isActive(pathname, m.href) ? "bg-indigo-tint" : ""
               }`}
             >
-              <span className="block text-sm font-semibold text-ink">{m.label}</span>
-              <span className="block text-xs text-slate">{m.hint}</span>
+              <span className="block text-[15px] font-semibold text-ink">{m.label}</span>
+              <span className="mt-0.5 block text-[13px] leading-snug text-slate">{m.hint}</span>
             </Link>
           ))}
         </div>
@@ -79,7 +84,7 @@ export function TabBar() {
 
       <nav
         aria-label="Primary"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur sm:hidden"
+        className="material fixed inset-x-0 bottom-0 z-40 border-t border-line/80 pb-[env(safe-area-inset-bottom)] sm:hidden"
       >
         <div className="mx-auto flex max-w-md items-stretch">
           {TABS.map((tab) => {
@@ -90,12 +95,12 @@ export function TabBar() {
                 key={tab.href}
                 href={tab.href}
                 aria-current={active ? "page" : undefined}
-                className={`flex flex-1 flex-col items-center gap-0.5 pb-2 pt-2.5 transition-colors ${
+                className={`pressable flex flex-1 flex-col items-center gap-1 pb-1.5 pt-2 ${
                   active ? "text-indigo" : "text-slate"
                 }`}
               >
-                <Icon />
-                <span className="eyebrow">{tab.label}</span>
+                <Icon active={active} />
+                <span className="text-[10px] font-semibold tracking-[0.01em]">{tab.label}</span>
               </Link>
             );
           })}
@@ -103,12 +108,12 @@ export function TabBar() {
             type="button"
             onClick={() => setMoreOpen((v) => !v)}
             aria-expanded={moreOpen}
-            className={`flex flex-1 flex-col items-center gap-0.5 pb-2 pt-2.5 transition-colors ${
+            className={`pressable flex flex-1 flex-col items-center gap-1 pb-1.5 pt-2 ${
               moreActive || moreOpen ? "text-indigo" : "text-slate"
             }`}
           >
-            <MoreIcon />
-            <span className="eyebrow">More</span>
+            <MoreIcon active={moreActive || moreOpen} />
+            <span className="text-[10px] font-semibold tracking-[0.01em]">More</span>
           </button>
         </div>
       </nav>
@@ -116,60 +121,72 @@ export function TabBar() {
   );
 }
 
-const stroke = {
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: 1.6,
-  strokeLinecap: "round",
-  strokeLinejoin: "round",
-} as const;
+/**
+ * Tab icons follow the SF Symbols habit: outline when idle, weightier and
+ * tinted when selected. The fill is faint on purpose — iOS signals the
+ * current tab mostly through colour, and a solid glyph at 22px reads as a
+ * different icon rather than the same one selected.
+ */
+type IconProps = { active?: boolean };
 
-function ConsoleIcon() {
+function glyph(active?: boolean) {
+  return {
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: active ? 2 : 1.6,
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+  } as const;
+}
+
+const wash = (active?: boolean) => (active ? "currentColor" : "none");
+
+function ConsoleIcon({ active }: IconProps) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
-      <rect x="4" y="4" width="7" height="7" rx="1" />
-      <rect x="13" y="4" width="7" height="7" rx="1" />
-      <rect x="4" y="13" width="7" height="7" rx="1" />
-      <rect x="13" y="13" width="7" height="7" rx="1" />
+    <svg width="23" height="23" viewBox="0 0 24 24" aria-hidden="true" {...glyph(active)}>
+      <rect x="4" y="4" width="7" height="7" rx="1.4" fill={wash(active)} fillOpacity={0.14} />
+      <rect x="13" y="4" width="7" height="7" rx="1.4" fill={wash(active)} fillOpacity={0.14} />
+      <rect x="4" y="13" width="7" height="7" rx="1.4" fill={wash(active)} fillOpacity={0.14} />
+      <rect x="13" y="13" width="7" height="7" rx="1.4" fill={wash(active)} fillOpacity={0.14} />
     </svg>
   );
 }
 
-function LibraryIcon() {
+function LibraryIcon({ active }: IconProps) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
-      <path d="M5 4h4v16H5zM11 4h4v16h-4z" />
-      <path d="M16.5 5l3.5 1-3.8 14-3.4-1z" />
+    <svg width="23" height="23" viewBox="0 0 24 24" aria-hidden="true" {...glyph(active)}>
+      <path d="M5 4h4v16H5zM11 4h4v16h-4z" fill={wash(active)} fillOpacity={0.14} />
+      <path d="M16.5 5l3.5 1-3.8 14-3.4-1z" fill={wash(active)} fillOpacity={0.14} />
     </svg>
   );
 }
 
-function RadarIcon() {
+function RadarIcon({ active }: IconProps) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
-      <circle cx="12" cy="12" r="8" />
+    <svg width="23" height="23" viewBox="0 0 24 24" aria-hidden="true" {...glyph(active)}>
+      <circle cx="12" cy="12" r="8" fill={wash(active)} fillOpacity={0.1} />
       <circle cx="12" cy="12" r="4.5" />
       <path d="M12 12l5.5-5.5" />
-      <circle cx="12" cy="12" r="0.6" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="0.7" fill="currentColor" stroke="none" />
     </svg>
   );
 }
 
-function EventsIcon() {
+function CampaignsIcon({ active }: IconProps) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
-      <rect x="4" y="5" width="16" height="15" rx="1.5" />
-      <path d="M4 9.5h16M8 3.5v3M16 3.5v3" />
+    <svg width="23" height="23" viewBox="0 0 24 24" aria-hidden="true" {...glyph(active)}>
+      <path d="M4 9.5v5a1 1 0 0 0 1 1h3l6 4V4.5l-6 4H5a1 1 0 0 0-1 1Z" fill={wash(active)} fillOpacity={0.14} />
+      <path d="M17.5 9a4 4 0 0 1 0 6" />
     </svg>
   );
 }
 
-function MoreIcon() {
+function MoreIcon({ active }: IconProps) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
-      <circle cx="6" cy="12" r="0.8" fill="currentColor" />
-      <circle cx="12" cy="12" r="0.8" fill="currentColor" />
-      <circle cx="18" cy="12" r="0.8" fill="currentColor" />
+    <svg width="23" height="23" viewBox="0 0 24 24" aria-hidden="true" {...glyph(active)}>
+      <circle cx="6" cy="12" r={active ? 1.5 : 1.1} fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r={active ? 1.5 : 1.1} fill="currentColor" stroke="none" />
+      <circle cx="18" cy="12" r={active ? 1.5 : 1.1} fill="currentColor" stroke="none" />
     </svg>
   );
 }

@@ -31,7 +31,7 @@ export function PitchForm() {
     return (
       <div className="rounded-card border border-line bg-white p-8">
         <p className="eyebrow text-indigo">You are in</p>
-        <h2 className="mt-3 text-xl font-bold text-ink">
+        <h2 className="display mt-3 text-[22px] text-ink">
           Your minute is reserved.
         </h2>
         <p className="mt-2 text-sm text-slate">

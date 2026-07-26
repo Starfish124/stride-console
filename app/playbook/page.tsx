@@ -131,7 +131,7 @@ export default async function PlaybookPage() {
               const [, ...steps] = formula.split("\n");
               return (
                 <div key={id} className="rounded-card border border-line bg-white p-5">
-                  <h3 className="text-sm font-bold text-ink">{RECIPE_LABELS[id]}.</h3>
+                  <h3 className="display text-[17px] text-ink">{RECIPE_LABELS[id]}.</h3>
                   <ol className="mt-2.5 space-y-1.5">
                     {steps
                       .map((s) => s.trim())
