@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  The Linked Helper bridge: the console's only way to reach LH2.
+
+  Replace /Users/sarveshsingh/stride-console below if the repo lives elsewhere.
+  It must be the repo root — the bridge writes its token to ./data/bridge.json,
+  which is what the console reads to authenticate.
+
+  Install:
+    cp docs/com.stride.bridge.plist ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.stride.bridge.plist
+
+  Restart after a code change:
+    launchctl kickstart -k gui/$(id -u)/com.stride.bridge
+
+  Logs: /tmp/stride-bridge.log
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.stride.bridge</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>cd /Users/sarveshsingh/stride-console &amp;&amp; exec /opt/homebrew/bin/node bridge/server.mjs</string>
+  </array>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/stride-bridge.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/stride-bridge.log</string>
+</dict>
+</plist>

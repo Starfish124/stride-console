@@ -5,6 +5,7 @@ import { lessons } from "@/lib/pipeline/memory";
 import { Header } from "@/components/ui";
 import { SourcesEditor } from "@/components/SourcesEditor";
 import { PushToggle } from "@/components/PushToggle";
+import { ChannelHealth } from "@/components/ChannelHealth";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +52,8 @@ export default async function SettingsPage() {
             </p>
           )}
         </section>
+
+        <ChannelHealth />
 
         <section className="mb-10 rounded-card border border-line bg-white p-6">
           <p className="eyebrow text-slate">Draft-ready notifications</p>

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Keeps Linked Helper 2 running WITH a debugger port.
+
+  This is the whole reason the bridge works. Launched from the Dock, LH2 has no
+  debugger port and the console cannot see or drive it. Launched this way it
+  does, on a fixed port, every time the Mac starts.
+
+  The port is loopback-only. Never expose it to the tailnet or through Funnel:
+  anything that can reach it can act as the logged-in LinkedIn account.
+
+  Install:
+    cp docs/com.stride.linkedhelper.plist ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.stride.linkedhelper.plist
+
+  If LH2 is already open without the flag, quit it first — the flag only
+  applies to a fresh launch.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.stride.linkedhelper</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Applications/linked-helper.app/Contents/MacOS/linked-helper</string>
+    <string>--remote-debugging-port=9222</string>
+  </array>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/stride-linkedhelper.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/stride-linkedhelper.log</string>
+</dict>
+</plist>
