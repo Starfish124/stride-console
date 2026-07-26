@@ -122,6 +122,9 @@ Target length: about ${brief.wordCountTarget} words.
 REQUIRED PLACEMENT
 - The primary keyword appears in the title, in the description, in the first 100 words, and in at least one H2.
 - It appears where it helps a reader understand the topic, and nowhere it does not. There is no density target. Repeating it to hit a count is the failure mode, not the goal.
+- The keyword is stored lowercase. Capitalise it the way a person writing English would: "AI", not "ai", and a capital at the start of a sentence or heading. Matching is case-insensitive, so correct capitalisation costs you nothing and lowercase "ai" mid-sentence looks like a typo.
+- Bend the phrase to fit the sentence. "An AI consultant for a small business will" reads properly; the rigid phrase jammed in unchanged does not. Say it the way you would out loud.
+- Do not repeat the keyword as an H2 when the title already says it. Headings say what the section covers.
 
 INTERNAL LINKS
 Place each of these as a markdown link inside the body, in a sentence where it belongs:
