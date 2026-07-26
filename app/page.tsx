@@ -6,6 +6,7 @@ import { RecipeCard } from "@/components/RecipeCard";
 import { MythQuickAdd } from "@/components/MythQuickAdd";
 import { InboxBanner } from "@/components/InboxBanner";
 import { LhPulsePanel } from "@/components/LhPulsePanel";
+import { SeoPanel } from "@/components/SeoPanel";
 import { Ramp } from "@/components/Ramp";
 
 export const dynamic = "force-dynamic";
@@ -56,6 +57,8 @@ export default async function Dashboard() {
         {/* What the outbound machine needs from a founder, before the posting
             tools. Replies and drafts waiting on a person outrank a button. */}
         <LhPulsePanel />
+
+        <SeoPanel />
 
         <p className="eyebrow mb-3 text-slate">Write something</p>
         <section className="grid gap-4 md:grid-cols-3">
