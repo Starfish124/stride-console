@@ -16,6 +16,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { probe, readAccounts } from "./lh.mjs";
 import { CdpError } from "./cdp.mjs";
+import { readCampaigns, DbUnavailable } from "./db.mjs";
 
 const PORT = Number(process.env.STRIDE_BRIDGE_PORT || 7455);
 const HOST = "127.0.0.1";
@@ -67,6 +68,16 @@ async function health() {
     } catch {
       accounts = null;
     }
+    // Whether campaigns exist is a database question. It used to be read off
+    // the setup wizard's nag text, which drifts in and out of the DOM between
+    // renders and had the console reporting "no campaigns" every other refresh.
+    let campaignCount = null;
+    try {
+      campaignCount = readCampaigns().campaignCount;
+    } catch {
+      campaignCount = null;
+    }
+
     return {
       state: info.ipcUsable ? "ready" : "degraded",
       detail: info.ipcUsable
@@ -74,6 +85,7 @@ async function health() {
         : info.ipcDetail,
       app: { title: info.title, uiUrl: info.uiUrl, documentReady: info.documentReady },
       accounts,
+      campaignCount,
       at,
     };
   } catch (err) {
@@ -99,6 +111,20 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/health" && req.method === "GET") {
       return send(res, 200, await health());
     }
+
+    // Campaigns come from Linked Helper's database, not its screen: the app
+    // does not have to be open, and nothing depends on which view it is on.
+    if (url.pathname === "/campaigns" && req.method === "GET") {
+      try {
+        return send(res, 200, readCampaigns());
+      } catch (err) {
+        if (err instanceof DbUnavailable) {
+          return send(res, 200, { accounts: [], campaignCount: 0, unavailable: err.message, at: new Date().toISOString() });
+        }
+        throw err;
+      }
+    }
+
     return send(res, 404, { error: `no route for ${req.method} ${url.pathname}` });
   } catch (err) {
     return send(res, 500, { error: err?.message ?? "bridge failed" });

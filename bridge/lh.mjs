@@ -57,16 +57,49 @@ function describeIpcProblem(ipc) {
   return "ipcRenderer is present but missing invoke/send.";
 }
 
-const DAYS_LEFT = /(\d+)\s*days?/i;
+const DAYS_LEFT = /^(\d+)\s*days?$/i;
+const ABSOLUTE_DATE = /^([A-Z][a-z]{2})\s+(\d{1,2}),\s*(\d{4})$/;
+const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+
+/** Every account state Linked Helper has been observed to show. */
+const STATES = /^(running|stopped|paused|collecting|idle|starting|stopping|error)$/i;
+const TIERS = /^(pro|standard|trial|basic)$/i;
+
+/**
+ * How long a licence has left, from either way LH2 writes it.
+ *
+ * It shows a countdown ("14 days") on an idle account and switches to an
+ * absolute date ("Aug 9, 2026") once the account is in use. Reading only the
+ * first form is how the console came to report a live licence as expired.
+ */
+function readLicence(cells, now) {
+  for (const cell of cells) {
+    const days = cell.match(DAYS_LEFT);
+    if (days) return { daysLeft: Number(days[1]), until: null };
+
+    const date = cell.match(ABSOLUTE_DATE);
+    if (date) {
+      const month = MONTHS.indexOf(date[1].toLowerCase());
+      if (month === -1) continue;
+      const until = new Date(Date.UTC(Number(date[3]), month, Number(date[2])));
+      const midnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+      return {
+        daysLeft: Math.round((until.getTime() - midnight) / 86_400_000),
+        until: until.toISOString().slice(0, 10),
+      };
+    }
+  }
+  return { daysLeft: null, until: null };
+}
 
 /**
  * Parse the account manager screen's text. Pure, and separated out because it
  * is the most breakable thing here — LH2 auto-updates, and when its markup
- * shifts this is what shifts under us. Tested against a captured fixture.
+ * shifts this is what shifts under us. Tested against captured fixtures.
  *
  * Returns null when the text is not the account screen at all.
  */
-export function parseAccountScreen(text) {
+export function parseAccountScreen(text, now = new Date()) {
   if (typeof text !== "string" || !text.includes("LinkedIn account")) return null;
 
   const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
@@ -93,15 +126,28 @@ export function parseAccountScreen(text) {
     // bounded window rather than assuming a fixed column count.
     const window_ = rows.slice(i + 1, i + 10);
     const loggedIn = !window_.some((l) => /^not logged in$/i.test(l));
-    const daysMatch = window_.map((l) => l.match(DAYS_LEFT)).find(Boolean);
+    const tier = window_.find((l) => TIERS.test(l)) ?? null;
+    const { daysLeft, until } = readLicence(window_, now);
+
+    // Say what we know, and say when we do not know. "Could not read a licence"
+    // must never be reported downstream as "has no licence" — that is a false
+    // alarm on a working account, and it is what happens when LH2 changes how
+    // it writes this column.
+    let licenceState;
+    if (daysLeft !== null) licenceState = daysLeft > 0 ? "valid" : "expired";
+    else if (tier) licenceState = "valid";
+    else if (!loggedIn) licenceState = "none";
+    else licenceState = "unknown";
 
     accounts.push({
       email,
       name: /^[A-Z][a-z]+ [A-Z]/.test(window_[0] ?? "") ? window_[0] : null,
       loggedIn,
-      state: window_.find((l) => /^(running|stopped|paused)$/i.test(l)) ?? null,
-      licenceDaysLeft: daysMatch ? Number(daysMatch[1]) : null,
-      licence: window_.find((l) => /^(pro|standard|trial)$/i.test(l)) ?? null,
+      state: window_.find((l) => STATES.test(l)) ?? null,
+      licenceState,
+      licenceDaysLeft: daysLeft,
+      licenceUntil: until,
+      licence: tier,
     });
   }
 

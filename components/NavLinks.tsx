@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/", label: "Console" },
   { href: "/library", label: "Library" },
   { href: "/radar", label: "Radar" },
+  { href: "/campaigns", label: "Campaigns" },
   { href: "/events", label: "Events" },
   { href: "/playbook", label: "Playbook" },
   { href: "/settings", label: "Settings" },

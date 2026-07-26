@@ -18,6 +18,7 @@ const TABS = [
 ] as const;
 
 const MORE = [
+  { href: "/campaigns", label: "Campaigns", hint: "What Linked Helper is running on LinkedIn." },
   { href: "/playbook", label: "Playbook", hint: "How Stride sounds — voice, formulas, the look." },
   { href: "/settings", label: "Settings", hint: "Sources, notifications, the machine room." },
 ] as const;

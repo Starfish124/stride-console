@@ -29,7 +29,10 @@ interface BridgeAccount {
   name: string | null;
   loggedIn: boolean;
   state: string | null;
+  /** valid / expired / none / unknown — never infer "expired" from "unknown". */
+  licenceState: "valid" | "expired" | "none" | "unknown";
   licenceDaysLeft: number | null;
+  licenceUntil: string | null;
   licence: string | null;
 }
 
@@ -57,18 +60,30 @@ function accountFacts(health: BridgeHealth): ChannelFact[] {
   const facts: ChannelFact[] = [];
   const accounts = health.accounts?.accounts ?? [];
 
-  const licensed = accounts.filter((a) => a.licenceDaysLeft !== null);
-  for (const account of licensed) {
-    const days = account.licenceDaysLeft as number;
-    facts.push({
-      label: account.name ?? account.email,
-      value: `${account.licence ?? "Licence"}, ${days} day${days === 1 ? "" : "s"} left`,
-      warn: days <= LICENCE_WARN_DAYS,
-    });
+  for (const account of accounts.filter((a) => a.loggedIn)) {
+    const who = account.name ?? account.email;
+    const tier = account.licence ?? "Licence";
+
+    if (account.licenceDaysLeft !== null) {
+      const days = account.licenceDaysLeft;
+      const when = account.licenceUntil ? ` (${account.licenceUntil})` : "";
+      facts.push({
+        label: who,
+        value: days > 0 ? `${tier}, ${days} day${days === 1 ? "" : "s"} left${when}` : `${tier}, expired`,
+        warn: days <= LICENCE_WARN_DAYS,
+      });
+    } else if (account.licenceState === "valid") {
+      facts.push({ label: who, value: tier, warn: false });
+    } else {
+      facts.push({ label: who, value: "licence unreadable", warn: true });
+    }
+
+    if (account.state) {
+      facts.push({ label: `${who} — state`, value: account.state, warn: false });
+    }
   }
 
-  const loggedOut = accounts.filter((a) => !a.loggedIn);
-  for (const account of loggedOut) {
+  for (const account of accounts.filter((a) => !a.loggedIn)) {
     facts.push({ label: account.email, value: "not logged in", warn: true });
   }
 
@@ -90,6 +105,66 @@ async function fetchHealth(creds: BridgeCredentials): Promise<BridgeHealth> {
   }
   if (!res.ok) throw new Error(`The bridge answered HTTP ${res.status}.`);
   return (await res.json()) as BridgeHealth;
+}
+
+export interface LhCampaign {
+  id: number;
+  uuid: string;
+  name: string;
+  description: string | null;
+  type: string;
+  state: "running" | "paused" | "archived" | "invalid";
+  createdAt: string;
+  stepCount: number;
+  steps: string[];
+}
+
+export interface LhAccountCampaigns {
+  account: {
+    id: number | null;
+    externalId: number | string | null;
+    name: string | null;
+    email: string | null;
+    lastLoginAt: string | null;
+  };
+  campaigns: LhCampaign[];
+  peopleCollected: number;
+  dailyMax: number | null;
+  usedToday: number | null;
+  error: string | null;
+}
+
+export interface LhCampaignsView {
+  accounts: LhAccountCampaigns[];
+  campaignCount: number;
+  /** Set when there is no database to read at all. */
+  unavailable?: string;
+  /** Set when the bridge itself could not be reached. */
+  offline?: string;
+  at: string;
+}
+
+/**
+ * Read-only mirror of what Linked Helper has. Never throws: a page that cannot
+ * reach the bridge should say so calmly, not 500.
+ */
+export async function readCampaignsView(): Promise<LhCampaignsView> {
+  const empty = { accounts: [], campaignCount: 0, at: new Date().toISOString() };
+  const creds = readCredentials();
+  if (!creds) {
+    return { ...empty, offline: "The bridge has never run, so there is nothing to read yet." };
+  }
+  try {
+    const res = await fetch(`http://127.0.0.1:${creds.port}/campaigns`, {
+      headers: { Authorization: `Bearer ${creds.token}` },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      cache: "no-store",
+    });
+    if (!res.ok) return { ...empty, offline: `The bridge answered HTTP ${res.status}.` };
+    return (await res.json()) as LhCampaignsView;
+  } catch {
+    return { ...empty, offline: `Nothing answered on the bridge at 127.0.0.1:${creds.port}.` };
+  }
 }
 
 export const linkedHelperChannel: Channel = {
@@ -127,16 +202,28 @@ export const linkedHelperChannel: Channel = {
 
     const facts = accountFacts(health);
 
-    // The bridge says the channel is live. Downgrade it ourselves if there is
-    // no usable licence — a reachable LH2 that cannot legally send is not ready.
+    // The bridge says the channel is live. Downgrade only on positive evidence
+    // that nothing can send: at least one licence we can read has run out, and
+    // none we can read is still good. An unreadable licence is not an expired
+    // one, and reporting it as such raises a false alarm on a working account.
     if (health.state === "ready") {
-      const accounts = health.accounts?.accounts ?? [];
-      const usable = accounts.some((a) => a.loggedIn && (a.licenceDaysLeft ?? 0) > 0);
-      if (accounts.length > 0 && !usable) {
+      const loggedIn = (health.accounts?.accounts ?? []).filter((a) => a.loggedIn);
+      const anyValid = loggedIn.some((a) => a.licenceState === "valid");
+      const anyExpired = loggedIn.some((a) => a.licenceState === "expired");
+
+      if (loggedIn.length > 0 && !anyValid && anyExpired) {
         return {
           ...base,
           state: "degraded",
-          detail: "Linked Helper is open, but no logged-in account has a licence left. Campaigns cannot run.",
+          detail: "Linked Helper is open, but every licence we can read has run out. Campaigns cannot run.",
+          facts,
+        };
+      }
+      if (loggedIn.length === 0) {
+        return {
+          ...base,
+          state: "degraded",
+          detail: "Linked Helper is open, but no LinkedIn account is logged in.",
           facts,
         };
       }
