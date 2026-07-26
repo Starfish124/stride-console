@@ -9,7 +9,11 @@
     "lint": "eslint",
     "test": "node --test \"tests/*.test.mjs\"",
     "demo": "node scripts/demo.mjs",
-    "pregen": "node scripts/pregen.mjs"
+    "pregen": "node scripts/pregen.mjs",
+    "agents": "node scripts/agents.mjs",
+    "backend": "node scripts/backend.mjs",
+    "seo:sweep": "node scripts/seo-sweep.mjs",
+    "seo:articles": "node scripts/seo-articles.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.113.0",

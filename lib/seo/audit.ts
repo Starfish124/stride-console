@@ -158,6 +158,42 @@ export function parseHtml(html: string, origin: string): ParsedPage {
 }
 
 /**
+ * The words of a keyword that carry targeting signal.
+ *
+ * Filtered by the stopword list only, never by length. An earlier version
+ * dropped tokens shorter than three characters, which silently discarded "ai"
+ * from every keyword in an AI consultancy's keyword set, so "a consultancy in
+ * the Netherlands" counted as targeting "ai consultancy netherlands".
+ */
+function significantTokens(phrase: string): string[] {
+  const out = phrase
+    .toLowerCase()
+    .split(/\s+/)
+    .map((t) => t.replace(/[^a-z0-9à-ÿ]/g, ""))
+    .filter((t) => t.length > 0 && !PLACEMENT_STOPWORDS.has(t));
+  // A phrase made entirely of stopwords has no signal to match on; fall back
+  // to requiring the literal phrase rather than matching everything.
+  return out.length > 0 ? out : [phrase.toLowerCase()];
+}
+
+/**
+ * Whether a piece of copy targets a keyword: the exact phrase, or all of its
+ * significant words.
+ *
+ * Exported so the optimiser validates against exactly what the auditor grades,
+ * and so a writer can bend the phrase into a real sentence. "An AI consultancy
+ * in the Netherlands" targets "ai consultancy netherlands"; demanding the rigid
+ * phrase produced "AI consultancy Netherlands businesses hire for practical
+ * integration", which no person would write.
+ */
+export function coversKeyword(text: string, keyword: string): boolean {
+  const hay = text.toLowerCase();
+  const needle = keyword.toLowerCase().trim();
+  if (hay.includes(needle)) return true;
+  return significantTokens(needle).every((t) => hay.includes(t));
+}
+
+/**
  * Where the primary keyword landed, against the required placements from the
  * claude-seo keyword-placement rules: title, H1, slug, meta description, first
  * hundred words, and at least one heading.
@@ -174,7 +210,7 @@ export function checkPlacement(
   // Significant tokens of the keyword. Short function words are dropped
   // because "ai use cases for business" and "AI use cases, for a business"
   // are the same target and only one of them matches as a literal substring.
-  const needleTokens = needle.split(/\s+/).filter((t) => t.length > 2 && !PLACEMENT_STOPWORDS.has(t));
+  const needleTokens = significantTokens(needle);
 
   /**
    * A slot counts as covered when it holds the exact phrase, or when it holds

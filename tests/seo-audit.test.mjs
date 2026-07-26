@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { checkPlacement, parseHtml, scorePage } from "../lib/seo/audit.ts";
-import { validateMeta } from "../lib/seo/optimise.ts";
+import { checkPlacement, coversKeyword, parseHtml, scorePage } from "../lib/seo/audit.ts";
+import { localeKeyword, validateMeta } from "../lib/seo/optimise.ts";
 
 const HTML = `<!doctype html>
 <html lang="en">
@@ -191,4 +191,51 @@ test("validateMeta holds descriptions to the snippet width", () => {
     "ai agents",
   );
   assert.equal(good.ok, true, good.problems.join("; "));
+});
+
+// ---------- regressions from the first live sweep ----------
+
+test("validateMeta rejects a title that starts lowercase", () => {
+  // The first live run produced exactly this, by pasting the stored keyword
+  // in verbatim at the start of the sentence.
+  const v = validateMeta(
+    "hire an AI consultant and book your consultation",
+    "title",
+    "hire an ai consultant",
+  );
+  assert.equal(v.ok, false);
+  assert.ok(v.problems.some((p) => p.includes("starts lowercase")), v.problems.join("; "));
+});
+
+test("validateMeta accepts a keyword bent into a real sentence", () => {
+  const v = validateMeta(
+    "An AI consultancy in the Netherlands, built by two engineers",
+    "title",
+    "ai consultancy netherlands",
+  );
+  assert.equal(v.ok, true, v.problems.join("; "));
+});
+
+test("coversKeyword matches the phrase or all of its significant words", () => {
+  assert.equal(coversKeyword("AI consultancy Netherlands", "ai consultancy netherlands"), true);
+  assert.equal(coversKeyword("An AI consultancy in the Netherlands", "ai consultancy netherlands"), true);
+  assert.equal(coversKeyword("A consultancy in the Netherlands", "ai consultancy netherlands"), false);
+});
+
+test("localeKeyword lets a Dutch page target a Dutch phrase", () => {
+  const page = {
+    route: "/blog",
+    primaryKeyword: "ai for business blog",
+    secondaryKeywords: [],
+    locales: {
+      en: { title: "t", description: "d" },
+      nl: { title: "t", description: "d", primaryKeyword: "ai voor bedrijven" },
+    },
+  };
+  assert.equal(localeKeyword(page, "en"), "ai for business blog");
+  assert.equal(
+    localeKeyword(page, "nl"),
+    "ai voor bedrijven",
+    "without this the optimiser forces an English phrase into a Dutch title",
+  );
 });

@@ -12,6 +12,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { callClaudeCli } from "../pipeline/write.ts";
 import { lint } from "../pipeline/lint.ts";
+import { coversKeyword } from "./audit.ts";
 import type { SiteRoute } from "./organiser.ts";
 import { type Locale, type MetaChange, type PageAudit } from "./types.ts";
 
@@ -32,6 +33,7 @@ export interface PagesFile {
   };
   pages: {
     route: string;
+    /** Default target. A locale may override it; see localeKeyword. */
     primaryKeyword: string;
     secondaryKeywords: string[];
     changedBy?: string;
@@ -46,10 +48,26 @@ export interface PagesFile {
           description: string;
           ogTitle?: string;
           ogDescription?: string;
+          /**
+           * Per-locale keyword override. Without this the Dutch page inherits
+           * the English target, and the optimiser dutifully forces an English
+           * phrase into a Dutch title. The first live run produced exactly
+           * that: "AI for business blog: praktijkcases en AI-tips".
+           */
+          primaryKeyword?: string;
+          secondaryKeywords?: string[];
         }
       >
     >;
   }[];
+}
+
+/** The keyword a route actually targets in a given language. */
+export function localeKeyword(
+  page: PagesFile["pages"][number],
+  locale: Locale,
+): string {
+  return page.locales[locale]?.primaryKeyword ?? page.primaryKeyword;
 }
 
 export function pagesFilePath(siteRepo: string): string {
@@ -79,8 +97,8 @@ export function toSiteRoutes(file: PagesFile): SiteRoute[] {
         locale,
         title: meta.title,
         description: meta.description,
-        primaryKeyword: page.primaryKeyword,
-        secondaryKeywords: page.secondaryKeywords,
+        primaryKeyword: localeKeyword(page, locale),
+        secondaryKeywords: meta.secondaryKeywords ?? page.secondaryKeywords,
         kind: page.route.startsWith("/blog/") ? "article" : "page",
       });
     }
@@ -110,8 +128,15 @@ export function validateMeta(
   if (trimmed.length < min) problems.push(`${field} is ${trimmed.length} chars, under ${min}`);
   if (trimmed.length > max) problems.push(`${field} is ${trimmed.length} chars, over ${max}`);
 
-  if (!trimmed.toLowerCase().includes(keyword.toLowerCase())) {
-    problems.push(`${field} does not contain the primary keyword "${keyword}"`);
+  if (!coversKeyword(trimmed, keyword)) {
+    problems.push(`${field} does not target the primary keyword "${keyword}"`);
+  }
+
+  // Keywords are stored lowercase, and the first live run produced the title
+  // "hire an AI consultant and book your consultation" by pasting one in
+  // verbatim at the start. A sentence starts with a capital.
+  if (/^[a-z]/.test(trimmed)) {
+    problems.push(`${field} starts lowercase: "${trimmed.slice(0, 30)}"`);
   }
 
   if (/[—–]/.test(trimmed)) problems.push("contains an em or en dash");
@@ -167,7 +192,7 @@ export function candidatesFrom(audits: PageAudit[], file: PagesFile): Candidate[
         locale: audit.locale,
         field: "title",
         current: meta.title,
-        keyword: page.primaryKeyword,
+        keyword: localeKeyword(page, audit.locale),
         reason: titleReasons.join(" "),
       });
     }
@@ -177,7 +202,7 @@ export function candidatesFrom(audits: PageAudit[], file: PagesFile): Candidate[
         locale: audit.locale,
         field: "description",
         current: meta.description,
-        keyword: page.primaryKeyword,
+        keyword: localeKeyword(page, audit.locale),
         reason: descReasons.join(" "),
       });
     }
@@ -195,13 +220,14 @@ function buildPrompt(c: Candidate): string {
 Rewrite one ${c.field} for the page ${c.route}.
 
 Language: ${LANGUAGE_NAME[c.locale]}. Write only in this language.
-Primary keyword, which must appear verbatim: "${c.keyword}"
+Primary keyword to target: "${c.keyword}"
 Current ${c.field}: "${c.current}"
 Why it is being changed: ${c.reason}
 
 Hard requirements:
 - Between ${min} and ${max} characters. This is measured, not estimated.
-- Contains "${c.keyword}" exactly, as early as reads naturally.
+- Targets "${c.keyword}". Use the exact phrase where it reads naturally, or bend it into a real sentence that still contains every significant word. "An AI consultancy in the Netherlands" is fine for "ai consultancy netherlands". Jamming the rigid phrase into a sentence no person would say is not.
+- Starts with a capital letter. The keyword is stored lowercase; capitalise it properly, and write AI rather than ai.
 - No em dashes, no en dashes, no emoji, no exclamation marks, no quote marks.
 - Plain, concrete, specific. Say what the page gives the reader.
 - Banned words: delve, leverage, unlock, empower, seamless, robust, holistic,
