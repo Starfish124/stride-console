@@ -46,3 +46,6 @@ next-env.d.ts
 # Xcode
 ios/*.xcodeproj/xcuserdata/
 ios/*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# Xcode build output
+ios/build/
