@@ -77,6 +77,11 @@ const OFF_AUDIENCE = new RegExp(
     // business consultant" is a reader who does our job, not one who hires us.
     "how to be an? ", "how to start an? .*(agency|consultanc)",
     "hoe begin je", "zelf .*(bouwen|maken) zonder",
+    // Dutch puts the verb last, so "how to become an AI consultant" surfaces
+    // as "ai consultant worden". The English patterns above never matched it,
+    // and it reached a real brief for a 2,500-word pillar aimed at people who
+    // want our job. "gezocht" is the same problem in recruitment phrasing.
+    "\\bworden\\b", "\\bgezocht\\b", "\\bopleiding(en)?\\b", "\\bstudie\\b",
   ].join("|"),
   "i",
 );

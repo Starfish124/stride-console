@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/library", label: "Library" },
   { href: "/radar", label: "Radar" },
   { href: "/campaigns", label: "Campaigns" },
+  { href: "/seo", label: "Search" },
   { href: "/outreach", label: "Outreach" },
   { href: "/events", label: "Events" },
   { href: "/playbook", label: "Playbook" },

@@ -28,6 +28,13 @@ import {
 const LANGUAGE: Record<Locale, string> = { en: "English", nl: "Dutch" };
 
 /**
+ * Twelve minutes. A 2,500-word pillar article with source material attached
+ * does not finish inside the four-minute default the post pipeline uses, and
+ * the first live batch proved it by timing out on every attempt.
+ */
+const ARTICLE_TIMEOUT_MS = 720_000;
+
+/**
  * Source material for a brief. Reuses the console's feeds, filtered to items
  * whose text actually overlaps the brief's keywords, then enriched with full
  * article text for the few that survive.
@@ -277,7 +284,8 @@ export async function writeArticle(
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     let raw: string;
     try {
-      raw = await callClaudeCli(prompt);
+      // Long-form needs a bigger budget than the shared default.
+      raw = await callClaudeCli(prompt, { timeoutMs: ARTICLE_TIMEOUT_MS });
     } catch (error) {
       return {
         attempts: attempt,

@@ -171,7 +171,14 @@ const CLI_TIMEOUT_MS = 240_000;
  * Runs from the OS temp dir so it never picks up a project's CLAUDE.md or
  * permission prompts. Uses the founders' Claude subscription auth.
  */
-export function callClaudeCli(prompt: string): Promise<string> {
+export function callClaudeCli(
+  prompt: string,
+  options: { timeoutMs?: number } = {},
+): Promise<string> {
+  // A LinkedIn post lands well inside four minutes. A 2,500-word pillar
+  // article does not: the first live batch died at exactly 240s with nothing
+  // to show, so callers that ask for long output pass their own budget.
+  const timeoutMs = options.timeoutMs ?? CLI_TIMEOUT_MS;
   const bin = claudeCliPath();
   if (!bin) return Promise.reject(new Error("Claude Code CLI not found"));
   const args = ["-p", "--output-format", "json"];
@@ -186,8 +193,8 @@ export function callClaudeCli(prompt: string): Promise<string> {
     let stderr = "";
     const timer = setTimeout(() => {
       child.kill("SIGKILL");
-      reject(new Error(`Claude CLI timed out after ${CLI_TIMEOUT_MS / 1000}s`));
-    }, CLI_TIMEOUT_MS);
+      reject(new Error(`Claude CLI timed out after ${timeoutMs / 1000}s`));
+    }, timeoutMs);
     child.stdout.on("data", (d: Buffer) => (stdout += d.toString()));
     child.stderr.on("data", (d: Buffer) => (stderr += d.toString()));
     child.on("error", (err) => {

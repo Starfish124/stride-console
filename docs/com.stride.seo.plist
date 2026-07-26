@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- launchd template for the SEO agent supervisor. Setup: docs/SEO.md.
+     Replace REPLACE_WITH_REPO_PATH with the absolute path to stride-console.
+
+     Only needed if you are NOT starting the agents with `npm run backend`.
+     Running both would give you two supervisors racing on the same JSON store. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.stride.seo</string>
+
+  <!-- A login shell so node and the claude CLI are on PATH. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>cd REPLACE_WITH_REPO_PATH &amp;&amp; npm run agents</string>
+  </array>
+
+  <!-- The supervisor holds its own schedule, so this is a long-lived process
+       rather than a calendar job. It catches up after the Mac sleeps, which a
+       StartCalendarInterval job silently cannot. -->
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <!-- Sonnet is the right tier for this work and keeps overnight runs cheap. -->
+    <key>CLAUDE_CLI_MODEL</key>
+    <string>sonnet</string>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/stride-seo.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/stride-seo.log</string>
+</dict>
+</plist>

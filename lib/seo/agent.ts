@@ -19,6 +19,7 @@ import {
   newId,
   saveArticle,
   saveAudits,
+  saveBriefs,
   saveClusters,
   saveKeywords,
 } from "./store.ts";
@@ -155,7 +156,40 @@ export async function dailySweep(options: SweepOptions = {}): Promise<SweepResul
     failures.push(`Search Console: ${stats.reason}`);
   }
 
-  // ---- 4. cluster and assign ----
+  // ---- 4. re-apply the filters to what is already stored ----
+
+  // Filters tighten as the engine meets real data: the first runs added the
+  // job-seeker filter, then the off-market one, then Dutch verb-final phrasing
+  // ("ai consultant worden"). Terms admitted under a looser filter must be
+  // dropped, or the store keeps steering work at an audience we cannot sell to
+  // long after the rule that catches them exists.
+  {
+    const { isTargetableTerm } = await import("./expand.ts");
+
+    const stored = listKeywords();
+    const kept = stored.filter((k) => k.discoveredVia === "manual" || isTargetableTerm(k.term));
+    if (kept.length !== stored.length) saveKeywords(kept);
+
+    // Briefs are reconciled against the filter directly rather than against
+    // whatever this run happened to drop. An earlier version only cleaned
+    // briefs on runs that also dropped a keyword, so when the keyword prune
+    // succeeded and the brief write then failed, every later run saw a store
+    // already clean and left the stale briefs alone permanently. Reconciling
+    // from the rule instead of from the diff cannot get stuck that way.
+    const briefs = listBriefs();
+    const reconciled = briefs
+      .filter((b) => isTargetableTerm(b.primaryKeyword))
+      .map((b) => ({
+        ...b,
+        secondaryKeywords: b.secondaryKeywords.filter((t) => isTargetableTerm(t)),
+      }));
+    const changed =
+      reconciled.length !== briefs.length ||
+      reconciled.some((b, i) => b.secondaryKeywords.length !== briefs[i].secondaryKeywords.length);
+    if (changed) saveBriefs(reconciled);
+  }
+
+  // ---- 5. cluster and assign ----
 
   const keywords = listKeywords();
   const { clusters, assignment } = clusterKeywords(
@@ -174,7 +208,7 @@ export async function dailySweep(options: SweepOptions = {}): Promise<SweepResul
   saveKeywords(keywords);
   saveClusters(clusters);
 
-  // ---- 5. audit every live route ----
+  // ---- 6. audit every live route ----
 
   for (const route of routes) {
     const url =
@@ -202,7 +236,7 @@ export async function dailySweep(options: SweepOptions = {}): Promise<SweepResul
     );
   }
 
-  // ---- 6. fix what can be fixed from pages.json ----
+  // ---- 7. fix what can be fixed from pages.json ----
 
   try {
     const file = readPagesFile(config.siteRepo);
@@ -223,7 +257,7 @@ export async function dailySweep(options: SweepOptions = {}): Promise<SweepResul
     failures.push(`optimiser: ${msg(error)}`);
   }
 
-  // ---- 7. queue the gaps ----
+  // ---- 8. queue the gaps ----
 
   try {
     const fresh = addBriefs(

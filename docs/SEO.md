@@ -1,0 +1,186 @@
+# The SEO engine
+
+The website works on itself. Every night an agent looks for what people search
+for, checks how each page reads to a crawler, and fixes what it can fix safely.
+Every Monday it drafts articles for the gaps and waits on `/seo` for you to
+press publish.
+
+Nothing reaches the live site without either passing a deterministic gate
+(metadata) or a human pressing a button (articles).
+
+---
+
+## Starting it
+
+```bash
+cd ~/stride-console
+npm run backend
+```
+
+That starts the console and the agents together. Starting the console alone
+leaves a system that looks healthy and quietly stops improving, which is why
+there is a single command.
+
+To run a job by hand:
+
+```bash
+npm run seo:sweep                  # discovery, audit, metadata fixes
+npm run seo:sweep -- --shallow     # skip the alphabet pass, much faster
+npm run seo:sweep -- --dry-run     # propose changes, write nothing
+npm run seo:articles               # draft this week's articles
+npm run agents -- --now=sweep      # run one job through the supervisor and exit
+```
+
+## The schedule
+
+| When | Job | What it does |
+|---|---|---|
+| 03:15 daily | sweep | Discovers keywords, pulls Search Console, audits every page, applies safe metadata fixes, queues article briefs |
+| 07:40 Monday | articles | Drafts articles for the highest-opportunity gaps, then notifies your phone |
+
+The supervisor holds its own clock rather than using launchd calendar events,
+because the Mac sleeps and a calendar job that fires while asleep is simply
+missed. This catches up on wake, inside a window that closes so a machine woken
+at 23:00 does not start a sweep nobody will read.
+
+## Running it under launchd
+
+Optional. `npm run backend` is enough if the console is already started that
+way. To run the agents as their own always-on job:
+
+```bash
+cp docs/com.stride.seo.plist ~/Library/LaunchAgents/
+# edit it and replace REPLACE_WITH_REPO_PATH with /Users/<you>/stride-console
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.stride.seo.plist
+launchctl kickstart -k gui/$(id -u)/com.stride.seo
+tail -f /tmp/stride-seo.log
+```
+
+---
+
+## Connecting Google Search Console
+
+Until this is done there are no click or ranking numbers. The dashboard says
+"not measured" rather than showing zeroes, because a dashboard reading 0 clicks
+is indistinguishable from one that was never connected and the two mean
+opposite things.
+
+It is also the single biggest upgrade to the engine's judgement. Without it,
+keyword scoring works from intent and phrasing. With it, scoring is driven by
+striking distance: a term sitting at position 5 to 20 with real impressions is
+already close, and moving it up converts traffic Google is already showing you.
+It also harvests the queries people actually used, which is better data than
+any keyword tool.
+
+### 1. Verify the domain
+
+Go to [Search Console](https://search.google.com/search-console), add a
+**Domain** property for `stride-ai.nl`, and verify with the DNS TXT record it
+gives you. Domain properties cover both `stride-ai.nl` and `www`, and every
+path under them, so this only has to happen once.
+
+### 2. Create a service account
+
+In [Google Cloud Console](https://console.cloud.google.com):
+
+1. Create a project (or reuse one).
+2. Enable the **Google Search Console API**.
+3. Go to **IAM and Admin → Service Accounts → Create service account**. Name it
+   anything; it needs no project roles.
+4. Open it, go to **Keys → Add key → Create new key → JSON**, and download it.
+
+### 3. Give it read access to the property
+
+Back in Search Console: **Settings → Users and permissions → Add user**. Paste
+the service account's `client_email` (it looks like
+`something@project.iam.gserviceaccount.com`) and give it **Full** or
+**Restricted**. Restricted is enough; the engine only reads.
+
+### 4. Drop the key in
+
+```bash
+mv ~/Downloads/<the-key>.json ~/stride-console/data/gsc-key.json
+chmod 600 ~/stride-console/data/gsc-key.json
+```
+
+`data/` is gitignored, so the key never reaches a repository.
+
+Override the location or property with `GSC_SERVICE_ACCOUNT_KEY` and
+`GSC_SITE_URL` if you need to. The default property is `sc-domain:stride-ai.nl`,
+which is the form a Domain property uses; a URL-prefix property would be
+`https://stride-ai.nl/`.
+
+### 5. Check it
+
+```bash
+npm run seo:sweep -- --shallow
+```
+
+The sweep reports `partial` with a Search Console reason while it is not
+connected, and stops mentioning it once it is. Search Console data lags about
+two days, and a brand-new property has no history, so expect an empty but
+*available* result at first.
+
+---
+
+## What the agent may and may not change
+
+**It may edit `content/seo/pages.json`** in the website repo. That file is the
+single source of every page title, description and keyword target. Each
+proposed value is checked before it is written: length bounds, that it targets
+the keyword, that it starts with a capital, no em dashes, no emoji, and the
+same voice gate every other piece of Stride writing passes. A proposal that
+fails is dropped rather than applied with a warning, because unattended
+"applied with a warning" means live and wrong until somebody reads a log.
+
+**It may add markdown files under `content/blog/`**, but only after you press
+publish.
+
+**It may not edit any `.tsx` file.** H1s, body copy and page structure live in
+components, and a machine editing JSX is one bad regex from breaking the build.
+So findings like "the primary keyword is absent from the H1" are reported for a
+human and never auto-fixed. That is why the on-page score plateaus rather than
+reaching 100 on its own: what is left is deliberately yours.
+
+Every change is a git commit in the website repo, with the reason in the
+message. A bad run is undone with `git revert`.
+
+## Configuration
+
+`data/seo-config.json`, created on first write. Defaults:
+
+| Key | Default | Meaning |
+|---|---|---|
+| `siteRepo` | `~/ai-agency-website` | The website checkout to publish into. Override with `STRIDE_SITE_REPO`. |
+| `baseUrl` | `https://stride-ai.nl` | What the auditor fetches. |
+| `locales` | `["en","nl"]` | Languages tracked. |
+| `weeklyArticleTarget` | `3` | Drafts per Monday. |
+| `autoApplyMetadata` | `true` | Apply title and description fixes without asking. Reversible with one git revert; holding them for approval means the site never improves between Mondays. |
+| `autoPublishOnApproval` | `true` | Push after you press publish, so Netlify rebuilds. Set false to commit locally only. |
+
+Seed keywords live in the same file under `seeds`. They are the starting point
+for discovery, not the whole set: each seed is expanded through Google's
+autocomplete with intent modifiers and an alphabet pass.
+
+## Where things are stored
+
+Everything under `data/`, gitignored, atomic writes:
+
+| File | Contents |
+|---|---|
+| `seo-keywords.json` | Every tracked keyword with intent, cluster, assigned page, opportunity score and Search Console numbers |
+| `seo-clusters.json` | Hub-and-spoke groupings |
+| `seo-briefs.json` | Queued article briefs for gaps nothing serves |
+| `seo-articles.json` | Drafts, approved, published |
+| `seo-audits.json` | Latest per-page audit |
+| `seo-sweeps.json` | Last 90 sweeps, with every metadata change and its reason |
+| `seo-agent-state.json` | When each scheduled job last ran |
+
+## Known rough edges
+
+Autocomplete surfaces terms that are on-topic but not ours: other companies'
+product names (`ai agent pricing ghl`, `ai agent tools n8n`) and unrelated firms
+that share a word (`ai bureau veritas`). The filters catch wrong audiences and
+wrong markets, not brand noise. These reach the brief queue with real
+opportunity scores, and reading the queue on `/seo` before Monday is how they
+get caught. Discarding a draft costs one click.

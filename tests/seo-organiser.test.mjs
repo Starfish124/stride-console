@@ -317,3 +317,14 @@ test("isTargetableTerm drops advice written for consultants rather than buyers",
   assert.equal(isTargetableTerm("how to start an ai agency"), false);
   assert.equal(isTargetableTerm("how to automate invoice processing with ai"), true);
 });
+
+test("isTargetableTerm catches Dutch job-seeker phrasing, where the verb comes last", () => {
+  // "ai consultant worden" is "how to become an AI consultant". It reached a
+  // real brief for a 2,500-word pillar before this filter existed.
+  assert.equal(isTargetableTerm("ai consultant worden"), false);
+  assert.equal(isTargetableTerm("ai consultant gezocht"), false);
+  assert.equal(isTargetableTerm("ai opleiding voor bedrijven"), false);
+  // And still keeps the buyer-side Dutch terms.
+  assert.equal(isTargetableTerm("ai consultant mkb"), true);
+  assert.equal(isTargetableTerm("ai chatbot laten maken kosten"), true);
+});
