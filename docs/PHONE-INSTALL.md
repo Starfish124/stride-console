@@ -2,27 +2,22 @@
 
 Written for Jort, works for anyone we trust with the console.
 
-The console lives on the Mac mini and is only reachable over our private
-Tailscale network. So every path starts with the same step: get on the
-tailnet. After that you choose an install: the web app (recommended) or
-the native app.
+**You do not need Tailscale.** That changed on 2026-07-24: the console is
+served to the open internet over Tailscale Funnel, on a real Let's Encrypt
+certificate. Any phone, any network, no VPN, nothing to install first.
 
----
+If you already installed Tailscale — it does no harm, but it does nothing
+for you here either. Signing into it with your own GitHub account puts you
+on your *own* private network, not ours, which is a good way to spend an
+afternoon wondering why nothing loads. Ignore it and use the address below.
 
-## Step 0 — Get on the tailnet (one-time, needs Sarvesh)
+Everything except the public signup page sits behind a password. Ask
+Sarvesh for it; it is deliberately not written down here.
 
-1. **Sarvesh:** open [the Tailscale admin console](https://login.tailscale.com/admin/users),
-   press **Invite users**, and send an invite to Jort's email.
-2. **Jort:** install **Tailscale** from the App Store, open the invite link
-   on your phone, and sign in with that account.
-3. Open the Tailscale app and flip the switch to **Connected**. Accept the
-   iOS "Allow VPN configuration" prompt — that's the one that matters.
-4. Test it: open **https://mac-mini.tailc91701.ts.net** in Safari. You
-   should see the Stride login. Password: ask Sarvesh — it is not in this
-   file on purpose.
+**The address: https://mac-mini.tailc91701.ts.net**
 
-If the page does not load, the answer is almost always the Tailscale
-switch. Turn it on, try again.
+Open it in Safari. You should get the Stride login. If you do, skip to
+Option A — you are two minutes from done.
 
 ---
 
@@ -54,13 +49,10 @@ app binary.
 2. On the Mac, in Terminal:
 
    ```bash
-   cd ~/stride-console/ios
-   xcodegen generate
-   xcodebuild -project StrideConsole.xcodeproj -scheme StrideConsole \
-     -destination 'generic/platform=iOS' -allowProvisioningUpdates build
-   xcrun devicectl list devices        # find the phone's identifier
-   xcrun devicectl device install app --device <IDENTIFIER> \
-     ~/Library/Developer/Xcode/DerivedData/StrideConsole-*/Build/Products/Debug-iphoneos/StrideConsole.app
+   cd ~/stride-console
+   ./scripts/install-ios.sh              # the only phone plugged in
+   ./scripts/install-ios.sh "Jort"       # or match by name, two phones attached
+   ./scripts/install-ios.sh --list       # see what the Mac can find
    ```
 
 3. First launch only: if iOS says **Untrusted Developer**, go to
@@ -74,12 +66,14 @@ app binary.
 
 In order of likelihood:
 
-1. **Tailscale is off on the phone.** Open the app, connect.
-2. **Tailscale is stuck at "Starting…".** Force-quit the app and reopen;
-   if that fails, reboot the phone — this fixes it nearly every time.
-3. **The Mac mini is off or asleep.** The console runs on it.
-4. Still stuck? The console service may need a kick on the Mac:
+1. **The Mac mini is off, asleep, or off the internet.** The console runs
+   on it and nowhere else. This is nearly always the answer.
+2. **You turned Tailscale on and it is doing something odd.** You do not
+   need it. Switch it off and try again.
+3. Still stuck? On the Mac, the console service may need a kick:
    `launchctl kickstart -k gui/$(id -u)/com.stride.console`
+   and the public route may need checking: `tailscale funnel status`
+   should show `https://mac-mini.tailc91701.ts.net` proxying to port 3000.
 
 Your drafts are safe through all of this. The store is on the Mac's disk;
 the phone is just a window.

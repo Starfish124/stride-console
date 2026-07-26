@@ -73,17 +73,16 @@ The console installs as a PWA, so draft review works from a pocket.
 **Founder setup (Jort, start here).** The full walkthrough lives in
 [docs/PHONE-INSTALL.md](docs/PHONE-INSTALL.md). The short version:
 
-1. Accept the Tailscale invite from Sarvesh, install the **Tailscale** app
-   on your iPhone, sign in, flip it to **Connected** and accept the VPN
-   prompt. The console is only reachable on our private network — no
-   Tailscale, no console.
-2. In Safari, open `https://mac-mini.tailc91701.ts.net` and log in
-   (password: ask Sarvesh).
-3. Share button → **Add to Home Screen** → open the Stride icon.
-4. In the app: Settings → enable draft-ready notifications.
+1. In Safari, open `https://mac-mini.tailc91701.ts.net` and log in
+   (password: ask Sarvesh). **No Tailscale, no VPN, nothing to install
+   first** — the console is on the open internet behind that password,
+   on a real certificate.
+2. Share button → **Add to Home Screen** → open the Stride icon.
+3. In the app: Settings → enable draft-ready notifications.
 
-If it ever says the console is unreachable, the Tailscale switch is off
-nine times out of ten. The troubleshooting list is in the guide.
+If it ever says the console is unreachable, the Mac mini is off, asleep,
+or off the internet — that is nearly always it. The troubleshooting list
+is in the guide.
 
 **Add to Home Screen.** Open the console in the phone's browser (same network as the machine running it, e.g. `http://<your-mac>.local:3000`). On iPhone: Safari, the Share button, "Add to Home Screen." On Android: Chrome, the three-dot menu, "Add to Home screen" or the install prompt. The app opens full screen with the brand mark as its icon.
 
