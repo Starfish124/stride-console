@@ -3,6 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import {
+  IconGrid,
+  IconPipeline,
+  IconLayers,
+  IconSearch,
+  IconTuneLoop,
+} from "@/components/icons";
 
 /**
  * Phone-width navigation: an app-style tab bar in thumb reach, because the
@@ -11,10 +18,10 @@ import { useState } from "react";
  */
 
 const TABS = [
-  { href: "/", label: "Console", icon: ConsoleIcon },
-  { href: "/campaigns", label: "Campaigns", icon: CampaignsIcon },
-  { href: "/library", label: "Library", icon: LibraryIcon },
-  { href: "/radar", label: "Radar", icon: RadarIcon },
+  { href: "/", label: "Console", icon: IconGrid },
+  { href: "/campaigns", label: "Campaigns", icon: IconPipeline },
+  { href: "/library", label: "Library", icon: IconLayers },
+  { href: "/radar", label: "Radar", icon: IconSearch },
 ] as const;
 
 const MORE = [
@@ -100,7 +107,7 @@ export function TabBar() {
                   active ? "text-indigo" : "text-slate"
                 }`}
               >
-                <Icon active={active} />
+                <Icon size={23} strong={active} />
                 <span className="text-[10px] font-semibold tracking-[0.01em]">{tab.label}</span>
               </Link>
             );
@@ -113,81 +120,11 @@ export function TabBar() {
               moreActive || moreOpen ? "text-indigo" : "text-slate"
             }`}
           >
-            <MoreIcon active={moreActive || moreOpen} />
+            <IconTuneLoop size={23} strong={moreActive || moreOpen} />
             <span className="text-[10px] font-semibold tracking-[0.01em]">More</span>
           </button>
         </div>
       </nav>
     </>
-  );
-}
-
-/**
- * Tab icons follow the SF Symbols habit: outline when idle, weightier and
- * tinted when selected. The fill is faint on purpose — iOS signals the
- * current tab mostly through colour, and a solid glyph at 22px reads as a
- * different icon rather than the same one selected.
- */
-type IconProps = { active?: boolean };
-
-function glyph(active?: boolean) {
-  return {
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: active ? 2 : 1.6,
-    strokeLinecap: "round",
-    strokeLinejoin: "round",
-  } as const;
-}
-
-const wash = (active?: boolean) => (active ? "currentColor" : "none");
-
-function ConsoleIcon({ active }: IconProps) {
-  return (
-    <svg width="23" height="23" viewBox="0 0 24 24" aria-hidden="true" {...glyph(active)}>
-      <rect x="4" y="4" width="7" height="7" rx="1.4" fill={wash(active)} fillOpacity={0.14} />
-      <rect x="13" y="4" width="7" height="7" rx="1.4" fill={wash(active)} fillOpacity={0.14} />
-      <rect x="4" y="13" width="7" height="7" rx="1.4" fill={wash(active)} fillOpacity={0.14} />
-      <rect x="13" y="13" width="7" height="7" rx="1.4" fill={wash(active)} fillOpacity={0.14} />
-    </svg>
-  );
-}
-
-function LibraryIcon({ active }: IconProps) {
-  return (
-    <svg width="23" height="23" viewBox="0 0 24 24" aria-hidden="true" {...glyph(active)}>
-      <path d="M5 4h4v16H5zM11 4h4v16h-4z" fill={wash(active)} fillOpacity={0.14} />
-      <path d="M16.5 5l3.5 1-3.8 14-3.4-1z" fill={wash(active)} fillOpacity={0.14} />
-    </svg>
-  );
-}
-
-function RadarIcon({ active }: IconProps) {
-  return (
-    <svg width="23" height="23" viewBox="0 0 24 24" aria-hidden="true" {...glyph(active)}>
-      <circle cx="12" cy="12" r="8" fill={wash(active)} fillOpacity={0.1} />
-      <circle cx="12" cy="12" r="4.5" />
-      <path d="M12 12l5.5-5.5" />
-      <circle cx="12" cy="12" r="0.7" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
-function CampaignsIcon({ active }: IconProps) {
-  return (
-    <svg width="23" height="23" viewBox="0 0 24 24" aria-hidden="true" {...glyph(active)}>
-      <path d="M4 9.5v5a1 1 0 0 0 1 1h3l6 4V4.5l-6 4H5a1 1 0 0 0-1 1Z" fill={wash(active)} fillOpacity={0.14} />
-      <path d="M17.5 9a4 4 0 0 1 0 6" />
-    </svg>
-  );
-}
-
-function MoreIcon({ active }: IconProps) {
-  return (
-    <svg width="23" height="23" viewBox="0 0 24 24" aria-hidden="true" {...glyph(active)}>
-      <circle cx="6" cy="12" r={active ? 1.5 : 1.1} fill="currentColor" stroke="none" />
-      <circle cx="12" cy="12" r={active ? 1.5 : 1.1} fill="currentColor" stroke="none" />
-      <circle cx="18" cy="12" r={active ? 1.5 : 1.1} fill="currentColor" stroke="none" />
-    </svg>
   );
 }

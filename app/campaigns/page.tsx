@@ -3,6 +3,7 @@ import { FOUNDER_COOKIE } from "@/lib/auth";
 import { Header } from "@/components/ui";
 import { readCampaignsView } from "@/lib/channels/linkedHelper";
 import { CampaignDeck } from "@/components/CampaignDeck";
+import { CampaignCreator } from "@/components/CampaignCreator";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +47,10 @@ export default async function CampaignsPage() {
         {view.accounts.map((entry) => (
           <section key={String(entry.account.externalId)} className="mb-10">
             <CampaignDeck entry={entry} />
+
+            <div className="mt-4">
+              <CampaignCreator />
+            </div>
 
             {entry.error && (
               <p className="mb-4 rounded-card border border-amber-200 bg-white p-4 text-sm text-amber-700">

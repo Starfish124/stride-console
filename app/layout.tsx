@@ -1,15 +1,16 @@
 import type { Metadata, Viewport } from "next";
 // Self-hosted, deliberately: the console is installed to a home screen and
 // must render the same with no network, which rules out Google-hosted fonts.
-// Playfair carries display type, Archivo the body, Plex Mono every label —
-// the same three roles the pitch deck uses.
-import "@fontsource/archivo/400.css";
-import "@fontsource/archivo/600.css";
-import "@fontsource/archivo/700.css";
+// Plus Jakarta Sans and JetBrains Mono come from the icon library; Playfair
+// stays on display type, as the deck sets it.
+import "@fontsource/plus-jakarta-sans/400.css";
+import "@fontsource/plus-jakarta-sans/500.css";
+import "@fontsource/plus-jakarta-sans/600.css";
+import "@fontsource/plus-jakarta-sans/700.css";
 import "@fontsource/playfair-display/500.css";
 import "@fontsource/playfair-display/500-italic.css";
 import "@fontsource/playfair-display/600.css";
-import "@fontsource/ibm-plex-mono/500.css";
+import "@fontsource/jetbrains-mono/500.css";
 import "./globals.css";
 import { SWRegister } from "@/components/SWRegister";
 import { TabBar } from "@/components/TabBar";
@@ -28,7 +29,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#F4F4F8",
+  themeColor: "#F6F7FA",
   // The chrome is translucent and content scrolls under it, so the page has
   // to own the safe areas rather than let iOS letterbox them.
   viewportFit: "cover",

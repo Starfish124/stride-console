@@ -18,7 +18,7 @@ import { probe, readAccounts } from "./lh.mjs";
 import { CdpError } from "./cdp.mjs";
 import { readCampaigns, audienceAtRisk, readAiDrafts, DbUnavailable } from "./db.mjs";
 import { dismissNotices, clickIconByTooltip, scanRowIcons, ControlError } from "./control.mjs";
-import { AccountSession, readCampaignUi, accountDebugPort } from "./account.mjs";
+import { AccountSession, readCampaignUi, accountDebugPort, createCampaign, closeWizard } from "./account.mjs";
 
 /** One session against whichever account instance is running. */
 const account = new AccountSession();
@@ -213,6 +213,48 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/campaign-ui" && req.method === "GET") {
       const port = accountDebugPort();
       return send(res, 200, { port, ...(await readCampaignUi(account)) });
+    }
+
+    /* Make a campaign through Linked Helper's own wizard.
+     *
+     * Needs no audience guard: every template arrives paused with its steps
+     * unarmed, so creating one sends nothing. Reaching people takes arming the
+     * steps and starting the runner, and both are separate deliberate acts. */
+    if (url.pathname === "/campaign/create" && req.method === "POST") {
+      const body = await readJsonBody(req);
+      const before = (() => { try { return readCampaigns().campaignCount; } catch { return null; } })();
+
+      let made;
+      try {
+        made = await createCampaign(account, { name: body.name, template: body.template });
+      } catch (err) {
+        // Never leave the picker open over the app after a failure.
+        try { await closeWizard(account); } catch { /* best effort */ }
+        throw err;
+      }
+
+      // Verify against the database rather than trusting the click.
+      let after = null;
+      for (let i = 0; i < 6 && after === null; i++) {
+        await new Promise((r) => setTimeout(r, 900));
+        try {
+          const count = readCampaigns().campaignCount;
+          if (before === null || count > before) after = count;
+        } catch { /* keep waiting */ }
+      }
+
+      if (after === null) {
+        return send(res, 409, {
+          error: "unverified",
+          detail: "The wizard was driven, but no new campaign appeared in Linked Helper's database. Check the app before trying again.",
+          ...made,
+        });
+      }
+      return send(res, 200, { ok: true, campaignCount: after, ...made });
+    }
+
+    if (url.pathname === "/campaign/wizard-close" && req.method === "POST") {
+      return send(res, 200, { result: await closeWizard(account) });
     }
 
     if (url.pathname === "/account/icons" && req.method === "GET") {

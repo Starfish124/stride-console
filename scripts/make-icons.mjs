@@ -7,7 +7,8 @@
 // remember which sizes iOS wants.
 //
 // Sizing differs by target on purpose:
-//   standard   the mark reads best a little inset from the edge
+//   standard   the library is explicit: mark at 46% of the tile, optically
+//              centred. Bigger than that and it stops looking like the brand
 //   maskable   Android crops to a circle, so the mark must survive a 20% bite
 //   iOS        full-bleed, fully opaque; the system applies its own squircle,
 //              and renders any alpha it finds as black
@@ -21,10 +22,10 @@ const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const MASTER = path.join(ROOT, "brand", "stride-mark.png");
 
 /** Brand paper, matching background_color in the manifest. */
-const PAPER = { r: 0xf4, g: 0xf4, b: 0xf8, alpha: 1 };
+const PAPER = { r: 0xf6, g: 0xf7, b: 0xfa, alpha: 1 };
 
 /** The mark's own blue, sampled from the master. Brighter than UI indigo. */
-const MARK = { r: 48, g: 51, b: 247 };
+const MARK = { r: 0x2e, g: 0x30, b: 0xf8 };
 
 /**
  * The mark, trimmed and cut out onto transparency.
@@ -122,17 +123,17 @@ console.log(`master  brand/stride-mark.png`);
 console.log(`mark    ${mark.info.width}x${mark.info.height} after trim\n`);
 
 // Progressive web app.
-write(path.join(ROOT, "public/icons/icon-192.png"), await icon(192, 0.62, mark));
-write(path.join(ROOT, "public/icons/icon-512.png"), await icon(512, 0.62, mark));
+write(path.join(ROOT, "public/icons/icon-192.png"), await icon(192, 0.46, mark));
+write(path.join(ROOT, "public/icons/icon-512.png"), await icon(512, 0.46, mark));
 
 // Android crops maskable icons to a circle: keep the mark inside the safe zone.
-write(path.join(ROOT, "public/icons/icon-maskable-512.png"), await icon(512, 0.46, mark));
+write(path.join(ROOT, "public/icons/icon-maskable-512.png"), await icon(512, 0.38, mark));
 
 // iOS home screen for the web app, and the native shell's icon. Both opaque.
-const appleTouch = await sharp(await icon(180, 0.62, mark)).flatten({ background: PAPER }).png().toBuffer();
+const appleTouch = await sharp(await icon(180, 0.46, mark)).flatten({ background: PAPER }).png().toBuffer();
 write(path.join(ROOT, "public/icons/apple-touch-icon.png"), appleTouch);
 
-const ios1024 = await sharp(await icon(1024, 0.6, mark)).flatten({ background: PAPER }).png().toBuffer();
+const ios1024 = await sharp(await icon(1024, 0.46, mark)).flatten({ background: PAPER }).png().toBuffer();
 write(path.join(ROOT, "ios/Assets.xcassets/AppIcon.appiconset/icon-1024.png"), ios1024);
 
 // Browser tab.

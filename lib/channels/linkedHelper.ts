@@ -242,6 +242,11 @@ export function stopAccount(email: string) {
   return control("/account/stop", { email });
 }
 
+/** Drive Linked Helper's own wizard. Creating a campaign sends nothing. */
+export function createCampaign(name: string, template: string) {
+  return control("/campaign/create", { name, template });
+}
+
 export const linkedHelperChannel: Channel = {
   id: "linked-helper",
   label: "Linked Helper 2",

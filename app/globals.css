@@ -3,9 +3,9 @@
 /* ————————————————————————————————————————————————————————————————
  * Stride AI console.
  *
- * The brand tokens are shared verbatim with stride-pitch so the deck and
- * the console cannot drift. Playfair Display carries display type, Archivo
- * the body, IBM Plex Mono every label — the same three roles as the deck.
+ * Colour, type and icons come from the Stride icon library, which states it
+ * is the single source of truth. Plus Jakarta Sans carries the interface,
+ * JetBrains Mono every label, Playfair the display type.
  *
  * The surface language is iOS: grouped inset lists, hairline separators,
  * translucent chrome over content, and press states that scale rather than
@@ -14,18 +14,30 @@
  * ———————————————————————————————————————————————————————————————— */
 
 @theme {
-  --color-indigo: #3d44d9;
-  --color-indigo-deep: #2a2fb0;
-  --color-indigo-tint: #e9eafb;
-  --color-ink: #101116;
-  --color-slate: #5e647b;
-  --color-paper: #f4f4f8;
-  --color-line: #e3e4ec;
-  --color-midnight: #101126;
+  /* Straight from the icon library, which calls itself the single source of
+     truth and supersedes the older brand strip. Stride blue is a shade
+     brighter and the ink a shade deeper than the console used to run. */
+  --color-indigo: #2e30f8;
+  --color-indigo-deep: #2325c9;
+  --color-indigo-tint: #ececfe;
+  --color-violet: #6d6ffa;
+  --color-signal: #2ba6ff;
+  --color-lime: #76b900;
+  --color-amber: #ffa92b;
 
-  --font-sans: "Archivo", -apple-system, "Helvetica", sans-serif;
+  --color-ink: #0a0c14;
+  --color-slate: #5a6172;
+  --color-mute: #8a90a0;
+  --color-paper: #f6f7fa;
+  --color-line: #e5e8f0;
+  --color-midnight: #0a0c14;
+
+  /* Plus Jakarta Sans carries the interface and JetBrains Mono every label,
+     both from the library. Playfair stays on display type: the founder's
+     call, and the deck is set that way too. */
+  --font-sans: "Plus Jakarta Sans", -apple-system, "Helvetica", sans-serif;
   --font-display: "Playfair Display", "Iowan Old Style", Georgia, serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   --radius-input: 10px;
   --radius-card: 16px;
@@ -204,27 +216,31 @@ button:active:not(:disabled) {
 
 /* ——— the house signature ——————————————————————————————————————
  *
- * The Stride mark is two parallelograms sheared about 12 degrees. That shear
- * is the one shape the brand owns, so it repeats: on state pills, on the rule
- * under a number, on the marker beside a running campaign. Cards and text stay
- * upright. A whole interface on a slant is a novelty; a slant that only ever
- * appears on the things that mean something is a signature.
+ * The mark is a bar sheared along a 12:24 diagonal, and the library builds its
+ * accent from five of them. That shear is the one shape the brand owns, so it
+ * repeats on the things that carry meaning: the marker beside a running
+ * campaign, the rule under a figure. Cards and text stay upright. A whole
+ * interface on a slant is a novelty; a slant reserved for what matters is a
+ * signature.
+ *
+ * The angle is taken from the artwork rather than the caption. The library
+ * describes the accent as sheared 30 degrees, but every polygon it ships runs
+ * 12 across for 24 down, which is 26.57. The drawing is what people see.
  */
 .slant {
-  transform: skewX(-12deg);
+  transform: skewX(-26.57deg);
 }
 
 /* Undoes the shear for text sitting inside a sheared container. */
 .slant > * {
-  transform: skewX(12deg);
+  transform: skewX(26.57deg);
 }
 
-/* The mark itself, reduced to one bar, used as a rule or a marker. */
 .slant-rule {
   height: 3px;
   border-radius: 1px;
   background: currentColor;
-  transform: skewX(-12deg);
+  transform: skewX(-26.57deg);
 }
 
 /* A number that carries the page: Playfair, not the UI sans. Stat tiles set
