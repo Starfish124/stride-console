@@ -2,11 +2,15 @@
 #
 # stride — one command for the whole machine.
 #
-#   ./scripts/stride status     what is up, what is not
-#   ./scripts/stride up         start everything now
-#   ./scripts/stride down       stop the console and the bridge
-#   ./scripts/stride install    make it all start at login, forever
-#   ./scripts/stride logs       tail everything at once
+#   stride              start everything (this is the whole thing)
+#   stride status       what is up, what is not
+#   stride down         stop the console and the bridge
+#   stride install      start it all at login, and link this command
+#   stride logs         tail everything at once
+#
+# `stride install` drops a symlink in ~/.local/bin, so it is typed from
+# anywhere. Bare `stride` starts rather than reports, and is safe to repeat:
+# it checks each part and only starts what is down.
 #
 # There are four moving parts and they fail independently, which is why this
 # reports each one rather than printing "started" and hoping:
@@ -25,7 +29,17 @@
 
 set -uo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Resolve symlinks before working out where the repo is. Typed as `stride`
+# this file is reached through ~/.local/bin/stride, and taking dirname of that
+# would put the root at ~/.local: status would still pass, because its checks
+# are all HTTP, while up and install quietly looked for a repo that was not
+# there.
+SELF="${BASH_SOURCE[0]}"
+while [[ -L "$SELF" ]]; do
+  LINK="$(readlink "$SELF")"
+  [[ "$LINK" == /* ]] && SELF="$LINK" || SELF="$(dirname "$SELF")/$LINK"
+done
+ROOT="$(cd "$(dirname "$SELF")/.." && pwd)"
 cd "$ROOT"
 
 BRIDGE_PORT=7455
@@ -38,6 +52,22 @@ ok()   { printf "  \033[32m●\033[0m %-16s %s\n" "$1" "$2"; }
 bad()  { printf "  \033[31m○\033[0m %-16s %s\n" "$1" "$2"; }
 warn() { printf "  \033[33m◐\033[0m %-16s %s\n" "$1" "$2"; }
 head_() { printf "\n\033[1m%s\033[0m\n" "$1"; }
+
+agent_installed() { [[ -f "$HOME/Library/LaunchAgents/$1.plist" ]]; }
+agent_loaded()    { launchctl print "gui/$(id -u)/$1" >/dev/null 2>&1; }
+
+# Start an agent whatever state it is in. kickstart alone is not enough: it
+# only works on a job launchd already knows about, so anything that has been
+# booted out, or never loaded this session, needs bootstrapping first.
+start_agent() {
+  local job="$1"
+  agent_installed "$job" || return 1
+  if agent_loaded "$job"; then
+    launchctl kickstart -k "gui/$(id -u)/$job" 2>/dev/null
+  else
+    launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/$job.plist" 2>/dev/null
+  fi
+}
 
 console_up() { curl -sf -o /dev/null --max-time 4 "http://localhost:$CONSOLE_PORT/login"; }
 bridge_up()  { curl -sf -o /dev/null --max-time 4 "http://127.0.0.1:$BRIDGE_PORT/ping"; }
@@ -55,16 +85,16 @@ funnel_on() {
 
 cmd_status() {
   head_ "Stride"
-  console_up && ok "console" "http://localhost:$CONSOLE_PORT" || bad "console" "down — ./scripts/stride up"
+  console_up && ok "console" "http://localhost:$CONSOLE_PORT" || bad "console" "down — run: stride"
   funnel_on  && ok "funnel"  "$PUBLIC_URL" || bad "funnel" "off — tailscale funnel --bg $CONSOLE_PORT"
-  bridge_up  && ok "bridge"  "127.0.0.1:$BRIDGE_PORT" || bad "bridge" "down — ./scripts/stride up"
+  bridge_up  && ok "bridge"  "127.0.0.1:$BRIDGE_PORT" || bad "bridge" "down — run: stride"
 
   if lh_debug_up; then
     ok "linked helper" "open, debugger on $LH_DEBUG_PORT"
   elif lh_running; then
-    warn "linked helper" "open WITHOUT the debugger port — quit it, then ./scripts/stride up"
+    warn "linked helper" "open WITHOUT the debugger port — quit it, then run: stride"
   else
-    bad "linked helper" "closed — ./scripts/stride up"
+    bad "linked helper" "closed — run: stride"
   fi
 
   # The per-account instance holds the campaign window and the AI drafts. It
@@ -84,7 +114,7 @@ cmd_status() {
     if [[ -f "$HOME/Library/LaunchAgents/$job.plist" ]]; then
       ok "$job" "installed"
     else
-      bad "$job" "not installed — ./scripts/stride install"
+      bad "$job" "not installed — run: stride install"
     fi
   done
   echo
@@ -96,9 +126,7 @@ cmd_up() {
   if console_up; then
     ok "console" "already up"
   else
-    if [[ -f "$HOME/Library/LaunchAgents/com.stride.console.plist" ]]; then
-      launchctl kickstart -k "gui/$(id -u)/com.stride.console" 2>/dev/null
-    else
+    if ! start_agent com.stride.console; then
       ( npm run start >/tmp/stride-console.log 2>&1 & )
     fi
     for _ in $(seq 1 20); do console_up && break; sleep 1; done
@@ -132,13 +160,11 @@ cmd_up() {
   if bridge_up; then
     ok "bridge" "already up"
   else
-    if [[ -f "$HOME/Library/LaunchAgents/com.stride.bridge.plist" ]]; then
-      # Never leave a hand-started bridge next to the agent: only one can hold
-      # the port, and the loser dies looking like a broken service.
-      pkill -f "bridge/server.mjs" 2>/dev/null
-      sleep 1
-      launchctl kickstart -k "gui/$(id -u)/com.stride.bridge" 2>/dev/null
-    else
+    # Never leave a hand-started bridge next to the agent: only one can hold
+    # the port, and the loser dies looking like a broken service.
+    pkill -f "bridge/server.mjs" 2>/dev/null
+    sleep 1
+    if ! start_agent com.stride.bridge; then
       ( node bridge/server.mjs >/tmp/stride-bridge.log 2>&1 & )
     fi
     for _ in $(seq 1 15); do bridge_up && break; sleep 1; done
@@ -200,7 +226,7 @@ cmd_install() {
     if launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/$job.plist" 2>/dev/null; then
       ok "$job" "installed and loaded"
     else
-      warn "$job" "installed, but would not load — try ./scripts/stride up"
+      warn "$job" "installed, but would not load — try: stride"
     fi
   done
 
@@ -215,14 +241,36 @@ cmd_logs() {
   tail -f /tmp/stride-console.log /tmp/stride-bridge.log /tmp/stride-pregen.log 2>/dev/null
 }
 
-case "${1:-status}" in
+cmd_link() {
+  head_ "Linking"
+  local target="$HOME/.local/bin/stride"
+  mkdir -p "$HOME/.local/bin"
+  ln -sf "$ROOT/scripts/stride" "$target"
+  if command -v stride >/dev/null 2>&1; then
+    ok "stride" "on your PATH — type it from anywhere"
+  else
+    warn "stride" "linked at $target, but that is not on your PATH"
+  fi
+  echo
+}
+
+# Bare `stride` starts things rather than reporting on them. `up` is safe to
+# run when everything is already going: it checks each part and only starts
+# what is down, so typing it twice does nothing the second time.
+case "${1:-up}" in
   status)  cmd_status ;;
   up)      cmd_up ;;
   down)    cmd_down ;;
-  install) cmd_install ;;
+  install) cmd_install; cmd_link ;;
+  link)    cmd_link ;;
   logs)    cmd_logs ;;
   *)
-    echo "usage: ./scripts/stride [status|up|down|install|logs]"
+    echo "usage: stride [up|status|down|install|link|logs]"
+    echo "  stride            start everything (safe to repeat)"
+    echo "  stride status     what is up, what is not"
+    echo "  stride down       stop the console and the bridge"
+    echo "  stride install    start it all at login, and link this command"
+    echo "  stride logs       tail everything"
     exit 1
     ;;
 esac

@@ -1,18 +1,21 @@
 # Running Stride
 
-One command:
+One word, from anywhere:
 
 ```bash
-cd ~/stride-console
-./scripts/stride status     # what is up, what is not
-./scripts/stride up         # start everything now
-./scripts/stride install    # make it all start at login, forever
-./scripts/stride down       # stop the console and the bridge
-./scripts/stride logs       # tail everything at once
+stride              # start everything
+stride status       # what is up, what is not
+stride down         # stop the console and the bridge
+stride install      # start it all at login, and link this command
+stride logs         # tail everything at once
 ```
 
-`install` has been run, so after a restart everything comes back on its own.
-`status` is the one to reach for when something looks wrong.
+`stride install` has been run. It puts a symlink in `~/.local/bin`, which is
+why the command works outside the repo, and it loads the four login agents so
+everything comes back on its own after a restart.
+
+Bare `stride` starts rather than reports, and is safe to type twice: it checks
+each part and only starts what is down. `status` is the read-only one.
 
 ## Is the app offline when the Mac is off?
 
