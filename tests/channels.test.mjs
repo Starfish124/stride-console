@@ -20,6 +20,7 @@ import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { parseAccountScreen } from "../bridge/lh.mjs";
 import { findAccountDbs, DbUnavailable } from "../bridge/db.mjs";
+import { isDismissLabel, isForbidden } from "../bridge/control.mjs";
 
 const REPO = path.dirname(fileURLToPath(new URL("../package.json", import.meta.url)));
 
@@ -325,6 +326,47 @@ test("nothing in the campaign read touches a person table", () => {
   const selects = source.match(/FROM\s+([a-z_]+)/gi) ?? [];
   const personTables = selects.filter((s) => /FROM\s+person_|FROM\s+organization_/i.test(s));
   assert.deepEqual(personTables, [], `db.mjs selects from ${personTables.join(", ")}`);
+});
+
+// --- clicking safely inside Linked Helper -------------------------------
+//
+// LH2 drops marketing pop-ups over its own interface, with buttons like
+// "Unlock these offers and exclusive deals today!" sat next to the dismiss.
+// One real one appeared mid-session while this was being built. These rules
+// are what stand between an unattended automation and a purchase.
+
+test("dismisses a real Linked Helper ad, and only by its safe button", () => {
+  assert.equal(isDismissLabel("Skip all (3)"), true);
+  assert.equal(isDismissLabel("Ok"), true);
+  assert.equal(isDismissLabel("Close"), true);
+  // The button that sat beside them in the actual pop-up.
+  assert.equal(isDismissLabel("Unlock these offers and exclusive deals today!"), false);
+});
+
+test("'ok' never matches 'unlock'", () => {
+  // Substring matching here would click the sales button. Anchored matching
+  // is the whole defence.
+  assert.equal(isDismissLabel("Unlock"), false);
+  assert.equal(isDismissLabel("unlock offers"), false);
+});
+
+test("commercial buttons are forbidden outright", () => {
+  for (const label of [
+    "Buy license",
+    "Upgrade Your LinkedIn Workflow",
+    "Purchase proxies",
+    "Subscribe",
+    "Renew licence",
+    "Start free trial",
+  ]) {
+    assert.equal(isForbidden(label), true, `${label} must be forbidden`);
+  }
+});
+
+test("ordinary controls are not swept up by the denylist", () => {
+  for (const label of ["Pause campaign", "Resume", "Show window", "Stop"]) {
+    assert.equal(isForbidden(label), false, `${label} must stay clickable`);
+  }
 });
 
 async function waitForPing(port, attempts = 50) {

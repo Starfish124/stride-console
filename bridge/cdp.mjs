@@ -178,6 +178,17 @@ export class CdpSession {
     return msg.result?.result?.value;
   }
 
+  /**
+   * Any other CDP method — Input.dispatchMouseEvent in particular. Linked
+   * Helper's row toolbars only appear under a genuine pointer, and React
+   * ignores synthesised mouse events, so hovering has to be done for real.
+   */
+  async call(method, params = {}) {
+    const msg = await this.#send(method, params);
+    if (msg.error) throw new CdpError(msg.error.message || `${method} failed`, "protocol_error");
+    return msg.result;
+  }
+
   close() {
     try { this.#ws?.close(); } catch { /* already gone */ }
     this.#ws = null;
