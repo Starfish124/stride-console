@@ -13,7 +13,6 @@
 
 import { callClaudeCli, writerMode } from "../pipeline/write.ts";
 import { enrichItems } from "../pipeline/reader.ts";
-import { listSources } from "../store.ts";
 import { checkPlacement } from "./audit.ts";
 import { formatArticleViolations, lintArticle } from "./lint.ts";
 import { newId } from "./store.ts";

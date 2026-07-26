@@ -137,6 +137,9 @@ export function SeoDashboard() {
   }, []);
 
   useEffect(() => {
+    // Fetch-on-mount, same shape as RadarView: every setState in load happens
+    // after an await, never synchronously during the effect.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
 
