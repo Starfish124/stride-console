@@ -3,7 +3,7 @@
 
 import type { LintResult, LintViolation } from "../types.ts";
 
-const BANNED_WORDS: string[] = [
+export const BANNED_WORDS: string[] = [
   "delve",
   "leverage",
   "leveraging",
@@ -58,7 +58,7 @@ const BANNED_WORDS: string[] = [
  * most reliable tells, and it survives every other edit because it never
  * looks like a mistake.
  */
-const CEREMONY_VERBS: string[] = [
+export const CEREMONY_VERBS: string[] = [
   "serves as",
   "stands as",
   "acts as a bridge",
@@ -74,7 +74,7 @@ const CEREMONY_VERBS: string[] = [
  * an ordinary point with ceremony. On LinkedIn they are everywhere, which is
  * exactly why they read as written by nobody.
  */
-const FALSE_DEPTH: string[] = [
+export const FALSE_DEPTH: string[] = [
   "the real question is",
   "at its core",
   "what really matters",
@@ -89,7 +89,7 @@ const FALSE_DEPTH: string[] = [
 ];
 
 /** Fake-candid hooks. A person being honest usually just says the thing. */
-const FAKE_CANDOUR: string[] = [
+export const FAKE_CANDOUR: string[] = [
   "let's be honest",
   "real talk",
   "hot take",
@@ -98,7 +98,7 @@ const FAKE_CANDOUR: string[] = [
   "truth bomb",
 ];
 
-const PHANTOM_SOURCES: string[] = [
+export const PHANTOM_SOURCES: string[] = [
   "studies show",
   "experts say",
   "research shows",
@@ -110,13 +110,13 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function phraseRegex(phrase: string): RegExp {
+export function phraseRegex(phrase: string): RegExp {
   // Word-boundary-ish matching that survives apostrophes and hyphens.
   const inner = escapeRegex(phrase).replace(/ /g, "\\s+").replace(/'/g, "['\u2019]");
   return new RegExp(`(?<![a-z0-9])${inner}(?![a-z0-9])`, "i");
 }
 
-function excerptAround(text: string, index: number, length: number): string {
+export function excerptAround(text: string, index: number, length: number): string {
   const start = Math.max(0, index - 20);
   const end = Math.min(text.length, index + length + 20);
   const prefix = start > 0 ? "…" : "";

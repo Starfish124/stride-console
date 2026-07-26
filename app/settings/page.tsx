@@ -6,11 +6,16 @@ import { Header } from "@/components/ui";
 import { SourcesEditor } from "@/components/SourcesEditor";
 import { PushToggle } from "@/components/PushToggle";
 import { ChannelHealth } from "@/components/ChannelHealth";
+import { WebhookCard } from "@/components/WebhookCard";
+import { headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const jar = await cookies();
+  const head = await headers();
+  const host = head.get("host") ?? "localhost:3000";
+  const origin = `${host.includes("localhost") ? "http" : "https"}://${host}`;
   const founder = jar.get(FOUNDER_COOKIE)?.value;
   const mode = writerMode();
   const cli = claudeCliPath();
@@ -54,6 +59,8 @@ export default async function SettingsPage() {
         </section>
 
         <ChannelHealth />
+
+        <WebhookCard origin={origin} />
 
         <section className="mb-10 card-glass rounded-card border border-line bg-white p-6">
           <p className="eyebrow text-slate">Draft-ready notifications</p>

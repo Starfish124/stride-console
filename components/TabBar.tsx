@@ -18,6 +18,7 @@ const TABS = [
 ] as const;
 
 const MORE = [
+  { href: "/outreach", label: "Outreach", hint: "The words the campaigns send, and the replies." },
   { href: "/events", label: "Events", hint: "The 1 Min AI Pitch nights, and who signed up." },
   { href: "/playbook", label: "Playbook", hint: "How Stride sounds — voice, formulas, the look." },
   { href: "/settings", label: "Settings", hint: "Sources, notifications, the machine room." },
