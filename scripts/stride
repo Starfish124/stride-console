@@ -1,0 +1,228 @@
+#!/usr/bin/env bash
+#
+# stride — one command for the whole machine.
+#
+#   ./scripts/stride status     what is up, what is not
+#   ./scripts/stride up         start everything now
+#   ./scripts/stride down       stop the console and the bridge
+#   ./scripts/stride install    make it all start at login, forever
+#   ./scripts/stride logs       tail everything at once
+#
+# There are four moving parts and they fail independently, which is why this
+# reports each one rather than printing "started" and hoping:
+#
+#   console        Next.js on :3000. The app itself.
+#   funnel         Tailscale publishing :3000 to the internet, on a real
+#                  certificate. Runs from a system daemon, so it survives a
+#                  reboot without help.
+#   bridge         The loopback API that owns the debugger connection to
+#                  Linked Helper. Without it the campaign pages go quiet.
+#   linked helper  The app, launched with a debugger port. Without the port
+#                  the bridge can see nothing.
+#
+# Nothing here is reachable when the Mac is off. The console is served from
+# this machine and the data lives on its disk.
+
+set -uo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+BRIDGE_PORT=7455
+CONSOLE_PORT=3000
+LH_APP="/Applications/linked-helper.app"
+LH_DEBUG_PORT=9222
+PUBLIC_URL="https://mac-mini.tailc91701.ts.net"
+
+ok()   { printf "  \033[32m●\033[0m %-16s %s\n" "$1" "$2"; }
+bad()  { printf "  \033[31m○\033[0m %-16s %s\n" "$1" "$2"; }
+warn() { printf "  \033[33m◐\033[0m %-16s %s\n" "$1" "$2"; }
+head_() { printf "\n\033[1m%s\033[0m\n" "$1"; }
+
+console_up() { curl -sf -o /dev/null --max-time 4 "http://localhost:$CONSOLE_PORT/login"; }
+bridge_up()  { curl -sf -o /dev/null --max-time 4 "http://127.0.0.1:$BRIDGE_PORT/ping"; }
+lh_debug_up() { curl -sf -o /dev/null --max-time 4 "http://127.0.0.1:$LH_DEBUG_PORT/json/version"; }
+lh_running() { pgrep -f "linked-helper.app/Contents/MacOS/linked-helper" >/dev/null; }
+# No pipe on purpose. `... | grep -q` looks obvious and is wrong here: grep
+# exits the moment it matches, tailscale takes SIGPIPE, and pipefail reports
+# that 141 as the pipeline's status. The check then says the funnel is off
+# while the site is happily serving.
+funnel_on() {
+  local status
+  status="$(tailscale funnel status 2>/dev/null)"
+  [[ "$status" == *"Funnel on"* ]]
+}
+
+cmd_status() {
+  head_ "Stride"
+  console_up && ok "console" "http://localhost:$CONSOLE_PORT" || bad "console" "down — ./scripts/stride up"
+  funnel_on  && ok "funnel"  "$PUBLIC_URL" || bad "funnel" "off — tailscale funnel --bg $CONSOLE_PORT"
+  bridge_up  && ok "bridge"  "127.0.0.1:$BRIDGE_PORT" || bad "bridge" "down — ./scripts/stride up"
+
+  if lh_debug_up; then
+    ok "linked helper" "open, debugger on $LH_DEBUG_PORT"
+  elif lh_running; then
+    warn "linked helper" "open WITHOUT the debugger port — quit it, then ./scripts/stride up"
+  else
+    bad "linked helper" "closed — ./scripts/stride up"
+  fi
+
+  # The per-account instance holds the campaign window and the AI drafts. It
+  # only exists while a LinkedIn session is running, and its port is written
+  # fresh each launch, so a stale file does not mean it is alive.
+  local port_file="$HOME/Library/Application Support/linked-helper/DevToolsActivePort"
+  local acct_port
+  acct_port="$(head -1 "$port_file" 2>/dev/null || true)"
+  if [[ -n "$acct_port" ]] && curl -sf -o /dev/null --max-time 4 "http://127.0.0.1:$acct_port/json/version"; then
+    ok "linkedin session" "campaign window reachable on $acct_port"
+  else
+    warn "linkedin session" "not running — start the account in Linked Helper to create campaigns"
+  fi
+
+  head_ "At login"
+  for job in com.stride.console com.stride.bridge com.stride.pregen com.stride.linkedhelper; do
+    if [[ -f "$HOME/Library/LaunchAgents/$job.plist" ]]; then
+      ok "$job" "installed"
+    else
+      bad "$job" "not installed — ./scripts/stride install"
+    fi
+  done
+  echo
+}
+
+cmd_up() {
+  head_ "Starting"
+
+  if console_up; then
+    ok "console" "already up"
+  else
+    if [[ -f "$HOME/Library/LaunchAgents/com.stride.console.plist" ]]; then
+      launchctl kickstart -k "gui/$(id -u)/com.stride.console" 2>/dev/null
+    else
+      ( npm run start >/tmp/stride-console.log 2>&1 & )
+    fi
+    for _ in $(seq 1 20); do console_up && break; sleep 1; done
+    console_up && ok "console" "up" || bad "console" "failed — tail /tmp/stride-console.log"
+  fi
+
+  if funnel_on; then
+    ok "funnel" "on"
+  else
+    tailscale funnel --bg "$CONSOLE_PORT" >/dev/null 2>&1 \
+      && ok "funnel" "published" || bad "funnel" "could not publish"
+  fi
+
+  # Linked Helper must carry the debugger port, and the flag only applies to a
+  # fresh launch. An instance already open without it is worse than useless.
+  if lh_debug_up; then
+    ok "linked helper" "already open with the debugger"
+  else
+    if lh_running; then
+      warn "linked helper" "open without the debugger port, restarting it"
+      osascript -e 'quit app "linked-helper"' >/dev/null 2>&1
+      sleep 4
+      pkill -f "linked-helper.app/Contents/MacOS" 2>/dev/null
+      sleep 2
+    fi
+    open -a "$LH_APP" --args --remote-debugging-port=$LH_DEBUG_PORT
+    for _ in $(seq 1 25); do lh_debug_up && break; sleep 1; done
+    lh_debug_up && ok "linked helper" "up with the debugger" || bad "linked helper" "did not open"
+  fi
+
+  if bridge_up; then
+    ok "bridge" "already up"
+  else
+    if [[ -f "$HOME/Library/LaunchAgents/com.stride.bridge.plist" ]]; then
+      # Never leave a hand-started bridge next to the agent: only one can hold
+      # the port, and the loser dies looking like a broken service.
+      pkill -f "bridge/server.mjs" 2>/dev/null
+      sleep 1
+      launchctl kickstart -k "gui/$(id -u)/com.stride.bridge" 2>/dev/null
+    else
+      ( node bridge/server.mjs >/tmp/stride-bridge.log 2>&1 & )
+    fi
+    for _ in $(seq 1 15); do bridge_up && break; sleep 1; done
+    bridge_up && ok "bridge" "up" || bad "bridge" "failed — tail /tmp/stride-bridge.log"
+  fi
+
+  printf "\n  %s\n\n" "$PUBLIC_URL"
+}
+
+cmd_down() {
+  head_ "Stopping"
+  launchctl bootout "gui/$(id -u)/com.stride.console" 2>/dev/null
+  launchctl bootout "gui/$(id -u)/com.stride.bridge" 2>/dev/null
+  pkill -f "bridge/server.mjs" 2>/dev/null
+  ok "console" "stopped"
+  ok "bridge" "stopped"
+  echo "  Linked Helper and the funnel are left alone. Quit the app yourself if you want it closed."
+  echo
+}
+
+cmd_install() {
+  head_ "Installing login agents"
+  mkdir -p "$HOME/Library/LaunchAgents"
+
+  # The console's password lives only in the installed agent, never in git.
+  # Reinstalling would quietly wipe it and drop the console back to the
+  # default password, so it is carried across.
+  local live_password=""
+  live_password="$(/usr/libexec/PlistBuddy -c \
+    'Print :EnvironmentVariables:STRIDE_PASSWORD' \
+    "$HOME/Library/LaunchAgents/com.stride.console.plist" 2>/dev/null || true)"
+
+  for job in com.stride.console com.stride.bridge com.stride.pregen com.stride.linkedhelper; do
+    local src="docs/$job.plist"
+    [[ -f "$src" ]] || { bad "$job" "no $src in the repo"; continue; }
+
+    # The plists carry an absolute path that only matches this checkout.
+    sed "s#/Users/sarveshsingh/stride-console#$ROOT#g" "$src" \
+      > "$HOME/Library/LaunchAgents/$job.plist"
+
+    if [[ "$job" == "com.stride.console" && -n "$live_password" ]]; then
+      /usr/libexec/PlistBuddy -c \
+        "Add :EnvironmentVariables:STRIDE_PASSWORD string $live_password" \
+        "$HOME/Library/LaunchAgents/$job.plist" >/dev/null 2>&1
+    fi
+
+    # A stray hand-started process holds the port and the agent then fails to
+    # bind, so clear those before handing the job to launchd.
+    [[ "$job" == "com.stride.bridge" ]] && pkill -f "bridge/server.mjs" 2>/dev/null
+
+    # bootout returns before launchd has finished tearing the job down, and
+    # bootstrapping into that gap fails silently. Wait for it to actually go.
+    launchctl bootout "gui/$(id -u)/$job" 2>/dev/null
+    for _ in $(seq 1 20); do
+      launchctl print "gui/$(id -u)/$job" >/dev/null 2>&1 || break
+      sleep 0.25
+    done
+
+    if launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/$job.plist" 2>/dev/null; then
+      ok "$job" "installed and loaded"
+    else
+      warn "$job" "installed, but would not load — try ./scripts/stride up"
+    fi
+  done
+
+  echo
+  echo "  Everything now starts at login. Tailscale already runs as a system"
+  echo "  daemon, so the public address comes back on its own after a reboot."
+  echo
+}
+
+cmd_logs() {
+  echo "Ctrl-C to stop."
+  tail -f /tmp/stride-console.log /tmp/stride-bridge.log /tmp/stride-pregen.log 2>/dev/null
+}
+
+case "${1:-status}" in
+  status)  cmd_status ;;
+  up)      cmd_up ;;
+  down)    cmd_down ;;
+  install) cmd_install ;;
+  logs)    cmd_logs ;;
+  *)
+    echo "usage: ./scripts/stride [status|up|down|install|logs]"
+    exit 1
+    ;;
+esac

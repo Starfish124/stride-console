@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  The console itself: Next.js on :3000, kept alive, started at login.
+
+  Installed by ./scripts/stride install, which rewrites the path below to
+  wherever this checkout actually lives.
+
+  STRIDE_PASSWORD is deliberately not in this file. The live agent in
+  ~/Library/LaunchAgents carries it and it must never enter git. After
+  installing, put it back:
+
+    /usr/libexec/PlistBuddy -c \
+      "Add :EnvironmentVariables:STRIDE_PASSWORD string YOUR-PASSWORD" \
+      ~/Library/LaunchAgents/com.stride.console.plist
+    launchctl kickstart -k gui/$(id -u)/com.stride.console
+
+  Without it the console falls back to the password "stride", which is not a
+  password. ./scripts/stride status will not catch that for you.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.stride.console</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>cd /Users/sarveshsingh/stride-console &amp;&amp; exec /opt/homebrew/bin/npm run start</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>CLAUDE_BIN</key>
+    <string>/Users/sarveshsingh/.local/bin/claude</string>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/stride-console.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/stride-console.log</string>
+</dict>
+</plist>
