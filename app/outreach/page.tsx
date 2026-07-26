@@ -1,5 +1,3 @@
-import { cookies } from "next/headers";
-import { FOUNDER_COOKIE } from "@/lib/auth";
 import { Header } from "@/components/ui";
 import { SequenceEditor } from "@/components/SequenceEditor";
 import { listSequences } from "@/lib/outreach/sequence";
@@ -9,15 +7,13 @@ import { AiDraftQueue } from "@/components/AiDraftQueue";
 export const dynamic = "force-dynamic";
 
 export default async function OutreachPage() {
-  const jar = await cookies();
-  const founder = jar.get(FOUNDER_COOKIE)?.value;
   const existing = listSequences()[0];
   const replies = listReplies();
   const unhandled = replies.filter((r) => !r.handled);
 
   return (
     <div className="min-h-screen bg-paper">
-      <Header founder={founder} />
+      <Header />
       <main className="mx-auto max-w-3xl px-6 pb-20">
         <section className="py-10">
           <p className="eyebrow text-slate">Outreach</p>

@@ -42,7 +42,7 @@ export function StatusBadge({ status }: { status: DraftStatus }) {
   );
 }
 
-export function Header({ founder }: { founder?: string }) {
+export function Header() {
   return (
     // No bar at all. A white strip pinned to the top, blurred or not, is the
     // most web-page thing an interface can do. The mark and the avatar sit
@@ -57,14 +57,7 @@ export function Header({ founder }: { founder?: string }) {
           <span className="hidden items-center gap-4 sm:flex sm:gap-6">
             <NavLinks />
           </span>
-          {founder ? (
-            <span
-              className="grid size-7 place-items-center rounded-full bg-indigo-tint text-[12px] font-semibold text-indigo"
-              title={founder}
-            >
-              {founder.slice(0, 1).toUpperCase()}
-            </span>
-          ) : null}
+
         </nav>
       </div>
     </header>

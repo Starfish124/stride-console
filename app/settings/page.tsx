@@ -1,5 +1,3 @@
-import { cookies } from "next/headers";
-import { FOUNDER_COOKIE } from "@/lib/auth";
 import { claudeCliPath, writerMode } from "@/lib/pipeline/write";
 import { lessons } from "@/lib/pipeline/memory";
 import { Header } from "@/components/ui";
@@ -12,11 +10,9 @@ import { headers } from "next/headers";
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const jar = await cookies();
   const head = await headers();
   const host = head.get("host") ?? "localhost:3000";
   const origin = `${host.includes("localhost") ? "http" : "https"}://${host}`;
-  const founder = jar.get(FOUNDER_COOKIE)?.value;
   const mode = writerMode();
   const cli = claudeCliPath();
   const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5";
@@ -24,7 +20,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-paper">
-      <Header founder={founder} />
+      <Header />
       <main className="mx-auto max-w-3xl px-6 pb-20">
         <section className="py-12">
           <p className="eyebrow text-slate">Settings</p>

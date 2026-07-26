@@ -1,21 +1,17 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { listEvents, listSignups } from "@/lib/store";
-import { FOUNDER_COOKIE } from "@/lib/auth";
 import { Header } from "@/components/ui";
 import { EventCreateForm } from "@/components/EventCreateForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function EventsPage() {
-  const jar = await cookies();
-  const founder = jar.get(FOUNDER_COOKIE)?.value;
   const events = listEvents();
   const signupCount = listSignups().length;
 
   return (
     <div className="min-h-screen bg-paper">
-      <Header founder={founder} />
+      <Header />
       <main className="mx-auto max-w-5xl px-6 pb-20">
         <section className="py-12">
           <p className="eyebrow text-slate">1 Min AI Pitch</p>

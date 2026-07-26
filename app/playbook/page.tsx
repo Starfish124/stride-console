@@ -1,5 +1,3 @@
-import { cookies } from "next/headers";
-import { FOUNDER_COOKIE } from "@/lib/auth";
 import { Header, Radar } from "@/components/ui";
 import { VOICE_GUIDE, RECIPE_FORMULAS } from "@/lib/voice/guide";
 import { RECIPE_LABELS } from "@/lib/types";
@@ -69,14 +67,12 @@ const CADENCE = [
 ];
 
 export default async function PlaybookPage() {
-  const jar = await cookies();
-  const founder = jar.get(FOUNDER_COOKIE)?.value;
   const { lead, sections } = parseGuide(VOICE_GUIDE);
   const recipes = Object.entries(RECIPE_FORMULAS) as [RecipeId, string][];
 
   return (
     <div className="min-h-screen bg-paper">
-      <Header founder={founder} />
+      <Header />
       <main className="mx-auto max-w-5xl px-6 pb-20">
         <section className="relative overflow-hidden py-10">
           <Radar className="pointer-events-none absolute -right-24 -top-28 h-80 w-80 text-slate opacity-30" />

@@ -1,5 +1,3 @@
-import { cookies } from "next/headers";
-import { FOUNDER_COOKIE } from "@/lib/auth";
 import { Header } from "@/components/ui";
 import { readCampaignsView } from "@/lib/channels/linkedHelper";
 import { CampaignDeck } from "@/components/CampaignDeck";
@@ -8,15 +6,13 @@ import { CampaignCreator } from "@/components/CampaignCreator";
 export const dynamic = "force-dynamic";
 
 export default async function CampaignsPage() {
-  const jar = await cookies();
-  const founder = jar.get(FOUNDER_COOKIE)?.value;
   const view = await readCampaignsView();
 
   const problem = view.offline ?? view.unavailable;
 
   return (
     <div className="min-h-screen bg-paper">
-      <Header founder={founder} />
+      <Header />
       <main className="mx-auto max-w-3xl px-6 pb-20">
         <section className="py-12">
           <p className="eyebrow text-slate">Campaigns</p>

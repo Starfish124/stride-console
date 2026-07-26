@@ -205,6 +205,33 @@ export async function readAiDrafts(): Promise<{ drafts: AiDraft[]; problem?: str
   }
 }
 
+/**
+ * Days left on the shortest live licence, or null when none can be read.
+ *
+ * Lives on the health read rather than the campaign one, because Linked
+ * Helper keeps licences on the account screen and not in the per-account
+ * database. Never throws: an unreadable licence is not an expired one.
+ */
+export async function readLicenceDays(): Promise<number | null> {
+  const creds = readCredentials();
+  if (!creds) return null;
+  try {
+    const res = await fetch(`http://127.0.0.1:${creds.port}/health`, {
+      headers: { Authorization: `Bearer ${creds.token}` },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const health = (await res.json()) as BridgeHealth;
+    const live = (health.accounts?.accounts ?? [])
+      .filter((a) => a.loggedIn && typeof a.licenceDaysLeft === "number")
+      .map((a) => a.licenceDaysLeft as number);
+    return live.length > 0 ? Math.min(...live) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Ask the bridge to act. Returns the bridge's own status so a refusal, which
  *  is a 409 carrying the audience size, reaches the founder intact. */
 async function control(

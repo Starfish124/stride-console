@@ -1,12 +1,11 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { RECIPE_LABELS } from "@/lib/types";
 import { listDrafts, listInbox, listMyths } from "@/lib/store";
-import { FOUNDER_COOKIE } from "@/lib/auth";
 import { Header, Radar, StatusBadge } from "@/components/ui";
 import { RecipeCard } from "@/components/RecipeCard";
 import { MythQuickAdd } from "@/components/MythQuickAdd";
 import { InboxBanner } from "@/components/InboxBanner";
+import { LhPulsePanel } from "@/components/LhPulsePanel";
 
 export const dynamic = "force-dynamic";
 
@@ -32,19 +31,17 @@ const RECIPES = [
 ] as const;
 
 export default async function Dashboard() {
-  const jar = await cookies();
-  const founder = jar.get(FOUNDER_COOKIE)?.value;
   const drafts = listDrafts().slice(0, 8);
   const unusedMyths = listMyths().filter((m) => !m.used).length;
   const inbox = listInbox().filter((e) => !e.seen);
 
   return (
     <div className="min-h-screen bg-paper">
-      <Header founder={founder} />
+      <Header />
       <main className="mx-auto max-w-5xl px-6 pb-20">
         <section className="relative overflow-hidden py-12">
           <Radar className="pointer-events-none absolute -right-24 -top-28 h-80 w-80 text-slate opacity-30" />
-          <p className="eyebrow text-slate">Stride console — marketing machine</p>
+          <p className="eyebrow text-slate">Stride console · marketing machine</p>
           <h1 className="display mt-3 text-4xl text-ink">
             Press a button. Get a post.
           </h1>
@@ -55,6 +52,11 @@ export default async function Dashboard() {
           <InboxBanner entries={inbox} />
         </section>
 
+        {/* What the outbound machine needs from a founder, before the posting
+            tools. Replies and drafts waiting on a person outrank a button. */}
+        <LhPulsePanel />
+
+        <p className="eyebrow mb-3 text-slate">Write something</p>
         <section className="grid gap-4 md:grid-cols-3">
           {RECIPES.map((r) => (
             <RecipeCard key={r.id} {...r} />

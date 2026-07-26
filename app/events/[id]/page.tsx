@@ -1,7 +1,5 @@
-import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { getEvent, listSignups } from "@/lib/store";
-import { FOUNDER_COOKIE } from "@/lib/auth";
 import { Header } from "@/components/ui";
 import { EventChecklist } from "@/components/EventChecklist";
 import { EventRecipeButtons } from "@/components/EventRecipeButtons";
@@ -18,8 +16,6 @@ export default async function EventPage({
   const event = getEvent(id);
   if (!event) notFound();
   const signups = listSignups();
-  const jar = await cookies();
-  const founder = jar.get(FOUNDER_COOKIE)?.value;
 
   const dateLabel = new Date(event.date).toLocaleDateString("en-US", {
     weekday: "long",
@@ -30,7 +26,7 @@ export default async function EventPage({
 
   return (
     <div className="min-h-screen bg-paper">
-      <Header founder={founder} />
+      <Header />
       <main className="mx-auto max-w-5xl px-6 pb-20">
         <section className="py-12">
           <p className="eyebrow text-slate">1 Min AI Pitch</p>
