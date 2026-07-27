@@ -568,3 +568,60 @@ test("a damaged port file is refused rather than dialled", async () => {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// Picking the campaign window out of a target list.
+//
+// Both traps below were live bugs. The launcher and the account instance share
+// one userDataDir, so both write DevToolsActivePort and the last to launch
+// wins — which made "the port answers" report a running session while none was
+// running. And the account instance keeps a second file:// page open, the
+// block overlay, so matching the app name could hand back the wrong window.
+
+/** Serve one canned /json/list, the way a debugger port does. */
+async function withTargets(targets, run) {
+  const { createServer } = await import("node:http");
+  const server = createServer((req, res) => {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(targets));
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    return await run(server.address().port);
+  } finally {
+    server.close();
+  }
+}
+
+const FRONT = "file:///Applications/linked-helper.app/Contents/Resources/out/linked-helper.app/Contents/Resources/app.asar/node_modules/@linked-helper/front/build/index.html#/";
+const BLOCK = "file:///Applications/linked-helper.app/Contents/Resources/out/linked-helper.app/Contents/Resources/app.asar/assets/block.html";
+
+test("the campaign window is found by its front bundle, not by the app name", async () => {
+  const { findCampaignUi } = await import("../bridge/account.mjs");
+  // The block overlay listed first, as Electron is free to do.
+  await withTargets(
+    [
+      { type: "page", url: BLOCK, title: "block.html" },
+      { type: "page", url: "https://www.linkedin.com/feed/", title: "Feed" },
+      { type: "page", url: FRONT, title: "Linked Helper 2" },
+    ],
+    async (port) => {
+      const ui = await findCampaignUi(port);
+      assert.equal(ui.url, FRONT);
+    },
+  );
+});
+
+test("the launcher answering its own port is not a running LinkedIn session", async () => {
+  const { findCampaignUi } = await import("../bridge/account.mjs");
+  // What the launcher actually serves: one page, its own UI, no LinkedIn.
+  await withTargets([{ type: "page", url: "http://localhost:49846/", title: "Linked Helper 2" }], async (port) => {
+    await assert.rejects(() => findCampaignUi(port), (err) => err.code === "account_not_running");
+  });
+});
+
+test("a live session with the campaign window closed says so", async () => {
+  const { findCampaignUi } = await import("../bridge/account.mjs");
+  await withTargets([{ type: "page", url: "https://www.linkedin.com/feed/", title: "Feed" }], async (port) => {
+    await assert.rejects(() => findCampaignUi(port), (err) => err.code === "no_campaign_ui");
+  });
+});

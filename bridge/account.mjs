@@ -48,12 +48,20 @@ export function accountDebugPort(file = PORT_FILE) {
   return port;
 }
 
+/* The campaign window, by the front bundle it is served from.
+ *
+ * Not just "a file:// page in an app called linked-helper": the account
+ * instance keeps assets/block.html open too, the overlay shown while an action
+ * is blocked, and it lives under the same app directory. Matching the app name
+ * picks whichever of the two Electron happens to list first, so a run can
+ * silently end up driving a blank overlay. Match the front build itself. */
+export const CAMPAIGN_UI_PATH = "@linked-helper/front/build/index.html";
+
 /**
  * The campaign UI page inside the account instance.
  *
- * That instance exposes a dozen-plus targets: the live LinkedIn tab, its
- * iframes, service workers. The one we want is the app's own window, served
- * from a file:// URL, which is what separates it from everything LinkedIn.
+ * That instance exposes half a dozen targets or more: the live LinkedIn tab,
+ * its iframes, workers, the block overlay. The one we want is the front build.
  */
 export async function findCampaignUi(port = accountDebugPort()) {
   let targets;
@@ -71,16 +79,25 @@ export async function findCampaignUi(port = accountDebugPort()) {
     );
   }
 
-  const ui = targets.find(
-    (t) => t.type === "page" && String(t.url).startsWith("file://") && /linked-helper/i.test(t.url),
-  );
-  if (!ui) {
+  const ui = targets.find((t) => t.type === "page" && String(t.url).includes(CAMPAIGN_UI_PATH));
+  if (ui) return ui;
+
+  /* Something answered on that port, but it was not the campaign window. Which
+   * app answered decides what to say, and the port alone cannot tell you: the
+   * launcher and the account instance share one userDataDir, so both write
+   * DevToolsActivePort and the last to launch wins. A port that answers is not
+   * evidence an account is running — when the launcher wrote it, that is the
+   * launcher replying. The LinkedIn tab is what marks the account instance. */
+  if (targets.some((t) => String(t.url).includes("linkedin.com"))) {
     throw new CdpError(
-      "The account instance is running but its campaign window is not open.",
+      "The LinkedIn session is running but its campaign window is not open. Open the account window in Linked Helper, then try again.",
       "no_campaign_ui",
     );
   }
-  return ui;
+  throw new CdpError(
+    `Linked Helper's LinkedIn session is not running — port ${port} answered, but it is the launcher, not an account. Press Start the runner, then try again.`,
+    "account_not_running",
+  );
 }
 
 /** A session bound to whichever account instance is running right now. */

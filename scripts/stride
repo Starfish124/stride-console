@@ -135,11 +135,23 @@ cmd_status() {
   # The per-account instance holds the campaign window and the AI drafts. It
   # only exists while a LinkedIn session is running, and its port is written
   # fresh each launch, so a stale file does not mean it is alive.
+  #
+  # Ask for the target list, not just whether the port answers. The launcher
+  # shares this file and usually wrote it last, and it answers on its own port
+  # perfectly well — so "something replied" reported a running session when
+  # none was running. The campaign window's front bundle is the proof.
+  # Same string as CAMPAIGN_UI_PATH in bridge/account.mjs; keep them together.
   local port_file="$HOME/Library/Application Support/linked-helper/DevToolsActivePort"
-  local acct_port
+  local acct_port targets
   acct_port="$(head -1 "$port_file" 2>/dev/null || true)"
-  if [[ -n "$acct_port" ]] && curl -sf -o /dev/null --max-time 4 "http://127.0.0.1:$acct_port/json/version"; then
+  targets=""
+  if [[ -n "$acct_port" ]]; then
+    targets="$(curl -sf --max-time 4 "http://127.0.0.1:$acct_port/json/list" 2>/dev/null || true)"
+  fi
+  if [[ $targets == *"@linked-helper/front/build/index.html"* ]]; then
     ok "linkedin session" "campaign window reachable on $acct_port"
+  elif [[ $targets == *"linkedin.com"* ]]; then
+    warn "linkedin session" "running, but the campaign window is closed — open the account window"
   else
     warn "linkedin session" "not running — start the account in Linked Helper to create campaigns"
   fi
