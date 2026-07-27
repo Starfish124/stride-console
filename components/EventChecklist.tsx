@@ -39,7 +39,7 @@ export function EventChecklist({ event }: { event: StrideEvent }) {
                 id={`${event.id}-${item.id}`}
                 checked={item.done}
                 onChange={(e) => toggle(item.id, e.target.checked)}
-                className="h-4 w-4 accent-[#3D44D9]"
+                className="h-4 w-4 accent-indigo"
               />
               <label
                 htmlFor={`${event.id}-${item.id}`}

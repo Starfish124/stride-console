@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { EVENT_RECIPES, RECIPE_LABELS, type EventRecipeId } from "@/lib/types";
+import { Working } from "@/components/Loader";
 
 const DESCRIPTIONS: Record<EventRecipeId, string> = {
   eventAnnounce: "Date, venue, format. The first post of the cycle.",
@@ -55,7 +56,11 @@ export function EventRecipeButtons({ eventId }: { eventId: string }) {
           >
             <span className="eyebrow text-indigo">{String(i + 1).padStart(2, "0")}</span>
             <span className="mt-2 text-sm font-semibold text-ink">
-              {busy === recipe ? "Running the pipeline." : `${RECIPE_LABELS[recipe]}.`}
+              {busy === recipe ? (
+                <Working>Running the pipeline.</Working>
+              ) : (
+                `${RECIPE_LABELS[recipe]}.`
+              )}
             </span>
             <span className="mt-1 text-xs text-slate">{DESCRIPTIONS[recipe]}</span>
           </button>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Working } from "@/components/Loader";
 
 const FOUNDERS = ["Jort", "Sarvesh"];
 
@@ -70,7 +71,7 @@ export function LoginForm() {
         disabled={busy}
         className="rounded-input bg-indigo px-4 py-2.5 font-semibold text-white hover:bg-indigo-deep disabled:opacity-60"
       >
-        {busy ? "Checking." : "Enter the console."}
+        {busy ? <Working onDark>Checking.</Working> : "Enter the console."}
       </button>
     </form>
   );

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { IconSpark, IconBolt, IconLayers } from "@/components/icons";
+import { Working } from "@/components/Loader";
 
 /** One glyph per recipe, from the library set. */
 const GLYPH: Record<string, typeof IconSpark> = {
@@ -61,7 +62,7 @@ export function RecipeCard({
         disabled={busy}
         className="mt-5 rounded-input bg-indigo px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-deep disabled:opacity-60"
       >
-        {busy ? "Running the pipeline." : "Generate draft."}
+        {busy ? <Working onDark>Running the pipeline.</Working> : "Generate draft."}
       </button>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Working } from "@/components/Loader";
 
 export function PitchForm() {
   const [name, setName] = useState("");
@@ -78,7 +79,11 @@ export function PitchForm() {
         disabled={state === "busy"}
         className="mt-5 w-full rounded-input bg-indigo px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-deep disabled:opacity-60"
       >
-        {state === "busy" ? "Reserving your minute." : "Claim your minute."}
+        {state === "busy" ? (
+          <Working onDark>Reserving your minute.</Working>
+        ) : (
+          "Claim your minute."
+        )}
       </button>
     </form>
   );

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CATEGORY_LABEL, TEMPLATES } from "@/lib/outreach/templates";
 import type { TemplateCategory } from "@/lib/outreach/templates";
 import { IconSpark, IconLayers, IconTeam, IconApproved, IconEscalate } from "@/components/icons";
+import { Working } from "@/components/Loader";
 
 /**
  * Making a campaign from the phone.
@@ -156,7 +157,13 @@ export function CampaignCreator({ onDone }: { onDone?: () => void }) {
         disabled={!ready || busy}
         className="mt-5 w-full rounded-input bg-indigo px-5 py-3 text-[15px] font-semibold text-white disabled:opacity-40"
       >
-        {busy ? "Making it." : ready ? `Create "${name.trim()}"` : "Name it and pick a template"}
+        {busy ? (
+          <Working onDark>Making it.</Working>
+        ) : ready ? (
+          `Create "${name.trim()}"`
+        ) : (
+          "Name it and pick a template"
+        )}
       </button>
 
       {result && (

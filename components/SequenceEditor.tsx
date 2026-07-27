@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { LintResult } from "@/lib/types";
+import { Working } from "@/components/Loader";
 
 type Kind = "connect" | "message" | "inmail";
 
@@ -208,7 +209,7 @@ export function SequenceEditor({
           disabled={busy}
           className="rounded-input bg-indigo px-5 py-2.5 text-[15px] font-semibold text-white disabled:opacity-50"
         >
-          {busy ? "Checking." : "Save and check the voice."}
+          {busy ? <Working onDark>Checking.</Working> : "Save and check the voice."}
         </button>
       </div>
 

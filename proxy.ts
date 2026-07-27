@@ -17,7 +17,12 @@ export async function proxy(request: NextRequest) {
     pathname === "/manifest.webmanifest" ||
     pathname === "/sw.js" ||
     pathname === "/offline.html" ||
-    pathname.startsWith("/icons/");
+    pathname.startsWith("/icons/") ||
+    // The lockup is on the login and signup pages, so it has to load before
+    // there is a cookie. It also has to be reachable for the image optimizer,
+    // which fetches it back off this same server and gets the redirect to
+    // /login instead of a PNG if this is missing. Brand art is not a secret.
+    pathname.startsWith("/brand/");
   if (isPublic) return NextResponse.next();
 
   const cookie = request.cookies.get(AUTH_COOKIE)?.value;

@@ -12,7 +12,7 @@ export default async function PitchPage() {
     <div className="min-h-screen bg-paper">
       <main className="relative mx-auto max-w-xl overflow-hidden px-6 pb-20">
         <section className="py-14">
-          <Wordmark />
+          <Wordmark height={34} />
           <p className="eyebrow mt-8 text-slate">1 Min AI Pitch</p>
           <h1 className="display mt-3 text-4xl text-ink">
             One minute. One idea.

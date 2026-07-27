@@ -13,18 +13,21 @@ import {
   type MythSlide,
   type RecipeId,
 } from "../types.ts";
+import { BRAND } from "../brand.ts";
 
 export const CANVAS = { width: 1200, height: 1500 } as const;
 
+// Straight from the library. Every carousel and render the machine ships is
+// cut from the same palette as the console itself.
 const C = {
-  indigo: "#3D44D9",
-  indigoTint: "#E9EAFB",
-  ink: "#101116",
-  slate: "#5E647B",
-  paper: "#F4F4F8",
-  line: "#E3E4EC",
-  midnight: "#101126",
-  white: "#FFFFFF",
+  indigo: BRAND.indigo,
+  indigoTint: BRAND.indigoTint,
+  ink: BRAND.ink,
+  slate: BRAND.slate,
+  paper: BRAND.paper,
+  line: BRAND.line,
+  midnight: BRAND.ink,
+  white: BRAND.white,
 } as const;
 
 // ---------- fonts (woff, NOT woff2 — satori can't read woff2) ----------

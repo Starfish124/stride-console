@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { LhAccountCampaigns, LhCampaign } from "@/lib/channels/linkedHelper";
+import { Working } from "@/components/Loader";
 
 /**
  * The Linked Helper panel: what the machine is doing, in detail, and the
@@ -122,7 +123,7 @@ export function CampaignDeck({ entry }: { entry: LhAccountCampaigns }) {
             disabled={busy !== ""}
             className="rounded-input bg-indigo px-5 py-2.5 text-[15px] font-semibold text-white disabled:opacity-50"
           >
-            {busy === "run" ? "Starting." : "Start the runner"}
+            {busy === "run" ? <Working onDark>Starting.</Working> : "Start the runner"}
           </button>
           <button
             type="button"
@@ -130,7 +131,7 @@ export function CampaignDeck({ entry }: { entry: LhAccountCampaigns }) {
             disabled={busy !== ""}
             className="rounded-input border border-line bg-white px-5 py-2.5 text-[15px] font-semibold text-ink disabled:opacity-50"
           >
-            {busy === "stop" ? "Stopping." : "Stop"}
+            {busy === "stop" ? <Working>Stopping.</Working> : "Stop"}
           </button>
         </div>
 

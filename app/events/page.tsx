@@ -2,6 +2,7 @@ import Link from "next/link";
 import { listEvents, listSignups } from "@/lib/store";
 import { Header } from "@/components/ui";
 import { EventCreateForm } from "@/components/EventCreateForm";
+import { Ramp } from "@/components/Ramp";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ export default async function EventsPage() {
       <Header />
       <main className="mx-auto max-w-5xl px-6 pb-20">
         <section className="py-12">
+          <Ramp width={52} className="mb-4 text-indigo" />
           <p className="eyebrow text-slate">1 Min AI Pitch</p>
           <h1 className="display mt-3 text-3xl text-ink">The event engine.</h1>
           <p className="mt-2 max-w-lg text-slate">

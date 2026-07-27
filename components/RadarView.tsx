@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { SourceReportEntry, SourcedItem } from "@/lib/types";
+import { Loader, Working } from "@/components/Loader";
 
 interface RadarData {
   items: SourcedItem[];
@@ -78,9 +79,9 @@ export function RadarView() {
           type="button"
           onClick={scan}
           disabled={scanning}
-          className="rounded-input bg-indigo px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-deep disabled:opacity-50"
+          className="rounded-input bg-indigo px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-deep disabled:opacity-70"
         >
-          {scanning ? "Scanning." : "Sweep again."}
+          {scanning ? <Working onDark>Scanning.</Working> : "Sweep again."}
         </button>
       </div>
 
@@ -92,10 +93,13 @@ export function RadarView() {
 
       {scanning && !data ? (
         <div className="mt-4">
-          <p className="text-sm text-slate">
-            Reading all sources. This takes a few seconds — it is the real
-            internet, not a cache.
-          </p>
+          <div className="flex items-start gap-3">
+            <Loader size={30} className="mt-0.5 shrink-0" label="Sweeping every source" />
+            <p className="text-sm text-slate">
+              Reading all sources. This takes a few seconds — it is the real
+              internet, not a cache.
+            </p>
+          </div>
           <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
             {[0, 1, 2, 3].map((i) => (
               <div key={i} className="shimmer h-24 rounded-card" />
