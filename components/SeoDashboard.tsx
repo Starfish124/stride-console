@@ -543,5 +543,5 @@ function Tile({
 }
 
 export function SeoRamp() {
-  return <Ramp className="mb-3" />;
+  return <Ramp width={52} className="mb-4 text-indigo" />;
 }

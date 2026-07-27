@@ -14,6 +14,18 @@ interface IconProps {
   strong?: boolean;
 }
 
+/**
+ * The library ships the set at 20 · 24 · 32 · 48px and is explicit about the
+ * direction: thicken the stroke as the icon shrinks, never the reverse. A flat
+ * 1.7 is right at 32 and too thin at 20, where the glyph goes wiry.
+ */
+function strokeFor(size: number): number {
+  if (size <= 20) return 2;
+  if (size <= 28) return 1.8;
+  if (size <= 40) return 1.7;
+  return 1.6;
+}
+
 function frame({ size = 24, className, strong }: IconProps) {
   return {
     width: size,
@@ -21,7 +33,9 @@ function frame({ size = 24, className, strong }: IconProps) {
     viewBox: "0 0 24 24",
     fill: "none",
     stroke: "currentColor",
-    strokeWidth: strong ? 2.2 : 1.7,
+    // A selected tab thickens the way SF Symbols does, from whatever the
+    // size-appropriate weight already is.
+    strokeWidth: strokeFor(size) + (strong ? 0.5 : 0),
     strokeLinecap: "round" as const,
     strokeLinejoin: "round" as const,
     className,

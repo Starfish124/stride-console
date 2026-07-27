@@ -11,6 +11,7 @@ import {
 } from "@/lib/types";
 import { StatusBadge } from "@/components/ui";
 import { StatsForm } from "@/components/StatsForm";
+import { Working } from "@/components/Loader";
 
 const TABS: { id: Destination; label: string }[] = [
   { id: "page", label: "Company page" },
@@ -254,7 +255,7 @@ export function DraftEditor({
               disabled={Boolean(busy)}
               className="rounded-input border border-ink px-4 py-2 text-sm font-semibold text-ink hover:bg-white disabled:opacity-60"
             >
-              {busy?.endsWith("/regenerate") ? "Rewriting." : "Regenerate."}
+              {busy?.endsWith("/regenerate") ? <Working>Rewriting.</Working> : "Regenerate."}
             </button>
             <button
               onClick={approve}

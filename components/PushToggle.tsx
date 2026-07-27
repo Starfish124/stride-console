@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Working } from "@/components/Loader";
 
 function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
   const padding = "=".repeat((4 - (base64.length % 4)) % 4);
@@ -114,7 +115,14 @@ export function PushToggle() {
             : "bg-indigo text-white hover:bg-indigo-deep"
         }`}
       >
-        {state === "busy" ? "One moment." : state === "on" ? "Turn off." : "Turn on."}
+        {/* Busy always paints as the filled variant, so its loader is on ink. */}
+        {state === "busy" ? (
+          <Working onDark>One moment.</Working>
+        ) : state === "on" ? (
+          "Turn off."
+        ) : (
+          "Turn on."
+        )}
       </button>
     </div>
   );

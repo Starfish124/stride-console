@@ -1,7 +1,9 @@
 import { Header } from "@/components/ui";
+import { PALETTE } from "@/lib/brand";
 import { VOICE_GUIDE, RECIPE_FORMULAS } from "@/lib/voice/guide";
 import { RECIPE_LABELS } from "@/lib/types";
 import type { RecipeId } from "@/lib/types";
+import { Ramp } from "@/components/Ramp";
 
 export const dynamic = "force-dynamic";
 
@@ -40,15 +42,9 @@ function parseGuide(guide: string): { lead: string[]; sections: GuideSection[] }
   return { lead, sections };
 }
 
-const PALETTE: { name: string; hex: string; note: string }[] = [
-  { name: "Indigo", hex: "#3D44D9", note: "The brand color. Buttons, links, the one emphasized word." },
-  { name: "Indigo deep", hex: "#2A2FB0", note: "Hover states." },
-  { name: "Indigo tint", hex: "#E9EAFB", note: "Approved badges, soft fills." },
-  { name: "Ink", hex: "#101116", note: "Text. Posted badges." },
-  { name: "Slate", hex: "#5E647B", note: "Secondary text, labels." },
-  { name: "Paper", hex: "#F4F4F8", note: "The background everything sits on." },
-  { name: "Line", hex: "#E3E4EC", note: "Borders, dividers." },
-];
+// The palette comes from lib/brand.ts, which the render pipeline reads too, so
+// this page cannot drift from what the machine actually paints with. It used
+// to hold its own copy, and had been wrong for a release.
 
 const WORKFLOW: { step: string; detail: string }[] = [
   { step: "It sources.", detail: "19 feeds swept, scored and deduped. Top stories read in full. See the Radar." },
@@ -75,6 +71,7 @@ export default async function PlaybookPage() {
       <Header />
       <main className="mx-auto max-w-5xl px-6 pb-20">
         <section className="relative overflow-hidden py-10">
+          <Ramp width={52} className="mb-4 text-indigo" />
           <p className="eyebrow text-slate">Playbook</p>
           <h1 className="display mt-3 text-4xl text-ink">How Stride sounds.</h1>
           <p className="mt-2 max-w-lg text-slate">
@@ -169,24 +166,41 @@ export default async function PlaybookPage() {
             </div>
             <div className="mt-5 grid gap-4 border-t border-line pt-5 sm:grid-cols-3">
               <div>
-                <p className="display text-xl text-ink">Archivo, heavy.</p>
+                <p className="display text-xl text-ink">Playfair Display.</p>
                 <p className="mt-0.5 text-xs text-slate">
-                  Display type. Tight tracking. Headlines end with a period.
+                  Display type and every figure. Headlines end with a period.
                 </p>
               </div>
               <div>
-                <p className="eyebrow text-ink">IBM PLEX MONO — LABELS</p>
+                <p className="text-[17px] font-semibold text-ink">Plus Jakarta Sans</p>
+                <p className="mt-0.5 text-xs text-slate">
+                  The interface face, from the library. Everything you read.
+                </p>
+              </div>
+              <div>
+                <p className="eyebrow text-ink">JETBRAINS MONO — LABELS</p>
                 <p className="mt-0.5 text-xs text-slate">
                   The label voice: uppercase, wide tracking, small.
                 </p>
               </div>
+            </div>
+            <div className="mt-5 grid gap-4 border-t border-line pt-5 sm:grid-cols-2">
               <div>
                 <p className="text-sm text-ink">
-                  One word per visual gets <span className="font-bold text-indigo">indigo</span>.
+                  One word per visual gets{" "}
+                  <span className="font-bold text-indigo">Stride blue</span>.
                 </p>
                 <p className="mt-0.5 text-xs text-slate">
-                  The radar rings are the background device. No emoji, no
-                  exclamation marks, max 3 hashtags.
+                  One accent per surface. Amber and coral are status only, never
+                  decoration. No emoji, no exclamation marks, max 3 hashtags.
+                </p>
+              </div>
+              <div className="flex items-start gap-3">
+                <Ramp width={64} className="mt-0.5 shrink-0 text-indigo" />
+                <p className="text-xs text-slate">
+                  The stride accent: five bars sheared along the mark&rsquo;s own
+                  diagonal. Once per surface, top-left of a title. The mark is
+                  never redrawn, rotated or outlined.
                 </p>
               </div>
             </div>

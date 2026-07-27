@@ -6,7 +6,7 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-paper px-6">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-start gap-3">
-          <Wordmark size="text-3xl" />
+          <Wordmark height={40} />
           <p className="eyebrow text-slate">Stride console — founders only</p>
         </div>
         <LoginForm />

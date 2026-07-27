@@ -259,7 +259,7 @@ button:active:not(:disabled) {
    midnight instead. */
 .deck {
   background:
-    radial-gradient(120% 140% at 85% -10%, rgba(61, 68, 217, 0.35) 0%, transparent 55%),
+    radial-gradient(120% 140% at 85% -10%, rgba(46, 48, 248, 0.35) 0%, transparent 55%),
     var(--color-midnight);
   color: #fff;
 }
@@ -294,6 +294,96 @@ main {
   }
 }
 
+/* ——— the loader ————————————————————————————————————————————————
+ *
+ * The brand book's own loading mark: the two bars fill from the bottom, flash
+ * as they top out, and the whole mark gives a single beat before repeating.
+ * One cycle is 1.8s, which is slow enough to read as charging rather than
+ * scanning. Colour comes from currentColor, so it inherits whatever it sits in.
+ *
+ * Kept here rather than in the component so a screen with several loaders on
+ * it ships one copy of these keyframes. */
+.sa-loader {
+  color: var(--color-indigo);
+}
+
+.sa-loader .sa-track {
+  fill: var(--sa-track, currentColor);
+  animation: sa-breathe 1.8s ease-in-out infinite;
+}
+
+.sa-loader .sa-fill {
+  animation: sa-rise 1.8s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+.sa-loader .sa-flash {
+  opacity: 0;
+  animation: sa-flash 1.8s linear infinite;
+}
+
+/* The beat sits on the group so the mark scales about its own centre. */
+.sa-loader > g {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sa-pop 1.8s linear infinite;
+}
+
+@keyframes sa-rise {
+  0%,
+  3.3% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  68.9%,
+  80% {
+    transform: translateY(-24px);
+    opacity: 1;
+  }
+  93.3%,
+  100% {
+    transform: translateY(-24px);
+    opacity: 0;
+  }
+}
+
+@keyframes sa-flash {
+  0%,
+  68.9% {
+    opacity: 0;
+  }
+  74% {
+    opacity: 0.55;
+  }
+  81%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes sa-pop {
+  0%,
+  68.9% {
+    transform: scale(1);
+  }
+  74% {
+    transform: scale(1.03);
+  }
+  81%,
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes sa-breathe {
+  0%,
+  100% {
+    opacity: 0.13;
+  }
+  50% {
+    opacity: 0.19;
+  }
+}
+
 /* Loading shimmer, used while the radar sweeps the real internet. */
 .shimmer {
   background: linear-gradient(
@@ -314,8 +404,16 @@ main {
 
 @media (prefers-reduced-motion: reduce) {
   main,
-  .shimmer {
+  .shimmer,
+  .sa-loader > g,
+  .sa-loader .sa-flash {
     animation: none;
+  }
+  /* The loader still has to say "working", so the mark keeps breathing and
+     holds half-full instead of freezing solid. */
+  .sa-loader .sa-fill {
+    animation: none;
+    transform: translateY(-11px);
   }
   .card-lift:hover,
   .pressable:active,

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Working } from "@/components/Loader";
 
 export function EventCreateForm() {
   const router = useRouter();
@@ -76,7 +77,7 @@ export function EventCreateForm() {
         disabled={busy}
         className="mt-4 rounded-input bg-indigo px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-deep disabled:opacity-60"
       >
-        {busy ? "Creating." : "Create the event."}
+        {busy ? <Working onDark>Creating.</Working> : "Create the event."}
       </button>
     </form>
   );

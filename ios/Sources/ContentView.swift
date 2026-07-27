@@ -4,12 +4,14 @@ import SwiftUI
 /// this is the one line to update.
 let consoleURL = URL(string: "https://mac-mini.tailc91701.ts.net")!
 
-/// Brand tokens, mirrored from the console's design system.
+/// Brand tokens, mirrored from lib/brand.ts, which mirrors the icon library.
+/// Only the unreachable screen uses them — everything else is the web view —
+/// so they exist to keep that one screen from looking like a different app.
 enum Brand {
-    static let indigo = Color(red: 0x3D / 255, green: 0x44 / 255, blue: 0xD9 / 255)
-    static let paper = Color(red: 0xF4 / 255, green: 0xF4 / 255, blue: 0xF8 / 255)
-    static let ink = Color(red: 0x10 / 255, green: 0x11 / 255, blue: 0x16 / 255)
-    static let slate = Color(red: 0x5E / 255, green: 0x64 / 255, blue: 0x7B / 255)
+    static let indigo = Color(red: 0x2E / 255, green: 0x30 / 255, blue: 0xF8 / 255)
+    static let paper = Color(red: 0xF6 / 255, green: 0xF7 / 255, blue: 0xFA / 255)
+    static let ink = Color(red: 0x0A / 255, green: 0x0C / 255, blue: 0x14 / 255)
+    static let slate = Color(red: 0x5A / 255, green: 0x61 / 255, blue: 0x72 / 255)
 }
 
 struct ContentView: View {
@@ -33,9 +35,9 @@ struct UnreachableView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Triangle()
+            StrideMark()
                 .fill(Brand.indigo)
-                .frame(width: 40, height: 36)
+                .frame(width: 40, height: 40)
             Text("The console is unreachable.")
                 .font(.system(size: 24, weight: .heavy))
                 .foregroundColor(Brand.ink)
@@ -59,13 +61,28 @@ struct UnreachableView: View {
     }
 }
 
-struct Triangle: Shape {
+/// The mark: two bars sheared along the library's own 12:24 diagonal. The
+/// coordinates are the library's, on its 24-unit grid, scaled to whatever
+/// frame this is given. The unreachable screen used to show a plain triangle,
+/// which is not the logo of anything.
+struct StrideMark: Shape {
+    private static let bars: [[CGPoint]] = [
+        [CGPoint(x: 19.43, y: 1), CGPoint(x: 9.75, y: 1),
+         CGPoint(x: 1.37, y: 12.19), CGPoint(x: 10.99, y: 12.19)],
+        [CGPoint(x: 22.63, y: 11.41), CGPoint(x: 14.03, y: 11.41),
+         CGPoint(x: 5.33, y: 23), CGPoint(x: 13.97, y: 23)],
+    ]
+
     func path(in rect: CGRect) -> Path {
+        let s = min(rect.width, rect.height) / 24
         var path = Path()
-        path.move(to: CGPoint(x: rect.midX, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
-        path.closeSubpath()
+        for bar in Self.bars {
+            path.move(to: CGPoint(x: bar[0].x * s, y: bar[0].y * s))
+            for point in bar.dropFirst() {
+                path.addLine(to: CGPoint(x: point.x * s, y: point.y * s))
+            }
+            path.closeSubpath()
+        }
         return path
     }
 }

@@ -10,7 +10,7 @@ export default function SeoPage() {
       <Header />
       <main className="mx-auto max-w-5xl px-6 pb-24">
         <section className="py-10">
-          <Ramp className="mb-3" />
+          <Ramp width={52} className="mb-4 text-indigo" />
           <p className="eyebrow text-slate">Search</p>
           <h1 className="display mt-3 text-4xl text-ink">The site works on itself.</h1>
           <p className="mt-2 max-w-xl text-slate">

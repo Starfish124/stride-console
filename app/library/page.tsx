@@ -2,6 +2,7 @@ import { listDrafts, listPostLog } from "@/lib/store";
 import { buildLibrary, librarySummary } from "@/lib/library";
 import { Header } from "@/components/ui";
 import { LibraryBrowser } from "@/components/LibraryBrowser";
+import { Ramp } from "@/components/Ramp";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ export default async function LibraryPage() {
       <Header />
       <main className="mx-auto max-w-5xl px-6 pb-20">
         <section className="py-10">
+          <Ramp width={52} className="mb-4 text-indigo" />
           <p className="eyebrow text-slate">Library</p>
           <h1 className="display mt-3 text-4xl text-ink">
             Everything you ever made.

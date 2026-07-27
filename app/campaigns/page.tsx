@@ -2,6 +2,7 @@ import { Header } from "@/components/ui";
 import { readCampaignsView } from "@/lib/channels/linkedHelper";
 import { CampaignDeck } from "@/components/CampaignDeck";
 import { CampaignCreator } from "@/components/CampaignCreator";
+import { Ramp } from "@/components/Ramp";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,7 @@ export default async function CampaignsPage() {
       <Header />
       <main className="mx-auto max-w-3xl px-6 pb-20">
         <section className="py-12">
+          <Ramp width={52} className="mb-4 text-indigo" />
           <p className="eyebrow text-slate">Campaigns</p>
           <h1 className="display mt-3 text-3xl text-ink">
             What Linked Helper is doing.

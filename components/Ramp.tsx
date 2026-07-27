@@ -1,3 +1,5 @@
+import { MARK_POLYGONS } from "@/lib/brand";
+
 /**
  * The stride accent, traced from the icon library.
  *
@@ -40,19 +42,29 @@ export function Ramp({
  * The mark: two bars, offset. Below about 20px the library says to drop the
  * offset and use a single bar, because the two-bar mark fills in and turns
  * into a smudge.
+ *
+ * The coordinates are the library's own, not a redraw. The console used to
+ * carry a hand-traced approximation with rounded corners, which is exactly
+ * what the library's first rule forbids.
  */
 export function Mark({ size = 24, className = "" }: { size?: number; className?: string }) {
-  if (size < 20) {
-    return (
-      <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" className={className} aria-hidden="true">
-        <polygon points="9,2 22,2 15,22 2,22" />
-      </svg>
-    );
-  }
   return (
-    <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" className={className} aria-hidden="true">
-      <polygon points="10.5,2 23,2 17,11.5 4.5,11.5" />
-      <polygon points="7,12.5 19.5,12.5 13.5,22 1,22" />
+    <svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
+      {size < 20 ? (
+        <polygon points={MARK_POLYGONS.small} />
+      ) : (
+        <>
+          <polygon points={MARK_POLYGONS.top} />
+          <polygon points={MARK_POLYGONS.bottom} />
+        </>
+      )}
     </svg>
   );
 }
