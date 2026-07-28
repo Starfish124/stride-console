@@ -75,9 +75,6 @@ export function euros(n: number): string {
 export interface DashboardInput {
   clients: Client[];
   postLog: PostLogEntry[];
-  /** Null when Linked Helper could not be reached, which is not the same as zero. */
-  queued: number | null;
-  running: number | null;
   /** Null when no page has been audited yet. */
   siteScore: number | null;
   pages: number;
@@ -100,7 +97,6 @@ export interface QuickTile {
 }
 
 export interface QuickMenuInput {
-  running: number | null;
   replies: number;
   clients: number;
   late: number;
@@ -119,13 +115,6 @@ export interface QuickMenuInput {
  */
 export function buildQuickMenu(input: QuickMenuInput): QuickTile[] {
   return [
-    {
-      label: "Campaigns",
-      href: "/campaigns",
-      icon: "IconPipeline",
-      count: input.running,
-      note: input.running === null ? "out of reach" : "running now",
-    },
     {
       label: "Replies",
       href: "/outreach",
@@ -179,6 +168,37 @@ export function buildQuickMenu(input: QuickMenuInput): QuickTile[] {
   ];
 }
 
+/**
+ * The one figure that costs a round trip to Linked Helper.
+ *
+ * Split out from the rest so the dashboard can paint without it and let it
+ * arrive a moment later. Null means the bridge did not answer, which is not
+ * the same as nothing being queued.
+ */
+export function linkedInStat(queued: number | null, running: number | null): Stat {
+  return {
+    label: "Queued on LinkedIn",
+    // Unreachable is its own answer. A dash is honest where a 0 would lie.
+    value: queued === null ? "—" : compact(queued),
+    note:
+      queued === null
+        ? "Linked Helper is out of reach"
+        : `${running ?? 0} campaign${running === 1 ? "" : "s"} running`,
+    href: "/campaigns",
+  };
+}
+
+/** The quick menu's Campaigns tile, for the same reason. */
+export function campaignsTile(running: number | null): QuickTile {
+  return {
+    label: "Campaigns",
+    href: "/campaigns",
+    icon: "IconPipeline",
+    count: running,
+    note: running === null ? "out of reach" : "running now",
+  };
+}
+
 export function buildStats(input: DashboardInput, now = new Date()): Stat[] {
   const inPlay = input.clients
     .filter((c) => c.stage === "lead" || c.stage === "talking" || c.stage === "proposal")
@@ -201,16 +221,6 @@ export function buildStats(input: DashboardInput, now = new Date()): Stat[] {
           ? "Nobody in the book yet"
           : `${talking} in a live conversation, ${input.clients.length} in the book`,
       href: "/clients",
-    },
-    {
-      label: "Queued on LinkedIn",
-      // Unreachable is its own answer. A dash is honest where a 0 would lie.
-      value: input.queued === null ? "—" : compact(input.queued),
-      note:
-        input.queued === null
-          ? "Linked Helper is out of reach"
-          : `${input.running ?? 0} campaign${input.running === 1 ? "" : "s"} running`,
-      href: "/campaigns",
     },
     {
       label: "Posted this month",

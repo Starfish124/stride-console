@@ -182,3 +182,20 @@ const BY_NAME: Record<string, (props: IconProps) => React.ReactElement> = {
 export function iconByName(name: string) {
   return BY_NAME[name] ?? IconGrid;
 }
+
+/**
+ * Render a glyph by name.
+ *
+ * `const Icon = iconByName(x)` inside a component body creates a component
+ * during render, which React's lint rule rightly objects to: the identity
+ * changes every pass. This wrapper has one stable identity and does the lookup
+ * internally, so callers can take an icon name as data without that cost.
+ */
+export function Glyph({ name, ...props }: IconProps & { name: string }) {
+  // Called rather than rendered as <Icon />. Every glyph here is a plain
+  // function of props with no state of its own, so invoking it returns the
+  // same element JSX would have built — without declaring a fresh component
+  // type on each render, which is the thing that would reset state if these
+  // ever had any.
+  return iconByName(name)(props);
+}

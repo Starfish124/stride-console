@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { RECIPE_LABELS } from "@/lib/types";
 import {
   listClients,
@@ -12,8 +13,7 @@ import {
 } from "@/lib/store";
 import { listAudits } from "@/lib/seo/store";
 import { unhandledCount } from "@/lib/outreach/replies";
-import { readPulse } from "@/lib/channels/attention";
-import { addDays, buildCalendar, overdue, todayISO, upcoming } from "@/lib/calendar";
+import { buildCalendar, overdue, todayISO, upcoming } from "@/lib/calendar";
 import { buildQuickMenu, buildStats } from "@/lib/dashboard";
 import { IconTime } from "@/components/icons";
 import { Header, StatusBadge } from "@/components/ui";
@@ -24,6 +24,13 @@ import { LhPulsePanel } from "@/components/LhPulsePanel";
 import { SeoPanel } from "@/components/SeoPanel";
 import { StatBand } from "@/components/StatBand";
 import { QuickMenu } from "@/components/QuickMenu";
+import {
+  CampaignsQuickTile,
+  CampaignsQuickTileSkeleton,
+  LhPulseSkeleton,
+  LinkedInStatTile,
+  LinkedInStatTileSkeleton,
+} from "@/components/LinkedInLive";
 
 export const dynamic = "force-dynamic";
 
@@ -58,21 +65,20 @@ export default async function Dashboard() {
   const clients = listClients();
   const postLog = listPostLog();
   const audits = listAudits();
-  // The one figure the console does not own. Out of reach stays null all the
-  // way to the tile, which prints a dash rather than inventing a zero.
-  const pulse = await readPulse().catch(() => null);
-  const reachable = pulse?.reachable ? pulse : null;
 
+  // Nothing here asks Linked Helper anything. Every figure below comes off
+  // local disk, so the page ships at once and the three pieces that do need
+  // the bridge stream in behind their own boundaries.
+  //
+  // The licence lapse is deliberately not fed in: it is the one calendar date
+  // that costs a round trip, and it is a machine deadline rather than a person
+  // — the LinkedIn panel announces it, and the calendar page still plots it.
   const calendar = buildCalendar(
     {
       clients,
       events: listEvents(),
       signups: listSignups(),
       postLog,
-      licenceExpiry:
-        pulse?.licenceDaysLeft != null
-          ? addDays(today, pulse.licenceDaysLeft)
-          : undefined,
     },
     today,
   );
@@ -95,7 +101,6 @@ export default async function Dashboard() {
   const waiting = owed.length + repliesWaiting + draftsWaiting;
 
   const tiles = buildQuickMenu({
-    running: reachable?.running ?? null,
     replies: repliesWaiting,
     clients: clients.length,
     late: owed.length,
@@ -107,8 +112,6 @@ export default async function Dashboard() {
   const stats = buildStats({
     clients,
     postLog,
-    queued: reachable?.people ?? null,
-    running: reachable?.running ?? null,
     siteScore: audits.length
       ? Math.round(audits.reduce((s, a) => s + a.score, 0) / audits.length)
       : null,
@@ -148,14 +151,27 @@ export default async function Dashboard() {
         </section>
 
         {/* Where everything stands, before what there is to do about it. */}
-        <StatBand stats={stats} />
+        <StatBand stats={stats}>
+          <Suspense fallback={<LinkedInStatTileSkeleton />}>
+            <LinkedInStatTile />
+          </Suspense>
+        </StatBand>
 
         {/* And the way to act on any of it. */}
-        <QuickMenu tiles={tiles} />
+        <QuickMenu
+          tiles={tiles}
+          leading={
+            <Suspense fallback={<CampaignsQuickTileSkeleton />}>
+              <CampaignsQuickTile />
+            </Suspense>
+          }
+        />
 
         {/* What the outbound machine needs from a founder, before the posting
             tools. Replies and drafts waiting on a person outrank a button. */}
-        <LhPulsePanel />
+        <Suspense fallback={<LhPulseSkeleton />}>
+          <LhPulsePanel />
+        </Suspense>
 
         <SeoPanel />
 

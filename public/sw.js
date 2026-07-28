@@ -19,14 +19,64 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+/**
+ * How long a page may take before the offline shell is kinder than waiting.
+ *
+ * The console answers in about a tenth of a second, and its slowest honest
+ * path — every figure on the dashboard with Linked Helper wedged — is under
+ * three. Eight seconds is therefore far past "slow" and squarely in "this
+ * machine is not coming back", which is the only case worth pre-empting. Set
+ * it much tighter and a cold start after a deploy would be mistaken for the
+ * Mac being asleep.
+ */
+const NAVIGATE_TIMEOUT_MS = 8000;
+
+async function navigateOrOffline(request) {
+  const controller = new AbortController();
+  let timer;
+  const giveUp = new Promise((resolve) => {
+    timer = setTimeout(() => {
+      // Abort the request too. Without this the socket stays open behind an
+      // offline page nobody is going to replace.
+      controller.abort();
+      resolve(null);
+    }, NAVIGATE_TIMEOUT_MS);
+  });
+
+  try {
+    const res = await Promise.race([
+      fetch(request, { signal: controller.signal }).catch(() => null),
+      giveUp,
+    ]);
+    if (res) return res;
+  } finally {
+    clearTimeout(timer);
+  }
+
+  // Last resort. If even the shell is missing from the cache, say something
+  // rather than hand the browser an undefined and let it show its own error.
+  const offline = await caches.match("/offline.html");
+  return (
+    offline ||
+    new Response("The console is not answering. Check the Mac is awake.", {
+      status: 503,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    })
+  );
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
   const url = new URL(request.url);
 
-  // Pages: network first, offline shell when the network is gone.
+  // Pages: network first, offline shell when the network is gone OR too slow
+  // to be useful. The catch alone only fired on a hard failure, so the case
+  // that actually happens here — the Mac asleep, the connection accepted and
+  // then nothing — left a founder on a white screen indefinitely. A dead TCP
+  // connection does not reject, it hangs.
   if (request.mode === "navigate") {
-    event.respondWith(fetch(request).catch(() => caches.match("/offline.html")));
+    event.respondWith(navigateOrOffline(request));
     return;
   }
 

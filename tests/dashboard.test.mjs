@@ -5,6 +5,8 @@ import assert from "node:assert/strict";
 import {
   buildQuickMenu,
   buildStats,
+  campaignsTile,
+  linkedInStat,
   compact,
   euros,
   medianEngagement,
@@ -33,8 +35,6 @@ function post(at, stats) {
 const BASE = {
   clients: [],
   postLog: [],
-  queued: 0,
-  running: 0,
   siteScore: null,
   pages: 0,
   drafts: 0,
@@ -59,22 +59,31 @@ test("in play counts the open stages and never the won or lost ones", () => {
 });
 
 test("an unreachable Linked Helper prints a dash, not a zero", () => {
-  const stats = buildStats({ ...BASE, queued: null, running: null }, NOW);
-  const lh = stats.find((s) => s.label === "Queued on LinkedIn");
+  const lh = linkedInStat(null, null);
   assert.equal(lh.value, "—");
   assert.match(lh.note, /out of reach/i);
 });
 
 test("a reachable Linked Helper with nothing queued really is zero", () => {
-  const stats = buildStats({ ...BASE, queued: 0, running: 0 }, NOW);
-  assert.equal(stats.find((s) => s.label === "Queued on LinkedIn").value, "0");
+  assert.equal(linkedInStat(0, 0).value, "0");
 });
 
 test("one running campaign is not one campaigns", () => {
-  const one = buildStats({ ...BASE, queued: 5, running: 1 }, NOW);
-  assert.equal(one.find((s) => s.label === "Queued on LinkedIn").note, "1 campaign running");
-  const two = buildStats({ ...BASE, queued: 5, running: 2 }, NOW);
-  assert.equal(two.find((s) => s.label === "Queued on LinkedIn").note, "2 campaigns running");
+  assert.equal(linkedInStat(5, 1).note, "1 campaign running");
+  assert.equal(linkedInStat(5, 2).note, "2 campaigns running");
+});
+
+test("the streamed tiles are not in the band or the menu the page renders first", () => {
+  // They cost a round trip to the bridge, so the page must be able to paint
+  // without them. If either reappears here, the dashboard blocks again.
+  assert.equal(
+    buildStats(BASE, NOW).find((s) => s.label === "Queued on LinkedIn"),
+    undefined,
+  );
+  assert.equal(
+    buildQuickMenu(QUIET).find((t) => t.label === "Campaigns"),
+    undefined,
+  );
 });
 
 test("an unaudited site prints a dash rather than a score of zero", () => {
@@ -163,7 +172,6 @@ test("every tile links somewhere, because a number you cannot act on is decorati
 // ---------- the quick menu ----------
 
 const QUIET = {
-  running: 0,
   replies: 0,
   clients: 0,
   late: 0,
@@ -181,18 +189,16 @@ test("every quick tile is a real destination", () => {
 });
 
 test("an unreachable Linked Helper leaves the campaigns tile unknown", () => {
-  const tile = buildQuickMenu({ ...QUIET, running: null }).find(
-    (t) => t.label === "Campaigns",
-  );
+  const tile = campaignsTile(null);
   assert.equal(tile.count, null);
   assert.match(tile.note, /out of reach/i);
+  assert.equal(campaignsTile(2).count, 2);
 });
 
 test("warn is reserved for counts a person is holding up", () => {
   // A queue with things in it is work, not a problem. An unanswered reply is.
   const busy = buildQuickMenu({
     ...QUIET,
-    running: 3,
     clients: 40,
     draftsWaiting: 6,
     seoFindings: 12,
