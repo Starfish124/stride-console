@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import {
   CLIENT_STAGES,
   STAGE_HINTS,
@@ -56,6 +56,17 @@ export function ClientsBoard({ clients }: { clients: Client[] }) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  // Moving somebody is the most-tapped thing on this page, and it used to mean
+  // a round trip to the Mac before the card visibly moved. Over Tailscale from
+  // a phone that reads as a dead button, so the card moves now and the server
+  // catches up. If the write fails the refresh puts it back where it was.
+  const [shown, moveOptimistically] = useOptimistic(
+    clients,
+    (current: Client[], moved: { id: string; stage: ClientStage }) =>
+      current.map((c) => (c.id === moved.id ? { ...c, stage: moved.stage } : c)),
+  );
+  const [, startTransition] = useTransition();
   const [form, setForm] = useState({
     name: "",
     company: "",
@@ -90,13 +101,19 @@ export function ClientsBoard({ clients }: { clients: Client[] }) {
     router.refresh();
   }
 
-  async function move(client: Client, stage: ClientStage) {
-    await fetch(`/api/clients/${client.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ stage }),
+  function move(client: Client, stage: ClientStage) {
+    // useOptimistic requires its update to happen inside a transition, and the
+    // await has to live in the same one or React drops the optimistic state
+    // the moment the first one settles.
+    startTransition(async () => {
+      moveOptimistically({ id: client.id, stage });
+      await fetch(`/api/clients/${client.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stage }),
+      });
+      router.refresh();
     });
-    router.refresh();
   }
 
   const field =
@@ -106,7 +123,7 @@ export function ClientsBoard({ clients }: { clients: Client[] }) {
     <div>
       <div className="mb-6 flex items-center justify-between gap-3">
         <p className="eyebrow text-slate">
-          {clients.length} in the book
+          {shown.length} in the book
         </p>
         <button
           type="button"
@@ -184,7 +201,7 @@ export function ClientsBoard({ clients }: { clients: Client[] }) {
         </form>
       )}
 
-      {clients.length === 0 && !adding && (
+      {shown.length === 0 && !adding && (
         <p className="card-glass flex items-center gap-2.5 rounded-card border border-line bg-white px-5 py-4 text-[15px] text-slate">
           <IconTeam size={18} className="shrink-0 text-mute" />
           Nobody in the book yet. Add the first lead and it lands here.
@@ -195,7 +212,7 @@ export function ClientsBoard({ clients }: { clients: Client[] }) {
           on a 402px screen is five slivers nobody can read. */}
       <div className="grid gap-6 lg:grid-cols-5">
         {CLIENT_STAGES.map((stage) => {
-          const inStage = clients.filter((c) => c.stage === stage);
+          const inStage = shown.filter((c) => c.stage === stage);
           if (inStage.length === 0 && stage === "past") return null;
           const total = inStage.reduce((sum, c) => sum + (c.value ?? 0), 0);
           return (

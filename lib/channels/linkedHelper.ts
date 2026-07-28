@@ -14,7 +14,19 @@ import type { Channel, ChannelFact, ChannelStatus } from "./types.ts";
 
 const BRIDGE_FILE = path.join(DATA_DIR, "bridge.json");
 const DEFAULT_PORT = 7455;
-const TIMEOUT_MS = 20_000;
+/**
+ * Reads happen while a page is being painted, so this is a budget for how long
+ * a founder stares at nothing — not for how long the bridge might reasonably
+ * take. It used to be 20 seconds, which is a background-job timeout: with the
+ * front page reading the bridge twice, a hung Linked Helper held the whole
+ * dashboard blank for a measured 40 seconds.
+ *
+ * The bridge is on loopback. If it has not answered in two and a half seconds
+ * it is wedged, and saying "out of reach" is both truer and far more useful
+ * than a blank screen. Control actions keep their own generous timeout, since
+ * a founder who pressed Start expects to wait.
+ */
+const TIMEOUT_MS = 2_500;
 
 /** Warn this far out, so a dead campaign is never the way we learn it lapsed. */
 const LICENCE_WARN_DAYS = 7;

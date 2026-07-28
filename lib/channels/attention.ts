@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { readAiDrafts, readCampaignsView, readLicenceDays } from "./linkedHelper";
 import { listReplies } from "../outreach/replies.ts";
 import { lintMessage } from "../outreach/lint.ts";
@@ -38,7 +39,17 @@ export interface LhPulse {
   items: AttentionItem[];
 }
 
-export async function readPulse(): Promise<LhPulse> {
+/**
+ * Deduplicated per render.
+ *
+ * The front page reads the pulse for its figures and the LinkedIn panel reads
+ * it again for what needs a person, which was two round trips to the bridge —
+ * and two timeouts stacked back to back when it was wedged. React's cache
+ * collapses them to one call per request, and callers stay unaware.
+ */
+export const readPulse = cache(uncachedReadPulse);
+
+async function uncachedReadPulse(): Promise<LhPulse> {
   const [view, { drafts }, licenceDaysLeft] = await Promise.all([
     readCampaignsView(),
     readAiDrafts(),

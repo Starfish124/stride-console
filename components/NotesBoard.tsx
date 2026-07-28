@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { LANE_LABELS, NOTE_LANES, type Note, type NoteLane } from "@/lib/types";
 import { IconBranch } from "@/components/icons";
 
@@ -29,6 +29,15 @@ export function NotesBoard({ notes }: { notes: Note[] }) {
   const [area, setArea] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // Same reason as the client board: the card moves under the thumb, the
+  // server catches up, and a failed write is undone by the refresh.
+  const [shown, moveOptimistically] = useOptimistic(
+    notes,
+    (current: Note[], moved: { id: string; lane: NoteLane }) =>
+      current.map((n) => (n.id === moved.id ? { ...n, lane: moved.lane } : n)),
+  );
+  const [, startTransition] = useTransition();
+
   async function add(e: React.FormEvent) {
     e.preventDefault();
     if (!text.trim()) return;
@@ -45,13 +54,16 @@ export function NotesBoard({ notes }: { notes: Note[] }) {
     router.refresh();
   }
 
-  async function move(note: Note, to: NoteLane) {
-    await fetch("/api/notes", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: note.id, lane: to }),
+  function move(note: Note, to: NoteLane) {
+    startTransition(async () => {
+      moveOptimistically({ id: note.id, lane: to });
+      await fetch("/api/notes", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: note.id, lane: to }),
+      });
+      router.refresh();
     });
-    router.refresh();
   }
 
   async function remove(note: Note) {
@@ -104,7 +116,7 @@ export function NotesBoard({ notes }: { notes: Note[] }) {
         </div>
       </form>
 
-      {notes.length === 0 && (
+      {shown.length === 0 && (
         <p className="card-glass flex items-center gap-2.5 rounded-card border border-line bg-white px-5 py-4 text-[15px] text-slate">
           <IconBranch size={18} className="shrink-0 text-mute" />
           Empty board. Whatever either of you thinks of goes here.
@@ -113,7 +125,7 @@ export function NotesBoard({ notes }: { notes: Note[] }) {
 
       <div className="grid gap-6 lg:grid-cols-4">
         {NOTE_LANES.map((l) => {
-          const inLane = notes.filter((n) => n.lane === l);
+          const inLane = shown.filter((n) => n.lane === l);
           return (
             <section key={l}>
               <div className="mb-1 flex items-baseline justify-between gap-2">
