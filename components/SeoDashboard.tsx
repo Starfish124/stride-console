@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Ramp } from "@/components/Ramp";
 import {
   IconApproved,
@@ -118,9 +119,22 @@ function scoreTone(score: number): string {
 }
 
 export function SeoDashboard() {
+  // The app menu deep-links into these tabs (Blogs, Review, Keywords are all
+  // this page), so ?tab= picks the opening one. Navigating here again with a
+  // different tab does not remount, hence the sync below rather than only an
+  // initial value.
+  const wanted = useSearchParams().get("tab") as Tab | null;
+  const valid = wanted && TABS.some((t) => t.id === wanted) ? wanted : null;
+
   const [data, setData] = useState<Payload | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("overview");
+  const [tab, setTab] = useState<Tab>(valid ?? "overview");
+
+  const [lastWanted, setLastWanted] = useState(valid);
+  if (valid !== lastWanted) {
+    setLastWanted(valid);
+    if (valid) setTab(valid);
+  }
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);

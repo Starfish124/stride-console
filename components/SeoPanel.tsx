@@ -39,7 +39,11 @@ export function SeoPanel() {
 
   if (keywords.length === 0 && audits.length === 0) return null;
 
-  const last = sweeps[sweeps.length - 1];
+  // appendSweep stores newest first, so the most recent sweep is index 0. This
+  // read used to take the last element, which is the oldest sweep on record —
+  // the panel had been reporting the score from the very first run (48) while
+  // the site had since climbed to 73.
+  const last = sweeps[0];
   const findings = audits.flatMap((a) => a.findings ?? []);
   const high = findings.filter((f) => f.severity === "high").length;
   const published = articles.filter((a) => a.status === "published").length;
