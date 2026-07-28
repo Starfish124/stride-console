@@ -162,3 +162,23 @@ export function IconTuneLoop(props: IconProps) {
 export function IconWorkflow(props: IconProps) {
   return <svg {...frame(props)}><circle cx="5" cy="6" r="2.4" /><circle cx="19" cy="6" r="2.4" /><circle cx="12" cy="18.4" r="2.4" /><path d="M7.4 6h9.2M6.3 8.2l4.4 8M17.7 8.2l-4.4 8" /></svg>;
 }
+
+/**
+ * Look a glyph up by name.
+ *
+ * lib/menu.ts is framework-free so node tests and the model's context builder
+ * can import it, which means it can only name its icons as strings. This is
+ * where a name becomes a drawing. Unknown names fall back rather than crash: a
+ * menu row with the wrong glyph is a typo, a menu that throws is an outage.
+ */
+const BY_NAME: Record<string, (props: IconProps) => React.ReactElement> = {
+  IconApproved, IconAskStride, IconBars, IconBolt, IconBranch, IconConfidence,
+  IconData, IconDeploy, IconEscalate, IconFilter, IconGate, IconGrid,
+  IconGuardrail, IconIntegration, IconKey, IconLayers, IconLineageDoc, IconLock,
+  IconPipeline, IconResidency, IconReview, IconRuntime, IconSearch, IconSpark,
+  IconTarget, IconTeam, IconTime, IconTrend, IconTuneLoop, IconWorkflow,
+};
+
+export function iconByName(name: string) {
+  return BY_NAME[name] ?? IconGrid;
+}

@@ -402,6 +402,56 @@ main {
   }
 }
 
+/* ——— paper ——————————————————————————————————————————————————————
+ *
+ * The client one-pager is a printed page that happens to be reachable in a
+ * browser, so printing it strips every piece of console chrome and lets the
+ * sheet fill the paper. The browser's own Save as PDF is then the whole PDF
+ * pipeline — no second layout engine, no second copy of the brand rules.
+ */
+@page {
+  size: A4;
+  margin: 0;
+}
+
+@media print {
+  /* Nothing that belongs to the app: no tab bar, no menu sheet, no header. */
+  nav,
+  header.no-print,
+  .no-print,
+  [role="dialog"] {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  main {
+    animation: none;
+    padding-bottom: 0 !important;
+  }
+
+  .sheet {
+    max-width: none !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* Print engines drop backgrounds by default, which would take the indigo
+     out of the mark and the rules — the two things carrying the brand. */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* A one-pager that runs to two pages is not a one-pager. */
+  section,
+  footer {
+    break-inside: avoid;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   main,
   .shimmer,

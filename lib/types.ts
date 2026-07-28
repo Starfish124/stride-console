@@ -209,6 +209,98 @@ export interface PitchSignup {
   at: string;
 }
 
+// ---------- clients and leads ----------
+
+/**
+ * Where somebody sits with us. Deliberately short: a stage list long enough to
+ * need a legend is a stage list nobody updates.
+ */
+export type ClientStage = "lead" | "talking" | "proposal" | "client" | "past";
+
+export const CLIENT_STAGES: ClientStage[] = [
+  "lead",
+  "talking",
+  "proposal",
+  "client",
+  "past",
+];
+
+export const STAGE_LABELS: Record<ClientStage, string> = {
+  lead: "Lead",
+  talking: "Talking",
+  proposal: "Proposal out",
+  client: "Client",
+  past: "Past",
+};
+
+/** Plain words for what the stage means, shown under the column heading. */
+export const STAGE_HINTS: Record<ClientStage, string> = {
+  lead: "Somebody worth approaching. No conversation yet.",
+  talking: "A conversation is live. Nothing priced.",
+  proposal: "They have the numbers. The ball is theirs.",
+  client: "Paying, and being delivered to.",
+  past: "Finished or gone quiet. Worth a look now and then.",
+};
+
+/** One dated thing that happened with a client: a call, a reply, a send. */
+export interface ClientTouch {
+  id: string;
+  /** ISO date. */
+  at: string;
+  note: string;
+  who?: string;
+}
+
+export interface Client {
+  id: string;
+  name: string;
+  company: string;
+  stage: ClientStage;
+  /** Where they came from: an event, a campaign, a referral, the website. */
+  source?: string;
+  role?: string;
+  email?: string;
+  linkedin?: string;
+  /** What they actually need, in the founder's own words. */
+  need?: string;
+  /** What Stride would do about it. Feeds the one-pager. */
+  proposed?: string;
+  /** Deal size in euros, if it has been said out loud. */
+  value?: number;
+  owner?: string;
+  /** ISO date of the next thing we owe them. Drives the calendar. */
+  nextStep?: string;
+  nextStepNote?: string;
+  touches: ClientTouch[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ---------- the shared notes board ----------
+
+export type NoteLane = "idea" | "todo" | "doing" | "done";
+
+export const NOTE_LANES: NoteLane[] = ["idea", "todo", "doing", "done"];
+
+export const LANE_LABELS: Record<NoteLane, string> = {
+  idea: "Ideas",
+  todo: "To build",
+  doing: "Building",
+  done: "Done",
+};
+
+/** A note either founder can drop in. Shared, because that is the whole point. */
+export interface Note {
+  id: string;
+  text: string;
+  lane: NoteLane;
+  /** Which part of the machine it is about, for filtering. */
+  area?: string;
+  by?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /** A founder phone's web-push subscription, stored locally like everything else. */
 export interface PushSubscriptionRecord {
   endpoint: string;

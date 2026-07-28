@@ -5,11 +5,16 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import type {
+  Client,
+  ClientStage,
+  ClientTouch,
   Destination,
   Draft,
   EventChecklistItem,
   InboxEntry,
   Myth,
+  Note,
+  NoteLane,
   PitchSignup,
   PostLogEntry,
   PostStats,
@@ -32,6 +37,8 @@ const FILES = {
   events: path.join(DATA_DIR, "events.json"),
   signups: path.join(DATA_DIR, "signups.json"),
   pushSubs: path.join(DATA_DIR, "push-subs.json"),
+  clients: path.join(DATA_DIR, "clients.json"),
+  notes: path.join(DATA_DIR, "notes.json"),
 } as const;
 
 function ensureDataDir(): void {
@@ -342,6 +349,151 @@ export function removePushSub(endpoint: string): void {
     FILES.pushSubs,
     listPushSubs().filter((s) => s.endpoint !== endpoint),
   );
+}
+
+// ---------- clients and leads ----------
+
+export function listClients(): Client[] {
+  return readJson<Client[]>(FILES.clients, []);
+}
+
+export function getClient(id: string): Client | undefined {
+  return listClients().find((c) => c.id === id);
+}
+
+export function addClient(
+  input: Partial<Client> & { name: string; company: string },
+): Client {
+  const now = new Date().toISOString();
+  const client: Client = {
+    ...input,
+    id: newId("client"),
+    name: input.name.trim(),
+    company: input.company.trim(),
+    stage: input.stage ?? "lead",
+    touches: input.touches ?? [],
+    createdAt: now,
+    updatedAt: now,
+  };
+  writeJson(FILES.clients, [client, ...listClients()]);
+  return client;
+}
+
+/**
+ * Patch one client. Id, touches and createdAt are not patchable here — touches
+ * go through addTouch so two founders adding one at once cannot clobber each
+ * other's, and the other two are not the caller's to move.
+ */
+export function updateClient(
+  id: string,
+  patch: Partial<Omit<Client, "id" | "touches" | "createdAt">>,
+): Client | undefined {
+  const clients = listClients();
+  const client = clients.find((c) => c.id === id);
+  if (!client) return undefined;
+  Object.assign(client, patch, { updatedAt: new Date().toISOString() });
+  writeJson(FILES.clients, clients);
+  return client;
+}
+
+export function addTouch(
+  clientId: string,
+  input: { note: string; who?: string; at?: string },
+): Client | undefined {
+  const clients = listClients();
+  const client = clients.find((c) => c.id === clientId);
+  if (!client) return undefined;
+  const touch: ClientTouch = {
+    id: newId("touch"),
+    at: input.at ?? new Date().toISOString(),
+    note: input.note.trim(),
+    who: input.who,
+  };
+  // Newest first, so the detail page reads as a feed without sorting.
+  client.touches = [touch, ...client.touches];
+  client.updatedAt = new Date().toISOString();
+  writeJson(FILES.clients, clients);
+  return client;
+}
+
+export function removeClient(id: string): boolean {
+  const clients = listClients();
+  const left = clients.filter((c) => c.id !== id);
+  if (left.length === clients.length) return false;
+  writeJson(FILES.clients, left);
+  return true;
+}
+
+/** Money in the pipe: value of everyone still in play, by stage. */
+export function pipelineValue(clients: Client[] = listClients()): Record<ClientStage, number> {
+  const totals: Record<ClientStage, number> = {
+    lead: 0,
+    talking: 0,
+    proposal: 0,
+    client: 0,
+    past: 0,
+  };
+  for (const c of clients) totals[c.stage] += c.value ?? 0;
+  return totals;
+}
+
+/**
+ * Clients whose next step is today or already behind us. Sorted worst first,
+ * because an overdue follow-up is the one thing on this board that decays.
+ */
+export function overdueClients(
+  clients: Client[] = listClients(),
+  today = new Date().toISOString().slice(0, 10),
+): Client[] {
+  return clients
+    .filter((c) => c.nextStep && c.nextStep <= today && c.stage !== "past")
+    .sort((a, b) => (a.nextStep ?? "").localeCompare(b.nextStep ?? ""));
+}
+
+// ---------- the shared notes board ----------
+
+export function listNotes(): Note[] {
+  return readJson<Note[]>(FILES.notes, []);
+}
+
+export function addNote(input: {
+  text: string;
+  lane?: NoteLane;
+  area?: string;
+  by?: string;
+}): Note {
+  const now = new Date().toISOString();
+  const note: Note = {
+    id: newId("note"),
+    text: input.text.trim(),
+    lane: input.lane ?? "idea",
+    area: input.area,
+    by: input.by,
+    createdAt: now,
+    updatedAt: now,
+  };
+  writeJson(FILES.notes, [note, ...listNotes()]);
+  return note;
+}
+
+export function updateNote(
+  id: string,
+  patch: Partial<Pick<Note, "text" | "lane" | "area">>,
+): Note | undefined {
+  const notes = listNotes();
+  const note = notes.find((n) => n.id === id);
+  if (!note) return undefined;
+  Object.assign(note, patch, { updatedAt: new Date().toISOString() });
+  writeJson(FILES.notes, notes);
+  return note;
+}
+
+export function removeNote(id: string): boolean {
+  const notes = listNotes();
+  const left = notes.filter((n) => n.id !== id);
+  if (left.length === notes.length) return false;
+  writeJson(FILES.notes, left);
+  return true;
 }
 
 // ---------- inbox (draft-ready notifications) ----------

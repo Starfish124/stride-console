@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { DraftStatus } from "@/lib/types";
 import { NavLinks } from "@/components/NavLinks";
+import { MenuButton } from "@/components/AppMenu";
 import { BRAND } from "@/lib/brand";
 
 /**
@@ -57,7 +58,8 @@ export function Header() {
           <span className="hidden items-center gap-4 sm:flex sm:gap-6">
             <NavLinks />
           </span>
-
+          {/* Everything else — every width — is one button away. */}
+          <MenuButton />
         </nav>
       </div>
     </header>

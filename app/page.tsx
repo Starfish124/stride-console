@@ -1,12 +1,26 @@
 import Link from "next/link";
 import { RECIPE_LABELS } from "@/lib/types";
-import { listDrafts, listInbox, listMyths } from "@/lib/store";
+import {
+  listClients,
+  listDrafts,
+  listEvents,
+  listInbox,
+  listMyths,
+  listPostLog,
+  listSignups,
+} from "@/lib/store";
+import { listAudits } from "@/lib/seo/store";
+import { readPulse } from "@/lib/channels/attention";
+import { addDays, buildCalendar, overdue, todayISO, upcoming } from "@/lib/calendar";
+import { buildStats } from "@/lib/dashboard";
+import { IconTime } from "@/components/icons";
 import { Header, StatusBadge } from "@/components/ui";
 import { RecipeCard } from "@/components/RecipeCard";
 import { MythQuickAdd } from "@/components/MythQuickAdd";
 import { InboxBanner } from "@/components/InboxBanner";
 import { LhPulsePanel } from "@/components/LhPulsePanel";
 import { SeoPanel } from "@/components/SeoPanel";
+import { StatBand } from "@/components/StatBand";
 import { Ramp } from "@/components/Ramp";
 
 export const dynamic = "force-dynamic";
@@ -33,32 +47,125 @@ const RECIPES = [
 ] as const;
 
 export default async function Dashboard() {
-  const drafts = listDrafts().slice(0, 8);
+  const today = todayISO();
+  const allDrafts = listDrafts();
+  const drafts = allDrafts.slice(0, 8);
   const unusedMyths = listMyths().filter((m) => !m.used).length;
   const inbox = listInbox().filter((e) => !e.seen);
+
+  const clients = listClients();
+  const postLog = listPostLog();
+  const audits = listAudits();
+  // The one figure the console does not own. Out of reach stays null all the
+  // way to the tile, which prints a dash rather than inventing a zero.
+  const pulse = await readPulse().catch(() => null);
+  const reachable = pulse?.reachable ? pulse : null;
+
+  const calendar = buildCalendar(
+    {
+      clients,
+      events: listEvents(),
+      signups: listSignups(),
+      postLog,
+      licenceExpiry:
+        pulse?.licenceDaysLeft != null
+          ? addDays(today, pulse.licenceDaysLeft)
+          : undefined,
+    },
+    today,
+  );
+
+  const owed = overdue(calendar, today);
+  // Late first, then what is coming — five is a glance, more is a page.
+  const nextUp = [...owed, ...upcoming(calendar, today, 5)]
+    .filter((e) => e.actionable)
+    .slice(0, 5);
+
+  const stats = buildStats({
+    clients,
+    postLog,
+    owed: owed.length,
+    queued: reachable?.people ?? null,
+    running: reachable?.running ?? null,
+    siteScore: audits.length
+      ? Math.round(audits.reduce((s, a) => s + a.score, 0) / audits.length)
+      : null,
+    pages: audits.length,
+    drafts: allDrafts.length,
+    awaitingApproval: allDrafts.filter((d) => d.status === "draft").length,
+  });
 
   return (
     <div className="min-h-screen bg-paper">
       <Header />
       <main className="mx-auto max-w-5xl px-6 pb-20">
-        <section className="relative overflow-hidden py-12">
+        <section className="relative overflow-hidden pb-8 pt-10">
           <Ramp width={52} className="mb-4 text-indigo" />
           <p className="eyebrow text-slate">Stride console · marketing machine</p>
-          <h1 className="display mt-3 text-4xl text-ink">
-            Press a button. Get a post.
+          <h1 className="title-large mt-3 text-ink">
+            Sales, marketing, and the <span className="accent">machines</span>{" "}
+            that run them.
           </h1>
           <p className="mt-2 max-w-lg text-slate">
-            Two posts a week, written in the Stride voice, designed on-brand,
-            approved by one of you before anything goes anywhere.
+            Every channel in one place. Nothing goes out without one of you.
           </p>
           <InboxBanner entries={inbox} />
         </section>
+
+        {/* Where everything stands, before what there is to do about it. */}
+        <StatBand stats={stats} />
 
         {/* What the outbound machine needs from a founder, before the posting
             tools. Replies and drafts waiting on a person outrank a button. */}
         <LhPulsePanel />
 
         <SeoPanel />
+
+        {/* The sales half of "does this need me". The LinkedIn panel above
+            answers it for the machine; this answers it for the people. */}
+        {nextUp.length > 0 && (
+          <section className="mb-10">
+            <div className="mb-4 flex items-center gap-3">
+              <IconTime size={22} className="shrink-0 text-indigo" />
+              <h2 className="display flex-1 text-[22px] text-ink">Next with people.</h2>
+              <Link href="/calendar" className="eyebrow shrink-0 text-indigo hover:text-indigo-deep">
+                Calendar
+              </Link>
+            </div>
+            <ul className="inset-group card-glass">
+              {nextUp.map((e) => {
+                const late = e.actionable && e.date < today;
+                return (
+                  <li key={e.id}>
+                    <Link
+                      href={e.href ?? "/calendar"}
+                      className="flex items-center gap-4 px-5 py-3.5 hover:bg-paper"
+                    >
+                      <span
+                        className={`eyebrow w-14 shrink-0 ${late ? "text-amber" : "text-slate"}`}
+                      >
+                        {late
+                          ? "Late"
+                          : new Date(`${e.date}T00:00:00Z`).toLocaleDateString("en-GB", {
+                              day: "numeric",
+                              month: "short",
+                            })}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold leading-snug text-ink">
+                          {e.title}
+                        </span>
+                        {e.detail && (
+                          <span className="block text-xs text-slate">{e.detail}</span>
+                        )}
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
 
         <p className="eyebrow mb-3 text-slate">Write something</p>
         <section className="grid gap-4 md:grid-cols-3">

@@ -14,6 +14,7 @@ import "@fontsource/jetbrains-mono/500.css";
 import "./globals.css";
 import { SWRegister } from "@/components/SWRegister";
 import { TabBar } from "@/components/TabBar";
+import { AppMenu } from "@/components/AppMenu";
 
 export const metadata: Metadata = {
   title: "Stride Console",
@@ -44,8 +45,12 @@ export default function RootLayout({
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full bg-paper text-ink">
         <SWRegister />
-        {children}
-        <TabBar />
+        {/* AppMenu owns the sheet and shares its open state down the tree, so
+            the header pill and the tab bar's last slot drive the same one. */}
+        <AppMenu>
+          {children}
+          <TabBar />
+        </AppMenu>
       </body>
     </html>
   );
