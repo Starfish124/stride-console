@@ -2,22 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { NAV } from "@/lib/menu";
 
-const LINKS = [
-  { href: "/", label: "Console" },
-  { href: "/library", label: "Library" },
-  { href: "/radar", label: "Radar" },
-  { href: "/campaigns", label: "Campaigns" },
-  { href: "/seo", label: "Search" },
-  { href: "/outreach", label: "Outreach" },
-  { href: "/events", label: "Events" },
-  { href: "/playbook", label: "Playbook" },
-  { href: "/settings", label: "Settings" },
-] as const;
+/**
+ * The desktop bar: one destination per section of the menu, and nothing else.
+ *
+ * It used to list nine pages by hand, which meant every page added since was
+ * missing from it. Five slots is also all a header can hold before it turns
+ * into a list — everything else is one press of Menu away, and that sheet is
+ * built from this same tree so neither can fall behind the other.
+ */
+const LINKS = NAV;
 
 function isActive(pathname: string, href: string): boolean {
-  if (href === "/") return pathname === "/" || pathname.startsWith("/drafts");
-  return pathname === href || pathname.startsWith(`${href}/`);
+  const base = href.split(/[?#]/)[0];
+  if (base === "/") return pathname === "/" || pathname.startsWith("/drafts");
+  return pathname === base || pathname.startsWith(`${base}/`);
 }
 
 export function NavLinks() {

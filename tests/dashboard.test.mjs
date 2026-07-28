@@ -3,6 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  buildQuickMenu,
   buildStats,
   compact,
   euros,
@@ -32,7 +33,6 @@ function post(at, stats) {
 const BASE = {
   clients: [],
   postLog: [],
-  owed: 0,
   queued: 0,
   running: 0,
   siteScore: null,
@@ -82,15 +82,27 @@ test("an unaudited site prints a dash rather than a score of zero", () => {
   assert.equal(stats.find((s) => s.label === "Site score").value, "—");
 });
 
-test("owed carries a tone and an icon, so the state is not colour alone", () => {
-  const clear = buildStats({ ...BASE, owed: 0 }, NOW).find((s) => s.label === "Owed a reply");
-  assert.equal(clear.tone, "good");
-  assert.ok(clear.icon);
-
-  const late = buildStats({ ...BASE, owed: 3 }, NOW).find((s) => s.label === "Owed a reply");
-  assert.equal(late.tone, "warn");
-  assert.ok(late.icon);
+test("won counts only the paying stage, and in play never overlaps it", () => {
+  // The band reports measures; what needs a person lives in the quick menu,
+  // so no figure is asked to do both jobs.
+  const stats = buildStats(
+    {
+      ...BASE,
+      clients: [
+        client({ id: "a", stage: "proposal", value: 3000 }),
+        client({ id: "b", stage: "client", value: 20_000 }),
+        client({ id: "c", stage: "client", value: 5000 }),
+        client({ id: "d", stage: "past", value: 90_000 }),
+      ],
+    },
+    NOW,
+  );
+  const won = stats.find((s) => s.label === "Won");
+  assert.equal(won.value, "€25k");
+  assert.equal(won.note, "2 paying");
+  assert.equal(stats.find((s) => s.label === "In play").value, "€3,000");
 });
+
 
 test("posts this month ignores last month and next month", () => {
   const log = [
@@ -146,4 +158,67 @@ test("every tile links somewhere, because a number you cannot act on is decorati
     assert.ok(stat.value.length > 0);
     assert.ok(stat.note.length > 0);
   }
+});
+
+// ---------- the quick menu ----------
+
+const QUIET = {
+  running: 0,
+  replies: 0,
+  clients: 0,
+  late: 0,
+  draftsWaiting: 0,
+  seoFindings: 0,
+  toBuild: 0,
+};
+
+test("every quick tile is a real destination", () => {
+  for (const tile of buildQuickMenu(QUIET)) {
+    assert.ok(tile.href.startsWith("/"), `${tile.label} goes nowhere`);
+    assert.ok(tile.icon, `${tile.label} has no glyph`);
+    assert.ok(tile.note.length > 0, `${tile.label} says nothing`);
+  }
+});
+
+test("an unreachable Linked Helper leaves the campaigns tile unknown", () => {
+  const tile = buildQuickMenu({ ...QUIET, running: null }).find(
+    (t) => t.label === "Campaigns",
+  );
+  assert.equal(tile.count, null);
+  assert.match(tile.note, /out of reach/i);
+});
+
+test("warn is reserved for counts a person is holding up", () => {
+  // A queue with things in it is work, not a problem. An unanswered reply is.
+  const busy = buildQuickMenu({
+    ...QUIET,
+    running: 3,
+    clients: 40,
+    draftsWaiting: 6,
+    seoFindings: 12,
+    toBuild: 9,
+    replies: 2,
+    late: 1,
+  });
+  const toned = busy.filter((t) => t.tone === "warn").map((t) => t.label);
+  assert.deepEqual(toned.sort(), ["Calendar", "Replies"]);
+});
+
+test("a clear calendar reads as good, a late one as warn", () => {
+  assert.equal(
+    buildQuickMenu(QUIET).find((t) => t.label === "Calendar").tone,
+    "good",
+  );
+  assert.equal(
+    buildQuickMenu({ ...QUIET, late: 2 }).find((t) => t.label === "Calendar").tone,
+    "warn",
+  );
+});
+
+test("Ask Stride carries no count, because it is a tool and not a queue", () => {
+  const ask = buildQuickMenu(QUIET).find((t) => t.label === "Ask Stride");
+  assert.equal(ask.count, undefined);
+  // Undefined and null mean different things here: no queue versus a queue
+  // whose length cannot be read. Only the second one prints a dash.
+  assert.notEqual(ask.count, null);
 });

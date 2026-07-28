@@ -6,13 +6,15 @@ import {
   listEvents,
   listInbox,
   listMyths,
+  listNotes,
   listPostLog,
   listSignups,
 } from "@/lib/store";
 import { listAudits } from "@/lib/seo/store";
+import { unhandledCount } from "@/lib/outreach/replies";
 import { readPulse } from "@/lib/channels/attention";
 import { addDays, buildCalendar, overdue, todayISO, upcoming } from "@/lib/calendar";
-import { buildStats } from "@/lib/dashboard";
+import { buildQuickMenu, buildStats } from "@/lib/dashboard";
 import { IconTime } from "@/components/icons";
 import { Header, StatusBadge } from "@/components/ui";
 import { RecipeCard } from "@/components/RecipeCard";
@@ -21,7 +23,7 @@ import { InboxBanner } from "@/components/InboxBanner";
 import { LhPulsePanel } from "@/components/LhPulsePanel";
 import { SeoPanel } from "@/components/SeoPanel";
 import { StatBand } from "@/components/StatBand";
-import { Ramp } from "@/components/Ramp";
+import { QuickMenu } from "@/components/QuickMenu";
 
 export const dynamic = "force-dynamic";
 
@@ -81,10 +83,30 @@ export default async function Dashboard() {
     .filter((e) => e.actionable)
     .slice(0, 5);
 
+  const repliesWaiting = unhandledCount();
+  const draftsWaiting = allDrafts.filter((d) => d.status === "draft").length;
+  const seoFindings = audits
+    .flatMap((a) => a.findings ?? [])
+    .filter((f) => f.severity === "high").length;
+
+  // The headline count is what a person is holding up, and each of these is
+  // counted once. Queue lengths are deliberately not in it — 870 profiles
+  // waiting on a machine is not 870 things waiting on a founder.
+  const waiting = owed.length + repliesWaiting + draftsWaiting;
+
+  const tiles = buildQuickMenu({
+    running: reachable?.running ?? null,
+    replies: repliesWaiting,
+    clients: clients.length,
+    late: owed.length,
+    draftsWaiting,
+    seoFindings,
+    toBuild: listNotes().filter((n) => n.lane === "todo").length,
+  });
+
   const stats = buildStats({
     clients,
     postLog,
-    owed: owed.length,
     queued: reachable?.people ?? null,
     running: reachable?.running ?? null,
     siteScore: audits.length
@@ -92,28 +114,44 @@ export default async function Dashboard() {
       : null,
     pages: audits.length,
     drafts: allDrafts.length,
-    awaitingApproval: allDrafts.filter((d) => d.status === "draft").length,
+    awaitingApproval: draftsWaiting,
   });
 
   return (
     <div className="min-h-screen bg-paper">
       <Header />
       <main className="mx-auto max-w-5xl px-6 pb-20">
-        <section className="relative overflow-hidden pb-8 pt-10">
-          <Ramp width={52} className="mb-4 text-indigo" />
-          <p className="eyebrow text-slate">Stride console · marketing machine</p>
-          <h1 className="title-large mt-3 text-ink">
-            Sales, marketing, and the <span className="accent">machines</span>{" "}
-            that run them.
-          </h1>
-          <p className="mt-2 max-w-lg text-slate">
-            Every channel in one place. Nothing goes out without one of you.
+        {/* This is our own app, so it opens with the date and the count of
+            what is waiting rather than a line about what the product does.
+            Nobody who has already installed it needs to be sold it. */}
+        <section className="pb-7 pt-9">
+          <p className="eyebrow text-slate">
+            {new Date(`${today}T00:00:00Z`).toLocaleDateString("en-GB", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+            })}
           </p>
+          <h1 className="title-large mt-2 text-ink">
+            {waiting === 0 ? (
+              <>
+                Nothing needs <span className="accent">you</span>.
+              </>
+            ) : (
+              <>
+                <span className="accent">{waiting}</span>{" "}
+                {waiting === 1 ? "thing needs" : "things need"} you.
+              </>
+            )}
+          </h1>
           <InboxBanner entries={inbox} />
         </section>
 
         {/* Where everything stands, before what there is to do about it. */}
         <StatBand stats={stats} />
+
+        {/* And the way to act on any of it. */}
+        <QuickMenu tiles={tiles} />
 
         {/* What the outbound machine needs from a founder, before the posting
             tools. Replies and drafts waiting on a person outrank a button. */}

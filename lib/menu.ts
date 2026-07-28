@@ -32,6 +32,15 @@ export interface MenuSection {
   label: string;
   /** What this whole channel is, for the section header. */
   blurb: string;
+  /**
+   * The section's slot in the desktop header, when it earns one.
+   *
+   * Named rather than taken as the first item: Automation's pages live inside
+   * Campaigns and Settings, so its first item shares a path with LinkedIn and
+   * would light both up. A section with no `nav` simply is not in the bar, and
+   * a header is not a sitemap — the Menu button holds the rest.
+   */
+  nav?: { label: string; href: string };
   items: MenuItem[];
 }
 
@@ -39,6 +48,7 @@ export const MENU: MenuSection[] = [
   {
     id: "content",
     label: "Content",
+    nav: { label: "Console", href: "/" },
     blurb: "What gets written, and everything that has been written.",
     items: [
       {
@@ -70,6 +80,7 @@ export const MENU: MenuSection[] = [
   {
     id: "website",
     label: "Website",
+    nav: { label: "Website", href: "/seo" },
     blurb: "stride-ai.nl: what it ranks for, what it publishes, what needs fixing.",
     items: [
       {
@@ -101,6 +112,7 @@ export const MENU: MenuSection[] = [
   {
     id: "linkedin",
     label: "LinkedIn",
+    nav: { label: "LinkedIn", href: "/campaigns" },
     blurb: "The outbound channel: who gets approached, and in whose words.",
     items: [
       {
@@ -163,6 +175,7 @@ export const MENU: MenuSection[] = [
   {
     id: "sales",
     label: "Sales",
+    nav: { label: "Sales", href: "/clients" },
     blurb: "Who we are talking to, what we owe them, and when.",
     items: [
       {
@@ -188,6 +201,7 @@ export const MENU: MenuSection[] = [
   {
     id: "team",
     label: "Team",
+    nav: { label: "Team", href: "/notes" },
     blurb: "The two of you, and the thing that knows where everything is.",
     items: [
       {
@@ -211,6 +225,9 @@ export const MENU: MenuSection[] = [
     ],
   },
 ];
+
+/** The desktop header's slots, in order. Sections without a nav sit it out. */
+export const NAV = MENU.flatMap((s) => (s.nav ? [s.nav] : []));
 
 /** Every item, flat. The model's context and any search read this. */
 export const MENU_ITEMS: MenuItem[] = MENU.flatMap((s) => s.items);

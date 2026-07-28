@@ -16,11 +16,11 @@ export interface Stat {
   /** The supporting line under the number. */
   note: string;
   href: string;
-  /** Set only where a number carries state a founder should act on. */
-  tone?: "good" | "warn";
-  /** Shown beside a toned number, so state is never colour alone. */
-  icon?: string;
 }
+
+// Deliberately no status tone here. The band reports measures; what is waiting
+// on a person is the quick menu's job, and a figure asked to do both ends up
+// saying the same thing twice on one screen.
 
 /** Same month and year as the reference date. */
 function inMonth(iso: string, ref: Date): boolean {
@@ -75,8 +75,6 @@ export function euros(n: number): string {
 export interface DashboardInput {
   clients: Client[];
   postLog: PostLogEntry[];
-  /** Overdue count from the calendar, already derived there. */
-  owed: number;
   /** Null when Linked Helper could not be reached, which is not the same as zero. */
   queued: number | null;
   running: number | null;
@@ -87,6 +85,100 @@ export interface DashboardInput {
   awaitingApproval: number;
 }
 
+/** One destination in the quick menu, with however much work is waiting there. */
+export interface QuickTile {
+  label: string;
+  href: string;
+  icon: string;
+  /** Null means the number is not knowable right now. Undefined means the
+   *  destination is a tool rather than a queue, so it never carries one. */
+  count?: number | null;
+  /** What the number counts, in two or three words. */
+  note: string;
+  /** Set only where the count means somebody has to do something. */
+  tone?: "good" | "warn";
+}
+
+export interface QuickMenuInput {
+  running: number | null;
+  replies: number;
+  clients: number;
+  late: number;
+  draftsWaiting: number;
+  seoFindings: number;
+  toBuild: number;
+}
+
+/**
+ * The jump-off grid under the numbers.
+ *
+ * Every tile is somewhere to go and how much is waiting there, which is the
+ * pair of facts that decides where a founder taps next. Warn is reserved for
+ * counts that mean a person is holding something up — a queue length is not a
+ * problem, an unanswered reply is.
+ */
+export function buildQuickMenu(input: QuickMenuInput): QuickTile[] {
+  return [
+    {
+      label: "Campaigns",
+      href: "/campaigns",
+      icon: "IconPipeline",
+      count: input.running,
+      note: input.running === null ? "out of reach" : "running now",
+    },
+    {
+      label: "Replies",
+      href: "/outreach",
+      icon: "IconEscalate",
+      count: input.replies,
+      note: input.replies === 0 ? "all answered" : "waiting on you",
+      tone: input.replies > 0 ? "warn" : undefined,
+    },
+    {
+      label: "Clients",
+      href: "/clients",
+      icon: "IconTeam",
+      count: input.clients,
+      note: "in the book",
+    },
+    {
+      label: "Calendar",
+      href: "/calendar",
+      icon: "IconTime",
+      count: input.late,
+      note: input.late === 0 ? "nothing late" : "past their date",
+      tone: input.late > 0 ? "warn" : "good",
+    },
+    {
+      label: "Library",
+      href: "/library",
+      icon: "IconLayers",
+      count: input.draftsWaiting,
+      note: input.draftsWaiting === 0 ? "all approved" : "drafts to read",
+    },
+    {
+      label: "Search",
+      href: "/seo",
+      icon: "IconTrend",
+      count: input.seoFindings,
+      note: input.seoFindings === 0 ? "nothing serious" : "serious findings",
+    },
+    {
+      label: "Notes",
+      href: "/notes",
+      icon: "IconBranch",
+      count: input.toBuild,
+      note: "to build",
+    },
+    {
+      label: "Ask Stride",
+      href: "/ask",
+      icon: "IconAskStride",
+      note: "anything about this",
+    },
+  ];
+}
+
 export function buildStats(input: DashboardInput, now = new Date()): Stat[] {
   const inPlay = input.clients
     .filter((c) => c.stage === "lead" || c.stage === "talking" || c.stage === "proposal")
@@ -94,6 +186,9 @@ export function buildStats(input: DashboardInput, now = new Date()): Stat[] {
   const talking = input.clients.filter(
     (c) => c.stage === "talking" || c.stage === "proposal",
   ).length;
+  const paying = input.clients.filter((c) => c.stage === "client");
+  const won = paying.reduce((sum, c) => sum + (c.value ?? 0), 0);
+  const clientCount = paying.length;
   const posts = postsThisMonth(input.postLog, now);
   const rate = medianEngagement(input.postLog);
 
@@ -136,12 +231,10 @@ export function buildStats(input: DashboardInput, now = new Date()): Stat[] {
       href: "/seo",
     },
     {
-      label: "Owed a reply",
-      value: String(input.owed),
-      note: input.owed === 0 ? "Nothing is late" : "Follow-ups past their date",
-      tone: input.owed === 0 ? "good" : "warn",
-      icon: input.owed === 0 ? "IconApproved" : "IconEscalate",
-      href: "/calendar",
+      label: "Won",
+      value: euros(won),
+      note: clientCount === 0 ? "No clients yet" : `${clientCount} paying`,
+      href: "/clients",
     },
   ];
 }
