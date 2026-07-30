@@ -293,6 +293,73 @@ test("a claimed send with two attempts and no answer becomes stuck, not a third 
   assert.equal(result.enrolment.state, "paused");
 });
 
+test("a send refused yesterday is counted against the day it actually goes out", () => {
+  // The cap is read from the ledger so it survives a restart, and the ledger
+  // buckets by claimedAt. refuse() writes on the same key as the claim, so a
+  // claim that inherited a refusal's timestamp put today's real send on
+  // yesterday's shelf and left today's quota untouched for the next address.
+  const result = inSandbox(`
+    const ctx = enrolOne();
+    const key = ctx.enrolment.id + ":" + ctx.sequence.steps[0].id;
+    const yesterday = new Date(Date.now() - 26 * 60 * 60 * 1000);
+
+    // Yesterday the cap was spent, so this step was turned away.
+    store.putSend({
+      key, id: "snd_refused", enrolmentId: ctx.enrolment.id, clientId: ctx.client.id,
+      sequenceId: ctx.sequence.id, stepId: ctx.sequence.steps[0].id,
+      to: "jane@acme.nl", subject: "s", body: "b",
+      state: "skipped", dryRun: true, provider: "dry", problem: "Today's cap is spent",
+      basis: ctx.enrolment.basis,
+      claimedAt: yesterday.toISOString(), finishedAt: yesterday.toISOString(), attempts: 0,
+    });
+
+    const now = new Date();
+    const attempt = await sendFirst(ctx, now);
+    const record = store.listSends().find((r) => r.key === key);
+    const today = guard.sentToday(now, true);
+    out({ attempt, claimedAt: record.claimedAt, attempts: record.attempts, countedToday: today.total });
+  `);
+
+  assert.equal(result.attempt.outcome, "sent");
+  assert.equal(
+    new Date(result.claimedAt).toDateString(),
+    new Date().toDateString(),
+    "a refusal must not donate its date to a later real send",
+  );
+  assert.equal(result.countedToday, 1, "the send has to consume today's quota, not yesterday's");
+  assert.equal(result.attempts, 1, "a refusal is not an attempt at the provider");
+});
+
+test("a refusal never overwrites a claim whose outcome is unknown", () => {
+  // "sending" means assume delivered. Turning one back into a skipped row
+  // hands a day's quota back for a message that may be in somebody's inbox,
+  // resets the attempt count that stops it retrying forever, and leaves the
+  // console denying it ever wrote to a person who is holding the email.
+  const result = inSandbox(`
+    const ctx = enrolOne();
+    const key = ctx.enrolment.id + ":" + ctx.sequence.steps[0].id;
+    const claimedAt = new Date().toISOString();
+    store.putSend({
+      key, id: "snd_inflight", enrolmentId: ctx.enrolment.id, clientId: ctx.client.id,
+      sequenceId: ctx.sequence.id, stepId: ctx.sequence.steps[0].id,
+      to: "jane@acme.nl", subject: "s", body: "b",
+      state: "sending", dryRun: true, provider: "dry",
+      basis: ctx.enrolment.basis, claimedAt, attempts: 1,
+    });
+
+    // She got the mail and unsubscribed, so the next tick is refused.
+    suppress.suppress({ address: "jane@acme.nl", reason: "unsubscribed", by: "one-click" });
+    const now = new Date();
+    const attempt = await sendFirst(ctx, now);
+    const record = store.listSends().find((r) => r.key === key);
+    out({ attempt, state: record.state, attempts: record.attempts, countedToday: guard.sentToday(now, true).total });
+  `);
+
+  assert.equal(result.state, "sending", "an unknown outcome stays unknown");
+  assert.equal(result.attempts, 1, "the retry ceiling must not be reset by a refusal");
+  assert.equal(result.countedToday, 1, "the claimed quota is not handed back");
+});
+
 // --- one-click unsubscribe -------------------------------------------------
 
 test("a forged unsubscribe token is rejected and a real one is honoured", () => {

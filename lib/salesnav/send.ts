@@ -69,7 +69,16 @@ function headersFor(email: string): Record<string, string> {
   };
 }
 
-/** Record a refusal without ever calling a provider. */
+/**
+ * Record a refusal without ever calling a provider.
+ *
+ * A claim whose outcome is unknown is never overwritten. The file header and
+ * the cap accounting both rest on "sending" meaning assume-delivered, so
+ * turning one back into a skipped row would hand a day's quota back for a
+ * message that may well have arrived, reset the attempt count that stops an
+ * unanswered claim retrying forever, and leave the console denying it ever
+ * wrote to somebody who is holding the email.
+ */
 function refuse(
   enrolment: Enrolment,
   step: OutreachStep,
@@ -78,9 +87,13 @@ function refuse(
   problem: string,
   now: Date,
 ): SendRecord {
+  const key = `${enrolment.id}:${step.id}`;
+  const inFlight = findSend(key);
+  if (inFlight?.state === "sending") return inFlight;
+
   const record: SendRecord = {
-    key: `${enrolment.id}:${step.id}`,
-    id: newId("snd"),
+    key,
+    id: inFlight?.id ?? newId("snd"),
     enrolmentId: enrolment.id,
     clientId: enrolment.clientId,
     sequenceId: enrolment.sequenceId,
@@ -201,8 +214,15 @@ export async function attemptSend(
     dryRun: verdict.mode === "dry",
     provider: mail.name,
     basis: enrolment.basis,
-    claimedAt: existing?.claimedAt ?? now.toISOString(),
-    attempts: (existing?.attempts ?? 0) + 1,
+    // Only a live claim donates its timestamp. A retry of a "sending" row is
+    // the same send finishing, so it keeps the day it was claimed on. A row
+    // left by a REFUSAL is a different thing entirely: refuse() writes on this
+    // same key, so inheriting from it stamped today's send with the day it was
+    // first turned away. sentToday() buckets by claimedAt, so the send left the
+    // building today and was counted against yesterday, and the cap it should
+    // have consumed stayed open for the next address in the queue.
+    claimedAt: existing?.state === "sending" ? existing.claimedAt : now.toISOString(),
+    attempts: existing?.state === "sending" ? existing.attempts + 1 : 1,
   };
   putSend(claim);
 

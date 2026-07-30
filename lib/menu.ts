@@ -185,6 +185,12 @@ export const MENU: MenuSection[] = [
         icon: "IconTeam",
       },
       {
+        href: "/salesnav",
+        label: "Email sequencer",
+        hint: "Multi step email that sends itself, and the switch that stops it.",
+        icon: "IconDeploy",
+      },
+      {
         href: "/calendar",
         label: "Calendar",
         hint: "Follow-ups, events and deadlines on one grid.",

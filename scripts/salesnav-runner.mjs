@@ -23,10 +23,19 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { getPassword, sessionToken } from "../lib/auth.ts";
 
 const TICK_MS = 60_000;
-const DATA_DIR = path.join(process.cwd(), "data");
+
+// Anchored to this file, never to the working directory.
+//
+// --stop is the brake you reach for when the console is wedged, which means it
+// gets typed from wherever that person's shell happens to be. Resolving data/
+// from cwd meant running it from a home directory created a stray stop file
+// nothing reads, printed "all sending stopped", and kept sending.
+const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const DATA_DIR = path.join(ROOT, "data");
 const STATE_FILE = path.join(DATA_DIR, "salesnav-state.json");
 const STOP_FILE = path.join(DATA_DIR, "salesnav-stop.json");
 
