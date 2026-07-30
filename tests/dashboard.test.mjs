@@ -112,6 +112,41 @@ test("won counts only the paying stage, and in play never overlaps it", () => {
   assert.equal(stats.find((s) => s.label === "In play").value, "€3,000");
 });
 
+test("a book nobody has quoted on shows a dash, not nothing owed", () => {
+  // Deal size is optional, because it is only known once somebody has said it
+  // out loud. Summing an unpriced book gives 0, and "€0 in play" reads as "we
+  // have no work on" — the opposite of four clients nobody has quoted yet.
+  const stats = buildStats(
+    {
+      ...BASE,
+      clients: [
+        client({ id: "a", stage: "proposal" }),
+        client({ id: "b", stage: "client" }),
+      ],
+    },
+    NOW,
+  );
+
+  assert.equal(stats.find((s) => s.label === "In play").value, "—");
+  assert.equal(stats.find((s) => s.label === "Won").value, "—");
+  assert.equal(stats.find((s) => s.label === "Won").note, "1 paying");
+});
+
+test("one quoted client is enough for the tile to show money again", () => {
+  const stats = buildStats(
+    {
+      ...BASE,
+      clients: [
+        client({ id: "a", stage: "proposal", value: 4000 }),
+        client({ id: "b", stage: "proposal" }),
+      ],
+    },
+    NOW,
+  );
+
+  assert.equal(stats.find((s) => s.label === "In play").value, "€4,000");
+});
+
 
 test("posts this month ignores last month and next month", () => {
   const log = [

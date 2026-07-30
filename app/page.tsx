@@ -109,13 +109,20 @@ export default async function Dashboard() {
     toBuild: listNotes().filter((n) => n.lane === "todo").length,
   });
 
+  // Only pages that answered. A route that returned 404 has no on-page score
+  // to average, and counting it as zero says the page reads badly when the
+  // truth is that it is not there. The sweep scores it this way too, and the
+  // front page disagreeing with /seo about one number is worse than either
+  // number being slightly off.
+  const scored = audits.filter((a) => a.ok);
+
   const stats = buildStats({
     clients,
     postLog,
-    siteScore: audits.length
-      ? Math.round(audits.reduce((s, a) => s + a.score, 0) / audits.length)
+    siteScore: scored.length
+      ? Math.round(scored.reduce((s, a) => s + a.score, 0) / scored.length)
       : null,
-    pages: audits.length,
+    pages: scored.length,
     drafts: allDrafts.length,
     awaitingApproval: draftsWaiting,
   });

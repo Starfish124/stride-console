@@ -199,15 +199,28 @@ export function campaignsTile(running: number | null): QuickTile {
   };
 }
 
+/**
+ * A money tile only prints a number when somebody has actually named one.
+ *
+ * Deal size is optional on a client, because it is only known once it has been
+ * said out loud. Summing a book where nobody has quoted yet gives €0, which
+ * reads as "we have nothing on" rather than "we have not priced it" — the same
+ * lie a 0 tells for an unreachable Linked Helper.
+ */
+function money(clients: Client[]): string {
+  const quoted = clients.filter((c) => typeof c.value === "number");
+  if (quoted.length === 0) return "—";
+  return euros(quoted.reduce((sum, c) => sum + (c.value ?? 0), 0));
+}
+
 export function buildStats(input: DashboardInput, now = new Date()): Stat[] {
-  const inPlay = input.clients
-    .filter((c) => c.stage === "lead" || c.stage === "talking" || c.stage === "proposal")
-    .reduce((sum, c) => sum + (c.value ?? 0), 0);
+  const open = input.clients.filter(
+    (c) => c.stage === "lead" || c.stage === "talking" || c.stage === "proposal",
+  );
   const talking = input.clients.filter(
     (c) => c.stage === "talking" || c.stage === "proposal",
   ).length;
   const paying = input.clients.filter((c) => c.stage === "client");
-  const won = paying.reduce((sum, c) => sum + (c.value ?? 0), 0);
   const clientCount = paying.length;
   const posts = postsThisMonth(input.postLog, now);
   const rate = medianEngagement(input.postLog);
@@ -215,7 +228,7 @@ export function buildStats(input: DashboardInput, now = new Date()): Stat[] {
   return [
     {
       label: "In play",
-      value: euros(inPlay),
+      value: money(open),
       note:
         input.clients.length === 0
           ? "Nobody in the book yet"
@@ -242,7 +255,7 @@ export function buildStats(input: DashboardInput, now = new Date()): Stat[] {
     },
     {
       label: "Won",
-      value: euros(won),
+      value: money(paying),
       note: clientCount === 0 ? "No clients yet" : `${clientCount} paying`,
       href: "/clients",
     },
