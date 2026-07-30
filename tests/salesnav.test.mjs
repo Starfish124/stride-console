@@ -360,6 +360,56 @@ test("a refusal never overwrites a claim whose outcome is unknown", () => {
   assert.equal(result.countedToday, 1, "the claimed quota is not handed back");
 });
 
+test("an overdue step that already went out keeps its record", () => {
+  // A send that completes in the gap before the enrolment advances leaves a
+  // finished row and a stale dueAt. The too-late branch then fires on a step
+  // that really did reach somebody, and used to replace the live record with a
+  // dry run that never happened, provider id and all. "Why did you email this
+  // person in March" has to be answerable from the ledger alone.
+  const result = inSandbox(`
+    const ctx = enrolOne();
+    const key = ctx.enrolment.id + ":" + ctx.sequence.steps[0].id;
+    const longAgo = new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).toISOString();
+
+    store.putSend({
+      key, id: "snd_real", enrolmentId: ctx.enrolment.id, clientId: ctx.client.id,
+      sequenceId: ctx.sequence.id, stepId: ctx.sequence.steps[0].id,
+      to: "jane@acme.nl", subject: "s", body: "b",
+      state: "sent", dryRun: false, provider: "resend", providerId: "re_abc123",
+      basis: ctx.enrolment.basis, claimedAt: longAgo, finishedAt: longAgo, attempts: 1,
+    });
+    // The enrolment never advanced, so the step is now long overdue.
+    store.updateEnrolment(ctx.enrolment.id, { dueAt: longAgo });
+
+    await runner.tick(new Date());
+    const record = store.listSends().find((r) => r.key === key);
+    out({ state: record.state, providerId: record.providerId ?? null, dryRun: record.dryRun });
+  `);
+
+  assert.equal(result.state, "sent", "a real send must not be rewritten as a skip");
+  assert.equal(result.providerId, "re_abc123", "the provider's id is the proof it happened");
+  assert.equal(result.dryRun, false, "and it was not a dry run");
+});
+
+test("the unsubscribe key survives rotating the Linked Helper webhook secret", () => {
+  // WebhookCard tells a founder to delete data/hooks.json to rotate the LH2
+  // URL. While the two shared one secret, following that instruction returned
+  // a 404 to every person clicking "not interested" in an email already sent.
+  const result = inSandbox(`
+    const before = suppress.unsubToken("jane@acme.nl");
+    const replies = await import(${mod("lib/outreach/replies.ts")});
+    replies.webhookSecret();
+    const fs = await import("node:fs");
+    fs.rmSync("data/hooks.json", { force: true });
+    replies.webhookSecret();
+    const after = suppress.unsubToken("jane@acme.nl");
+    out({ before, after, honoured: suppress.verifyUnsubToken("jane@acme.nl", before) });
+  `);
+
+  assert.equal(result.before, result.after, "the token must not move when an unrelated secret does");
+  assert.equal(result.honoured, true, "a link already in somebody's inbox still works");
+});
+
 // --- one-click unsubscribe -------------------------------------------------
 
 test("a forged unsubscribe token is rejected and a real one is honoured", () => {

@@ -99,9 +99,23 @@ export async function POST(request: NextRequest) {
     case "email.sent":
       settle(providerId);
       break;
+    // Everything else Resend emits about a message WE sent is telemetry, not a
+    // person writing back. Recording these as replies was actively harmful:
+    // hasReplied() matches an address anywhere in the stored payload, and a
+    // delivery_delayed carries data.to, so a greylisting mail server looked
+    // exactly like an answer. The sequence stopped for good, the dashboard
+    // showed a reply with no message, and the mail was delivered minutes later.
+    case "email.delivery_delayed":
+    case "email.failed":
+    case "email.scheduled":
+    case "email.opened":
+    case "email.clicked":
+      break;
+
     default:
-      // An unrecognised payload is kept rather than dropped. Losing a real
-      // reply because a key was renamed would be the worst failure here.
+      // A genuinely unknown type is kept rather than dropped, because losing a
+      // real reply because a key was renamed is the worse failure. Anything
+      // Resend adds about our own outbound belongs in the case list above.
       recordReply(event, "email");
   }
 

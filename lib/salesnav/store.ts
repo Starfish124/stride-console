@@ -9,6 +9,7 @@
 // Mode 0600 throughout. These files hold other people's email addresses, what
 // was said to them and the record of why we were allowed to say it.
 
+import crypto from "node:crypto";
 import path from "node:path";
 import { DATA_DIR, readJson, writeJson } from "../store.ts";
 import type { Enrolment, HardStop, AccountResearch, RunnerState, SendRecord, Suppression } from "./types.ts";
@@ -22,6 +23,7 @@ const FILES = {
   stop: path.join(DATA_DIR, "salesnav-stop.json"),
   research: path.join(DATA_DIR, "salesnav-research.json"),
   state: path.join(DATA_DIR, "salesnav-state.json"),
+  secret: path.join(DATA_DIR, "salesnav-secret.json"),
 } as const;
 
 export const SALESNAV_FILES = FILES;
@@ -100,6 +102,31 @@ export function dropSuppression(address: string): boolean {
   if (left.length === all.length) return false;
   writeJson(FILES.suppress, left, MODE);
   return true;
+}
+
+// ---------- the unsubscribe signing key ----------
+
+/**
+ * Its own secret, minted once and never shared.
+ *
+ * This used to reuse the webhook secret, which couples two unrelated trust
+ * domains to one value: every unsubscribe link already sitting in somebody's
+ * inbox is only valid while that file is unchanged. WebhookCard tells a founder
+ * to delete data/hooks.json to rotate the Linked Helper URL, so following the
+ * on-screen instruction silently broke every outstanding opt-out. A person
+ * clicking "not interested" got a 404, stayed enrolled, and kept receiving
+ * mail, which is both the one promise this system makes unconditionally and a
+ * spam signal against the sending domain.
+ *
+ * Rotating this one is never routine. It is only correct if no unsubscribe
+ * link is still in flight, which in practice means never.
+ */
+export function unsubSecret(): string {
+  const stored = readJson<{ secret?: string }>(FILES.secret, {});
+  if (stored.secret) return stored.secret;
+  const secret = crypto.randomBytes(32).toString("base64url");
+  writeJson(FILES.secret, { secret, mintedAt: new Date().toISOString() }, MODE);
+  return secret;
 }
 
 // ---------- the hard stop ----------

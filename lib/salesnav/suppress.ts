@@ -8,12 +8,13 @@
 // next email but leaves the following three queued is not an unsubscribe.
 
 import crypto from "node:crypto";
-import { webhookSecret } from "../outreach/replies.ts";
+
 import {
   dropSuppression,
   listEnrolments,
   listSuppressions,
   putSuppression,
+  unsubSecret,
   updateEnrolment,
 } from "./store.ts";
 import type { Suppression } from "./types.ts";
@@ -88,14 +89,16 @@ export { listSuppressions };
 /**
  * A token nobody can forge and nobody has to store.
  *
- * It is an HMAC of the address under the secret already minted for the
- * webhooks, so unsubscribing needs no lookup table and no second secret. 32
+ * It is an HMAC of the address under a secret this module owns alone, so
+ * unsubscribing needs no lookup table. Its own secret and not the webhook one,
+ * because rotating that is a documented routine and it would take every
+ * unsubscribe link already in somebody's inbox down with it. 32
  * base64url characters is 192 bits of the digest, which is far past guessing
  * and still short enough to sit in a mailto link.
  */
 export function unsubToken(email: string): string {
   return crypto
-    .createHmac("sha256", webhookSecret())
+    .createHmac("sha256", unsubSecret())
     .update(normaliseAddress(email))
     .digest("base64url")
     .slice(0, 32);

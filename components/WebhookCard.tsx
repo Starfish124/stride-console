@@ -23,7 +23,10 @@ export function WebhookCard({ origin }: { origin: string }) {
       </p>
       <p className="mt-2 text-[13px] text-slate">
         Treat it like a password. Anyone holding this link can post replies into
-        your inbox. Delete data/hooks.json and restart to issue a new one.
+        your inbox. Delete data/hooks.json and restart to issue a new one. That
+        only moves this URL. The key that signs unsubscribe links lives in its
+        own file and is not touched, so links already sitting in somebody inbox
+        keep working.
       </p>
     </section>
   );

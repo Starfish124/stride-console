@@ -18,7 +18,7 @@ import { getSequence } from "../outreach/sequence.ts";
 import { isTooLate, localDay, perTick, salesnavMode, sendWindow, withinWindow } from "./config.ts";
 import { sweep } from "./enrol.ts";
 import { advance, attemptSend } from "./send.ts";
-import { hardStop, listEnrolments, putSend, runnerState, setRunnerState } from "./store.ts";
+import { findSend, hardStop, listEnrolments, putSend, runnerState, setRunnerState } from "./store.ts";
 import { newId } from "../store.ts";
 import type { Enrolment } from "./types.ts";
 
@@ -101,9 +101,25 @@ export async function tick(now: Date = new Date()): Promise<TickResult> {
       // A step this far past due has lost its context. Skipping it honestly is
       // better than firing last Tuesday's opener at somebody today.
       if (isTooLate(enrolment.dueAt, now)) {
+        const key = `${enrolment.id}:${step.id}`;
+        const already = findSend(key);
+
+        // Unless it already went. A send that completed in the gap before the
+        // enrolment advanced leaves a finished row and a stale dueAt, so this
+        // branch fires next tick on a step that really did reach somebody.
+        // Overwriting it replaced a live send with a dry run that never
+        // happened, dropped the provider's id, and stored the unmerged
+        // template instead of the words that arrived. "Why did you email this
+        // person in March" has to be answerable from the ledger alone.
+        if (already && already.state !== "skipped") {
+          advance(enrolment, sequence.steps, now);
+          lines.push(`${enrolment.id}: overdue, but step ${step.id} already ${already.state}`);
+          continue;
+        }
+
         putSend({
-          key: `${enrolment.id}:${step.id}`,
-          id: newId("snd"),
+          key,
+          id: already?.id ?? newId("snd"),
           enrolmentId: enrolment.id,
           clientId: enrolment.clientId,
           sequenceId: enrolment.sequenceId,
