@@ -207,6 +207,12 @@ export interface SweepResult {
   averageScore: number;
   changesProposed: MetaChange[];
   changesApplied: number;
+  /**
+   * What became of the applied metadata in the website checkout. Writing
+   * pages.json is not the same as the site serving it: without a commit and a
+   * push the improvements sit as a local diff and no visitor ever sees them.
+   */
+  published?: { ok: boolean; commit?: string; branch?: string; message: string };
   briefsCreated: number;
   statsSource: "search-console" | "none";
   findings: { route: string; severity: Severity; detail: string }[];

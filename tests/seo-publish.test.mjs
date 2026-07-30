@@ -146,6 +146,47 @@ test("publish leaves a founder's unrelated edits alone", () => {
   }
 });
 
+// The sweep calls publish with no articles to ship a metadata-only pass. Until
+// it did, applyChanges wrote pages.json and stopped, so every title and
+// description the optimiser improved sat as a local diff that no visitor ever
+// saw. The site only rebuilds on a push.
+test("a metadata-only pass commits pages.json by itself", () => {
+  const repo = tempRepo();
+  try {
+    fs.writeFileSync(
+      path.join(repo, "content", "seo", "pages.json"),
+      JSON.stringify({ revision: 2, updatedBy: "seo-agent" }),
+    );
+
+    const result = publish([], { repo });
+    assert.equal(result.ok, true, result.message);
+    assert.ok(result.commit, "the metadata pass has to produce a commit");
+
+    const subject = spawnSync("git", ["log", "-1", "--format=%s"], { cwd: repo, encoding: "utf8" });
+    assert.match(subject.stdout, /metadata pass/, "and say that is what it was");
+
+    const dirty = spawnSync("git", ["status", "--porcelain"], { cwd: repo, encoding: "utf8" });
+    assert.equal(dirty.stdout.trim(), "", "nothing may be left behind uncommitted");
+  } finally {
+    fs.rmSync(repo, { recursive: true, force: true });
+  }
+});
+
+test("a metadata pass still leaves a founder's edits alone", () => {
+  const repo = tempRepo();
+  try {
+    fs.writeFileSync(path.join(repo, "content", "seo", "pages.json"), '{"revision":2}');
+    fs.writeFileSync(path.join(repo, "README.md"), "half-finished edit\n");
+
+    publish([], { repo });
+
+    const status = spawnSync("git", ["status", "--porcelain"], { cwd: repo, encoding: "utf8" });
+    assert.match(status.stdout, /README\.md/, "an unrelated edit must not ride along to production");
+  } finally {
+    fs.rmSync(repo, { recursive: true, force: true });
+  }
+});
+
 test("publish reports nothing to do rather than making an empty commit", () => {
   const repo = tempRepo();
   try {

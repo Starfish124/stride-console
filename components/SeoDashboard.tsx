@@ -48,6 +48,7 @@ interface Payload {
     changesApplied: number;
     briefsCreated: number;
     statsSource: string;
+    published?: { ok: boolean; commit?: string; branch?: string; message: string } | null;
   };
   changes: {
     route: string;
@@ -284,6 +285,17 @@ export function SeoDashboard() {
                 {data.lastSweep.outcome} · stats from{" "}
                 {data.lastSweep.statsSource === "search-console" ? "Search Console" : "the crawl only"}
               </p>
+              {/* The agent commits to the live site on its own, so it has to
+                  say what it sent and where. */}
+              {data.lastSweep.published ? (
+                <p
+                  className={`mt-2 text-[13px] ${data.lastSweep.published.ok ? "text-slate" : "text-amber"}`}
+                >
+                  {data.lastSweep.published.ok
+                    ? `Sent to the site: ${data.lastSweep.published.message}`
+                    : `The site was not updated: ${data.lastSweep.published.message}`}
+                </p>
+              ) : null}
             </section>
           ) : (
             <p className="text-slate">

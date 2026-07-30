@@ -36,6 +36,7 @@ import {
   toSiteRoutes,
 } from "./optimise.ts";
 import { fetchStats, statsByTerm } from "./searchConsole.ts";
+import { currentBranch, publish } from "./publish.ts";
 import { writeArticle } from "./article.ts";
 import type { ArticleBrief, Locale, MetaChange, PageAudit, SweepResult } from "./types.ts";
 
@@ -61,6 +62,7 @@ export async function dailySweep(options: SweepOptions = {}): Promise<SweepResul
   const audits: PageAudit[] = [];
   let changesProposed: MetaChange[] = [];
   let changesApplied = 0;
+  let published: SweepResult["published"];
   let briefsCreated = 0;
   let clustersTotal = 0;
 
@@ -253,6 +255,22 @@ export async function dailySweep(options: SweepOptions = {}): Promise<SweepResul
       changesProposed = changesProposed.map(
         (c) => applied.find((a) => a.route === c.route && a.field === c.field && a.locale === c.locale) ?? c,
       );
+
+      // Writing pages.json only changes a file on this disk. Until it is
+      // committed and pushed, the host never rebuilds and no visitor sees any
+      // of it — the improvements just accumulate as a local diff. publish()
+      // with no articles stages pages.json alone, and buildCommitMessage
+      // already writes a metadata-pass message for that case.
+      if (changesApplied > 0) {
+        const result = publish([], { repo: config.siteRepo, push: true, now });
+        published = {
+          ok: result.ok,
+          commit: result.commit,
+          branch: currentBranch(config.siteRepo),
+          message: result.message,
+        };
+        if (!result.ok) failures.push(`publishing metadata: ${result.message}`);
+      }
     }
   } catch (error) {
     failures.push(`optimiser: ${msg(error)}`);
@@ -295,6 +313,7 @@ export async function dailySweep(options: SweepOptions = {}): Promise<SweepResul
       averageScore,
       changesProposed,
       changesApplied,
+      published,
       briefsCreated,
       statsSource,
       findings: audits.flatMap((a) =>
