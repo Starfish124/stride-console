@@ -42,6 +42,40 @@ export async function modelReady(): Promise<{ ok: boolean; problem?: string }> {
   }
 }
 
+export interface ChatOptions {
+  model?: string;
+  temperature?: number;
+  numCtx?: number;
+  /** Ollama's own JSON mode. Set it and the model cannot answer in prose. */
+  format?: "json";
+  signal?: AbortSignal;
+}
+
+/**
+ * One question, one answer, no stream.
+ *
+ * Classification wants a whole string before it can do anything, so streaming
+ * it is a generator to assemble for nothing. Same host, same model list.
+ */
+export async function chat(messages: AskMessage[], options: ChatOptions = {}): Promise<string> {
+  const res = await fetch(`${HOST}/api/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    signal: options.signal ?? AbortSignal.timeout(60_000),
+    body: JSON.stringify({
+      model: options.model ?? ASK_MODEL,
+      messages,
+      stream: false,
+      format: options.format,
+      options: { temperature: options.temperature ?? 0.2, num_ctx: options.numCtx ?? 8192 },
+    }),
+  });
+  if (!res.ok) throw new Error(`The model answered with ${res.status}.`);
+  const body = (await res.json()) as { message?: { content?: string }; error?: string };
+  if (body.error) throw new Error(body.error);
+  return body.message?.content ?? "";
+}
+
 /**
  * Stream an answer as plain text chunks.
  *
@@ -49,18 +83,25 @@ export async function modelReady(): Promise<{ ok: boolean; problem?: string }> {
  * mid-line, so the tail is carried forward rather than parsed and dropped —
  * without that, long answers lose a word every few hundred characters.
  */
-export async function* streamChat(messages: AskMessage[]): AsyncGenerator<string> {
+export async function* streamChat(
+  messages: AskMessage[],
+  options: ChatOptions = {},
+): AsyncGenerator<string> {
   const res = await fetch(`${HOST}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    // Without this a wedged model held the request open until the browser
+    // gave up, which looks to a founder exactly like a hung console.
+    signal: options.signal ?? AbortSignal.timeout(120_000),
     body: JSON.stringify({
-      model: ASK_MODEL,
+      model: options.model ?? ASK_MODEL,
       messages,
       stream: true,
+      format: options.format,
       options: {
         // Low temperature: this is a lookup over a fact sheet, not writing.
-        temperature: 0.2,
-        num_ctx: 8192,
+        temperature: options.temperature ?? 0.2,
+        num_ctx: options.numCtx ?? 8192,
       },
     }),
   });

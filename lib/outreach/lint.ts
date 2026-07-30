@@ -21,17 +21,22 @@ import {
   phraseRegex,
 } from "../pipeline/lint.ts";
 
-export type OutreachStepKind = "connect" | "message" | "inmail";
+export type OutreachStepKind = "connect" | "message" | "inmail" | "email";
 
 /**
  * LinkedIn's real limits, not our preferences. A connection note over 300
  * characters is refused by LinkedIn itself, so this is a hard error rather
  * than a matter of taste.
+ *
+ * The email numbers are the exception: nothing refuses a long email, so 5000
+ * and 900 are a judgement about what a stranger reads, not a measured ceiling.
+ * Expect to tune them once real emails exist.
  */
 export const LIMITS: Record<OutreachStepKind, { hard: number; aim: number; label: string }> = {
   connect: { hard: 300, aim: 220, label: "connection note" },
   message: { hard: 8000, aim: 600, label: "message" },
   inmail: { hard: 1900, aim: 700, label: "InMail" },
+  email: { hard: 5000, aim: 900, label: "email" },
 };
 
 /**
@@ -158,7 +163,10 @@ export function lintMessage(
       rule: "length",
       severity: "error",
       excerpt: `${trimmed.length} characters`,
-      fix: `LinkedIn refuses a ${limit.label} over ${limit.hard}. Cut ${trimmed.length - limit.hard}.`,
+      fix:
+        kind === "email"
+          ? `Nobody reads an ${limit.label} of ${trimmed.length} characters. Cut ${trimmed.length - limit.hard}.`
+          : `LinkedIn refuses a ${limit.label} over ${limit.hard}. Cut ${trimmed.length - limit.hard}.`,
     });
   } else if (trimmed.length > limit.aim) {
     add({
@@ -230,4 +238,90 @@ export function lintMessage(
   const errors = violations.filter((v) => v.severity === "error").length;
   const warns = violations.length - errors;
   return { ok: errors === 0, errors, warns, violations };
+}
+
+/**
+ * The subject line, which is a different object to the body.
+ *
+ * It is the only part most recipients ever read, it is what a spam filter
+ * scores first, and it is where the two worst tricks live: faking a reply with
+ * "Re:" and shouting in capitals. Same phrase lists as everything else, so a
+ * word cut from the brand voice is cut here too.
+ */
+export function lintSubject(subject: string): LintResult {
+  const violations: LintViolation[] = [];
+  const add = (v: LintViolation) => violations.push(v);
+  const trimmed = subject.trim();
+
+  if (trimmed.length === 0) {
+    add({ rule: "length", severity: "error", excerpt: "(empty)", fix: "Write the subject line." });
+  } else if (trimmed.length > 120) {
+    add({
+      rule: "length",
+      severity: "error",
+      excerpt: `${trimmed.length} characters`,
+      fix: `A subject that long is a paragraph. Cut ${trimmed.length - 120}.`,
+    });
+  } else if (trimmed.length > 65) {
+    add({
+      rule: "length",
+      severity: "warn",
+      excerpt: `${trimmed.length} characters`,
+      fix: "A phone shows about 65 characters. The rest is not read.",
+    });
+  }
+
+  for (const [list, rule, fix] of [
+    [BANNED_WORDS, "bannedWords", "Cut it. Say it plainly."],
+    [CEREMONY_VERBS, "ceremonyVerbs", 'Write "is" or "has".'],
+    [FALSE_DEPTH, "falseDepth", "Make the actual claim."],
+    [FAKE_CANDOUR, "fakeCandour", "Just say the thing."],
+    [PHANTOM_SOURCES, "phantomSources", "Name the source or cut the claim."],
+  ] as const) {
+    for (const phrase of list) {
+      const m = phraseRegex(phrase).exec(trimmed);
+      if (m) {
+        add({ rule, severity: "error", excerpt: excerptAround(trimmed, m.index, m[0].length), fix });
+        break;
+      }
+    }
+  }
+
+  if (/^(re|fwd|fw)\s*:/i.test(trimmed)) {
+    add({
+      rule: "fakeThread",
+      severity: "error",
+      excerpt: trimmed.slice(0, 20),
+      fix: "Faking a reply is the fastest way to be reported.",
+    });
+  }
+  if (/\p{Extended_Pictographic}/u.test(trimmed)) {
+    add({ rule: "emoji", severity: "error", excerpt: "emoji", fix: "No emoji in a subject line." });
+  }
+  if (trimmed.includes("—")) {
+    add({ rule: "emDash", severity: "error", excerpt: "em dash", fix: "Use a full stop or a comma." });
+  }
+  if (trimmed.includes("!")) {
+    add({
+      rule: "exclamation",
+      severity: "error",
+      excerpt: "exclamation mark",
+      fix: "Drop it. It scores as spam and reads as a script.",
+    });
+  }
+  if (/#[\p{L}\p{N}_]+/u.test(trimmed)) {
+    add({ rule: "hashtags", severity: "error", excerpt: "hashtag", fix: "Hashtags belong in posts." });
+  }
+  const shout = /\b[A-Z]{4,}\b/.exec(trimmed);
+  if (shout) {
+    add({
+      rule: "shouting",
+      severity: "warn",
+      excerpt: shout[0],
+      fix: "Capitals read as a sale. Write it normally.",
+    });
+  }
+
+  const errors = violations.filter((v) => v.severity === "error").length;
+  return { ok: errors === 0, errors, warns: violations.length - errors, violations };
 }

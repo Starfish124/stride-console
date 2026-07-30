@@ -2,6 +2,7 @@ import { cache } from "react";
 import { readAiDrafts, readCampaignsView, readLicenceDays } from "./linkedHelper";
 import { listReplies } from "../outreach/replies.ts";
 import { lintMessage } from "../outreach/lint.ts";
+import { salesnavItems } from "../salesnav/attention.ts";
 
 /**
  * What Linked Helper needs from a founder right now.
@@ -160,6 +161,10 @@ async function uncachedReadPulse(): Promise<LhPulse> {
       href: "/campaigns",
     });
   }
+
+  // The email sequencer folds into the same list rather than owning a second
+  // one. "What needs a person right now" has to be one surface or it is none.
+  items.push(...salesnavItems());
 
   items.sort((a, b) => RANK[a.urgency] - RANK[b.urgency]);
 

@@ -1,5 +1,6 @@
 import { linkedinEnabled } from "./linkedinApi.ts";
 import { linkedHelperChannel } from "./linkedHelper.ts";
+import { emailChannel } from "../salesnav/channel.ts";
 import type { Channel, ChannelStatus } from "./types.ts";
 
 export type { Channel, ChannelId, ChannelState, ChannelStatus, ChannelFact } from "./types.ts";
@@ -33,7 +34,7 @@ export const linkedinApiChannel: Channel = {
   },
 };
 
-export const channels: Channel[] = [linkedHelperChannel, linkedinApiChannel];
+export const channels: Channel[] = [linkedHelperChannel, linkedinApiChannel, emailChannel];
 
 /**
  * Status of every channel. One slow or broken channel must never hide the

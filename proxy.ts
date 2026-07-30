@@ -13,6 +13,11 @@ export async function proxy(request: NextRequest) {
     pathname === "/pitch" ||
     pathname === "/api/pitch" ||
     pathname === "/api/hooks/linked-helper" ||
+    // Resend's webhook is signed with a Svix signature, and the unsubscribe
+    // link is followed by people and mail clients that have no cookie and
+    // never will. Both verify their own caller; neither can present one.
+    pathname === "/api/hooks/resend" ||
+    pathname === "/api/salesnav/unsubscribe" ||
     pathname === "/favicon.ico" ||
     pathname === "/manifest.webmanifest" ||
     pathname === "/sw.js" ||

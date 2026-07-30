@@ -2,7 +2,7 @@ import { readPulse } from "@/lib/channels/attention";
 import { campaignsTile, linkedInStat } from "@/lib/dashboard";
 import { StatTile, StatTileSkeleton } from "@/components/StatBand";
 import { QuickTileCard, QuickTileSkeleton } from "@/components/QuickMenu";
-import { IconPipeline } from "@/components/icons";
+import { Panel } from "@/components/Panel";
 
 /**
  * The three pieces of the dashboard that have to ask Linked Helper first.
@@ -44,21 +44,26 @@ export function CampaignsQuickTileSkeleton() {
   return <QuickTileSkeleton label="Campaigns" icon="IconPipeline" />;
 }
 
-/** The panel's own placeholder: its heading, and the shape of what is coming. */
+/**
+ * The panel's own placeholder.
+ *
+ * Same frame, same title bar: the heading is known, so it is real content
+ * rather than a grey bar. Only the two lines that need the bridge shimmer,
+ * and the slide's height comes from the rail, so nothing moves when the real
+ * panel lands.
+ */
 export function LhPulseSkeleton() {
   return (
-    <section className="mb-10" aria-busy="true">
-      <div className="mb-4 flex items-center gap-3">
-        <IconPipeline size={22} className="shrink-0 text-indigo" />
-        <h2 className="display text-[22px] text-ink">The LinkedIn machine.</h2>
+    <Panel icon="IconPipeline" title="The LinkedIn machine." href="/campaigns" linkLabel="Open">
+      <div aria-busy="true">
+        <div className="mb-2.5 flex items-center gap-3 px-1">
+          <span className="size-2.5 shrink-0 rounded-full bg-slate/30" />
+          <span className="shimmer h-[13px] flex-1 rounded" />
+        </div>
+        <div className="rounded-card border border-line bg-white px-4 py-3">
+          <span className="shimmer block h-[13px] w-2/3 rounded" />
+        </div>
       </div>
-      <div className="card-glass mb-3 flex items-center gap-3 rounded-card border border-line bg-white px-5 py-4">
-        <span className="size-2.5 shrink-0 rounded-full bg-slate/30" />
-        <span className="shimmer h-[13px] flex-1 rounded" />
-      </div>
-      <div className="card-glass flex items-start gap-3 rounded-card border border-line bg-white px-5 py-4">
-        <span className="shimmer h-[13px] w-2/3 rounded" />
-      </div>
-    </section>
+    </Panel>
   );
 }

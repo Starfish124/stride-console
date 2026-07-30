@@ -32,6 +32,11 @@ export interface Reply {
   receivedAt: string;
   /** "replied", "connected", "person" — whatever LH2 said the event was. */
   event: string;
+  /**
+   * Which way it came in. Optional so every record written before email
+   * existed still reads, and so there is one inbox rather than two.
+   */
+  channel?: "linkedin" | "email";
   name: string | null;
   headline: string | null;
   profileUrl: string | null;
@@ -108,7 +113,7 @@ function flatten(body: Record<string, unknown>): Record<string, unknown> {
   return flat;
 }
 
-export function recordReply(body: unknown): Reply {
+export function recordReply(body: unknown, channel: "linkedin" | "email" = "linkedin"): Reply {
   const object = (body && typeof body === "object" ? body : {}) as Record<string, unknown>;
   const flat = flatten(object);
 
@@ -120,6 +125,7 @@ export function recordReply(body: unknown): Reply {
     id: `rep_${crypto.randomBytes(6).toString("hex")}`,
     receivedAt: new Date().toISOString(),
     event: pick(flat, ["event", "type", "action", "hook", "trigger"]) ?? "unknown",
+    channel,
     name: full ?? [first, last].filter(Boolean).join(" ") ?? null,
     headline: pick(flat, ["headline", "title", "position", "occupation"]),
     profileUrl: pick(flat, ["profile_url", "profileUrl", "url", "link", "public_profile_url"]),

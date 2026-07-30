@@ -7,7 +7,8 @@
 // checks outbound copy against a brand voice.
 //
 // A sequence leaves here as text a founder pastes into LH2's own template
-// fields. Nothing is sent from the console.
+// fields. Linked Helper sends the LinkedIn steps. Email steps are sent from
+// the console itself, and the stop switch for those is on the sequencer page.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -25,6 +26,8 @@ export interface OutreachStep {
   /** Days to wait after the previous step. The first step is always 0. */
   waitDays: number;
   body: string;
+  /** Email steps only. The LinkedIn kinds ignore it and LH2 never sees it. */
+  subject?: string;
 }
 
 export interface OutreachSequence {
@@ -85,6 +88,7 @@ export function saveSequence(input: {
       // The opener cannot wait: it is what starts the clock.
       waitDays: i === 0 ? 0 : Math.max(0, Math.round(step.waitDays)),
       body: step.body,
+      ...(step.kind === "email" ? { subject: (step.subject ?? "").trim() } : {}),
     })),
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,

@@ -11,6 +11,7 @@
     "demo": "node scripts/demo.mjs",
     "pregen": "node scripts/pregen.mjs",
     "agents": "node scripts/agents.mjs",
+    "salesnav": "node scripts/salesnav-runner.mjs",
     "backend": "node scripts/backend.mjs",
     "seo:sweep": "node scripts/seo-sweep.mjs",
     "seo:articles": "node scripts/seo-articles.mjs",

@@ -229,12 +229,6 @@ export const MENU: MenuSection[] = [
 /** The desktop header's slots, in order. Sections without a nav sit it out. */
 export const NAV = MENU.flatMap((s) => (s.nav ? [s.nav] : []));
 
-/** Every item, flat. The model's context and any search read this. */
-export const MENU_ITEMS: MenuItem[] = MENU.flatMap((s) => s.items);
-
-/** The four that earn a slot in thumb reach. Everything else is in the menu. */
-export const TAB_HREFS = ["/", "/campaigns", "/clients", "/library"] as const;
-
 /**
  * Which item a path is currently on. Hashes and queries are stripped, so
  * /seo?tab=drafts and /seo both light up the Website section — the section is

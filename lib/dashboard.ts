@@ -7,7 +7,8 @@
 //
 // Everything is derived from the existing stores. Nothing new is written.
 
-import type { Client, PostLogEntry } from "./types.ts";
+import type { Client, ClientStage, PostLogEntry } from "./types.ts";
+import { STAGE_LABELS } from "./types.ts";
 
 export interface Stat {
   label: string;
@@ -211,6 +212,82 @@ function money(clients: Client[]): string {
   const quoted = clients.filter((c) => typeof c.value === "number");
   if (quoted.length === 0) return "—";
   return euros(quoted.reduce((sum, c) => sum + (c.value ?? 0), 0));
+}
+
+// ---------- the deck's own figures ----------
+
+export interface PipelineStage {
+  stage: ClientStage;
+  label: string;
+  count: number;
+  /** Already formatted, and an em dash where nobody has quoted yet. */
+  value: string;
+}
+
+/**
+ * The book by stage, for the pipeline panel.
+ *
+ * Past is left out. It is not a stage of the pipeline, it is what happens
+ * after one, and a bar showing it alongside the live stages makes a dead deal
+ * look like work in progress.
+ */
+export function pipelineStages(clients: Client[]): PipelineStage[] {
+  const stages: ClientStage[] = ["lead", "talking", "proposal", "client"];
+  return stages.map((stage) => {
+    const inStage = clients.filter((c) => c.stage === stage);
+    return {
+      stage,
+      label: STAGE_LABELS[stage],
+      count: inStage.length,
+      value: money(inStage),
+    };
+  });
+}
+
+/**
+ * Posts per week, oldest first, for the sparkline.
+ *
+ * A zero here is a real zero: nothing was posted that week. That is a fact
+ * rather than an unknown, so the em dash rule does not apply.
+ */
+export function weeklyPosts(log: PostLogEntry[], weeks = 12, now = new Date()): number[] {
+  const week = 7 * 24 * 60 * 60 * 1000;
+  const end = now.getTime();
+  const start = end - weeks * week;
+  const buckets = new Array<number>(weeks).fill(0);
+
+  for (const entry of log) {
+    const at = new Date(entry.at).getTime();
+    if (Number.isNaN(at) || at <= start || at > end) continue;
+    // The newest week is the last bucket, so the line reads left to right.
+    const index = weeks - 1 - Math.floor((end - at) / week);
+    buckets[Math.min(weeks - 1, Math.max(0, index))] += 1;
+  }
+
+  return buckets;
+}
+
+/**
+ * The sparkline's `points` attribute, in the box the SVG declares.
+ *
+ * A flat series has no range to scale against, so it draws down the middle
+ * rather than dividing by zero or slamming every point to the floor.
+ */
+export function sparkPoints(values: number[], w: number, h: number): string {
+  if (values.length === 0) return "";
+  const lo = Math.min(...values);
+  const hi = Math.max(...values);
+  const step = values.length > 1 ? w / (values.length - 1) : 0;
+  return values
+    .map((v, i) => {
+      const t = hi === lo ? 0.5 : (v - lo) / (hi - lo);
+      return `${round(i * step)},${round(h - t * h)}`;
+    })
+    .join(" ");
+}
+
+function round(n: number): number {
+  return Math.round(n * 100) / 100;
 }
 
 export function buildStats(input: DashboardInput, now = new Date()): Stat[] {

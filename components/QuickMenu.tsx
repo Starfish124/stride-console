@@ -30,17 +30,17 @@ export function QuickTileCard({ tile }: { tile: QuickTile }) {
   return (
     <Link
       href={tile.href}
-      className="card-lift card-raised flex flex-col rounded-card border border-line bg-white px-4 py-3.5"
+      className="card-lift card-raised flex flex-col rounded-card border border-line bg-white px-3.5 py-3"
     >
       <span className="flex items-start justify-between gap-2">
         <Glyph
           name={tile.icon}
-          size={20}
+          size={18}
           className={`shrink-0 ${tile.tone ? TONE[tile.tone] : "text-indigo"}`}
         />
         {hasCount && (
           <span
-            className={`figure text-[26px] leading-none ${
+            className={`figure text-[20px] leading-none ${
               tile.tone ? TONE[tile.tone] : "text-ink"
             }`}
           >
@@ -48,10 +48,14 @@ export function QuickTileCard({ tile }: { tile: QuickTile }) {
           </span>
         )}
       </span>
-      <span className="mt-3 block text-[15px] font-semibold leading-snug text-ink">
+      <span className="mt-2.5 block text-[12px] font-semibold leading-snug text-ink">
         {tile.label}
       </span>
-      <span className="mt-0.5 block text-[12px] leading-snug text-slate">{tile.note}</span>
+      {/* The note only earns its line where the count means somebody is
+          holding something up. Eight labelled tiles explain themselves. */}
+      {tile.tone && (
+        <span className="mt-0.5 block text-[11px] leading-snug text-slate">{tile.note}</span>
+      )}
     </Link>
   );
 }
@@ -59,15 +63,14 @@ export function QuickTileCard({ tile }: { tile: QuickTile }) {
 export function QuickTileSkeleton({ label, icon }: { label: string; icon: string }) {
   return (
     <div
-      className="card-raised flex flex-col rounded-card border border-line bg-white px-4 py-3.5"
+      className="card-raised flex flex-col rounded-card border border-line bg-white px-3.5 py-3"
       aria-busy="true"
     >
       <span className="flex items-start justify-between gap-2">
-        <Glyph name={icon} size={20} className="shrink-0 text-indigo" />
-        <span className="shimmer block h-[22px] w-8 rounded" />
+        <Glyph name={icon} size={18} className="shrink-0 text-indigo" />
+        <span className="shimmer block h-[17px] w-7 rounded" />
       </span>
-      <span className="mt-3 block text-[15px] font-semibold leading-snug text-ink">{label}</span>
-      <span className="shimmer mt-1.5 block h-[11px] w-20 rounded" />
+      <span className="mt-2.5 block text-[12px] font-semibold leading-snug text-ink">{label}</span>
     </div>
   );
 }
@@ -80,9 +83,8 @@ export function QuickMenu({
   leading?: React.ReactNode;
 }) {
   return (
-    <section className="mb-10">
-      <p className="eyebrow mb-3 text-slate">Go somewhere</p>
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+    <section className="mb-7">
+      <div className="grid grid-cols-4 gap-2 lg:grid-cols-8">
         {leading}
         {tiles.map((tile) => (
           <QuickTileCard key={tile.label} tile={tile} />

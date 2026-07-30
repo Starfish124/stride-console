@@ -1,13 +1,9 @@
 import Link from "next/link";
 import { readPulse } from "@/lib/channels/attention";
 import type { Urgency } from "@/lib/channels/attention";
-import {
-  IconApproved,
-  IconEscalate,
-  IconGuardrail,
-  IconPipeline,
-  IconTime,
-} from "@/components/icons";
+import { compact } from "@/lib/dashboard";
+import { Panel, PanelFigure } from "@/components/Panel";
+import { IconApproved, IconEscalate, IconGuardrail, IconTime } from "@/components/icons";
 
 /**
  * Linked Helper, on the front page.
@@ -16,6 +12,9 @@ import {
  * me". So the machine's state is turned into things waiting on a person,
  * worst first, and the numbers sit underneath as supporting detail rather
  * than as the point.
+ *
+ * A figure nobody has set prints an em dash. No daily cap and a cap of zero
+ * are opposite facts and must not share a face.
  */
 
 const URGENCY: Record<Urgency, { icon: typeof IconEscalate; tone: string; ring: string }> = {
@@ -29,22 +28,14 @@ export async function LhPulsePanel() {
   const needsYou = pulse.items.filter((i) => i.urgency !== "watch");
 
   return (
-    <section className="mb-10">
-      <div className="mb-4 flex items-center gap-3">
-        <IconPipeline size={22} className="shrink-0 text-indigo" />
-        <div className="min-w-0 flex-1">
-          <h2 className="display text-[22px] text-ink">The LinkedIn machine.</h2>
-        </div>
-        <Link
-          href="/campaigns"
-          className="eyebrow shrink-0 text-indigo hover:text-indigo-deep"
-        >
-          Open
-        </Link>
-      </div>
-
+    <Panel
+      icon="IconPipeline"
+      title="The LinkedIn machine."
+      href="/campaigns"
+      linkLabel="Open"
+    >
       {/* Live state, in one line, with a dot that breathes while it runs. */}
-      <div className="card-glass mb-3 flex items-center gap-3 rounded-card border border-line bg-white px-5 py-4">
+      <div className="mb-2.5 flex items-center gap-3 px-1">
         <span className="relative flex size-2.5 shrink-0">
           {pulse.running > 0 && (
             <span className="absolute inline-flex size-full animate-ping rounded-full bg-lime opacity-60" />
@@ -64,28 +55,25 @@ export async function LhPulsePanel() {
                 ? `${pulse.running} running, ${pulse.sending} able to reach people.`
                 : `${pulse.running} running. Research only, nothing can send.`}
         </p>
-        <span className="tabular shrink-0 text-[13px] text-slate">
-          {pulse.people.toLocaleString("en-GB")} profiles
-        </span>
       </div>
 
       {needsYou.length === 0 ? (
-        <p className="card-glass flex items-center gap-2.5 rounded-card border border-line bg-white px-5 py-4 text-[15px] text-ink">
-          <IconApproved size={18} className="shrink-0 text-lime" />
+        <p className="flex items-center gap-2.5 rounded-card border border-line bg-white px-4 py-3 text-[13px] text-ink">
+          <IconApproved size={16} className="shrink-0 text-lime" />
           Nothing is waiting on you.
         </p>
       ) : (
-        <ul className="flex flex-col gap-2.5">
+        <ul className="flex flex-col gap-2">
           {needsYou.map((item) => {
             const { icon: Icon, tone, ring } = URGENCY[item.urgency];
             const body = (
               <>
-                <Icon size={18} className={`mt-0.5 shrink-0 ${tone}`} />
+                <Icon size={16} className={`mt-0.5 shrink-0 ${tone}`} />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[15px] font-semibold leading-snug text-ink">
+                  <span className="block text-[13px] font-semibold leading-snug text-ink">
                     {item.title}
                   </span>
-                  <span className="mt-0.5 block text-[13px] leading-snug text-slate">
+                  <span className="mt-0.5 block text-[11px] leading-snug text-slate">
                     {item.detail}
                   </span>
                 </span>
@@ -96,12 +84,12 @@ export async function LhPulsePanel() {
                 {item.href ? (
                   <Link
                     href={item.href}
-                    className={`card-lift flex items-start gap-3 rounded-card border px-5 py-4 ${ring}`}
+                    className={`card-lift flex items-start gap-2.5 rounded-card border px-4 py-3 ${ring}`}
                   >
                     {body}
                   </Link>
                 ) : (
-                  <div className={`flex items-start gap-3 rounded-card border px-5 py-4 ${ring}`}>
+                  <div className={`flex items-start gap-2.5 rounded-card border px-4 py-3 ${ring}`}>
                     {body}
                   </div>
                 )}
@@ -111,13 +99,17 @@ export async function LhPulsePanel() {
         </ul>
       )}
 
-      {pulse.campaigns > 0 && (
-        <p className="mt-3 flex items-center gap-2 text-[13px] text-slate">
-          <IconPipeline size={15} className="shrink-0 text-mute" />
-          {pulse.dailyMax ? `${pulse.dailyMax} actions a day` : "No daily cap set"}
-          {pulse.licenceDaysLeft !== null && ` · licence ${pulse.licenceDaysLeft} days`}
-        </p>
-      )}
-    </section>
+      <div className="mt-3 flex border-t border-line px-1 pt-3">
+        <PanelFigure
+          label="Profiles"
+          value={pulse.reachable ? compact(pulse.people) : "—"}
+        />
+        <PanelFigure label="A day" value={pulse.dailyMax ? String(pulse.dailyMax) : "—"} />
+        <PanelFigure
+          label="Licence days"
+          value={pulse.licenceDaysLeft === null ? "—" : String(pulse.licenceDaysLeft)}
+        />
+      </div>
+    </Panel>
   );
 }

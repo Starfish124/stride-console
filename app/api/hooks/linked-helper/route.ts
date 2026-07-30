@@ -19,7 +19,11 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  if (!allowRequest(`hook:${ip}`, 120, 60_000)) {
+  // allowRequest(ip, now, max, windowMs). Passing 120 as `now` pinned the
+  // clock, so no recorded hit ever aged out and the intended 120-per-minute
+  // became a permanent 60,000-request counter that blocked the IP until the
+  // next restart.
+  if (!allowRequest(`hook:${ip}`, Date.now(), 120, 60_000)) {
     return NextResponse.json({ error: "Too many requests." }, { status: 429 });
   }
 

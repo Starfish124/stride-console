@@ -21,11 +21,11 @@ export function StatTile({ stat, className = "" }: { stat: Stat; className?: str
   return (
     <Link
       href={stat.href}
-      className={`card-lift card-glass rounded-card border border-line bg-white px-4 py-3.5 ${className}`}
+      className={`card-lift card-glass rounded-card border border-line bg-white px-3.5 py-3 ${className}`}
     >
       <p className="eyebrow text-slate">{stat.label}</p>
-      <p className="figure mt-1.5 text-[26px] text-ink">{stat.value}</p>
-      <p className="mt-1 text-[12px] leading-snug text-slate">{stat.note}</p>
+      <p className="figure mt-1.5 text-[22px] text-ink">{stat.value}</p>
+      <p className="mt-1 text-[11px] leading-snug text-slate">{stat.note}</p>
     </Link>
   );
 }
@@ -40,14 +40,14 @@ export function StatTileSkeleton({
 }) {
   return (
     <div
-      className={`card-glass rounded-card border border-line bg-white px-4 py-3.5 ${className}`}
+      className={`card-glass rounded-card border border-line bg-white px-3.5 py-3 ${className}`}
       aria-busy="true"
     >
       <p className="eyebrow text-slate">{label}</p>
       {/* Sized to the digits it is about to be replaced by, so the tile does
           not change height when the number lands. */}
-      <span className="shimmer mt-2 block h-[22px] w-16 rounded" />
-      <span className="shimmer mt-2 block h-[11px] w-28 rounded" />
+      <span className="shimmer mt-2 block h-[19px] w-14 rounded" />
+      <span className="shimmer mt-2 block h-[11px] w-24 rounded" />
     </div>
   );
 }
@@ -60,14 +60,14 @@ export function StatBand({
   children?: React.ReactNode;
 }) {
   return (
-    <section className="mb-10">
+    <section className="mb-7">
       {/* Separate tiles rather than one divided plate: a shared plate needs a
           rule between neighbours, and a rule that is right in one column is in
           the wrong place at two and at five. */}
       {/* Two up on a phone, five across on a desk. One per row on a phone
           turned five numbers into most of a screen, and a glance is the whole
           point of the band. */}
-      <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         {stats.map((stat) => (
           <StatTile key={stat.label} stat={stat} />
         ))}

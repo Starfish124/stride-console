@@ -49,7 +49,7 @@ function stopAll(code) {
 
 const mode = process.argv.includes("--dev") ? "dev" : "start";
 
-console.log(`[backend] starting console (next ${mode}) and the SEO agents`);
+console.log(`[backend] starting console (next ${mode}), the SEO agents and the email sequencer`);
 
 // next start serves the built console; next dev is for working on it.
 start("console", [
@@ -57,6 +57,11 @@ start("console", [
   mode,
 ]);
 start("agents", ["scripts/agents.mjs"]);
+// The sequencer's clock. It only ever calls the console over HTTP, so it is
+// safe to lose: nothing sends while it is down, and nothing is half written.
+// Note that a crash in it still stops the rest, per the rule above. That is
+// deliberate for now, so a half-running backend never reports itself as up.
+start("salesnav", ["scripts/salesnav-runner.mjs"]);
 
 for (const signal of ["SIGINT", "SIGTERM"]) {
   process.on(signal, () => {

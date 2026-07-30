@@ -45,7 +45,7 @@ function ensureDataDir(): void {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-function readJson<T>(file: string, fallback: T): T {
+export function readJson<T>(file: string, fallback: T): T {
   try {
     const raw = fs.readFileSync(file, "utf8");
     return JSON.parse(raw) as T;
@@ -54,10 +54,15 @@ function readJson<T>(file: string, fallback: T): T {
   }
 }
 
-function writeJson(file: string, value: unknown): void {
+/**
+ * `mode` is passed to the tmp file so a caller can keep a file 0600. Files
+ * holding somebody else's email address or their consent record want that;
+ * the drafts do not care.
+ */
+export function writeJson(file: string, value: unknown, mode?: number): void {
   ensureDataDir();
   const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(value, null, 2), "utf8");
+  fs.writeFileSync(tmp, JSON.stringify(value, null, 2), { encoding: "utf8", mode });
   fs.renameSync(tmp, file);
 }
 

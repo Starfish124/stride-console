@@ -254,19 +254,131 @@ button:active:not(:disabled) {
   line-height: 1;
 }
 
-/* Control-room surface. The editorial white is right for reading and wrong
-   for machine state, so anything reporting what a machine is doing sits on
-   midnight instead. */
-.deck {
-  background:
-    radial-gradient(120% 140% at 85% -10%, rgba(46, 48, 248, 0.35) 0%, transparent 55%),
-    var(--color-midnight);
-  color: #fff;
-}
-
 /* Stat tiles: digits that don't wiggle between sweeps. */
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+
+/* A number inside a dense row. Mono rather than Playfair: at 13px in a list
+   the display face is doing nothing the eye can see, and a monospaced column
+   of figures lines up on its own without a table. */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* ——— the deck —————————————————————————————————————————————————
+ *
+ * Five dashboards on one rail. Scroll-snap does all of it: no script, no
+ * state, no measurement. That is what lets every slide stay a server
+ * component and lets the one slide that waits on Linked Helper keep its own
+ * Suspense boundary without the page ever blocking on it.
+ *
+ * The rail's height is fixed on purpose. Skeleton and resolved panel occupy
+ * the same box, so the swap is invisible and nothing reflows.
+ */
+.deck {
+  --deck-pad: 16px;
+  /* Lets the progress bar, which is a sibling rather than a child, read the
+     rail's scroll position. */
+  timeline-scope: --deck;
+}
+
+.deck-tabs {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  padding-inline: var(--deck-pad);
+  scrollbar-width: none;
+}
+
+.deck-progress {
+  height: 2px;
+  margin: 8px var(--deck-pad) 10px;
+  background: var(--color-line);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.deck-progress > span {
+  display: block;
+  height: 100%;
+  width: calc(100% / var(--deck-n));
+  border-radius: 1px;
+  background: var(--color-indigo);
+}
+
+.deck-rail {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 100%;
+  gap: 12px;
+  padding-inline: var(--deck-pad);
+  scroll-padding-inline: var(--deck-pad);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  height: clamp(300px, 52vh, 380px);
+}
+
+.deck-tabs::-webkit-scrollbar,
+.deck-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.deck-rail > li {
+  display: flex;
+  min-width: 0;
+  scroll-snap-align: start;
+}
+
+/* The panel frame itself: the header holds still, the body scrolls. */
+.deck-slide {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+@media (min-width: 640px) {
+  .deck {
+    --deck-pad: 0px;
+  }
+  /* Two up on a desk, so five panels read as a set rather than a slideshow. */
+  .deck-rail {
+    grid-auto-columns: calc(50% - 6px);
+    height: 340px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .deck-rail {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Where scroll-driven animation exists the bar tracks the finger. Where it
+   does not it sits at the left as a 1/n mark, which is honest rather than
+   broken. Either way nothing moves on its own. */
+@supports (animation-timeline: scroll(self inline)) {
+  .deck-rail {
+    scroll-timeline: --deck inline;
+  }
+
+  .deck-progress > span {
+    animation: deck-run linear both;
+    animation-timeline: --deck;
+  }
+}
+
+@keyframes deck-run {
+  to {
+    transform: translateX(calc((var(--deck-n) - 1) * 100%));
+  }
 }
 
 /* ——— motion ————————————————————————————————————————————————————— */
@@ -449,6 +561,24 @@ main {
   section,
   footer {
     break-inside: avoid;
+  }
+
+  /* A rail prints as whichever slide happened to be on screen. On paper it
+     unrolls into five stacked panels instead. */
+  .deck-rail {
+    display: block;
+    height: auto;
+    overflow: visible;
+  }
+
+  .deck-slide {
+    overflow: visible;
+    break-inside: avoid;
+  }
+
+  .deck-tabs,
+  .deck-progress {
+    display: none;
   }
 }
 

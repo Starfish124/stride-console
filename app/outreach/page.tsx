@@ -8,7 +8,10 @@ import { Ramp } from "@/components/Ramp";
 export const dynamic = "force-dynamic";
 
 export default async function OutreachPage() {
-  const existing = listSequences()[0];
+  // The editor cannot render an email step yet, and handing it one would drop
+  // the step on the next save. So it is given the newest sequence it can hold
+  // whole, and email sequences are edited from the sequencer page instead.
+  const existing = listSequences().find((s) => !s.steps.some((step) => step.kind === "email"));
   const replies = listReplies();
   const unhandled = replies.filter((r) => !r.handled);
 
@@ -21,9 +24,10 @@ export default async function OutreachPage() {
           <p className="eyebrow text-slate">Outreach</p>
           <h1 className="display mt-3 text-3xl text-ink">The words you send.</h1>
           <p className="mt-3 text-[15px] text-slate">
-            Linked Helper keeps the schedule and does the sending. The console
-            keeps the copy, so what goes out in a message answers to the same
-            voice guide as what goes out in a post. Nothing is sent from here.
+            The console keeps the copy, so what goes out in a message answers
+            to the same voice guide as what goes out in a post. Linked Helper
+            sends the LinkedIn steps. Email steps are sent by the console
+            itself, and the stop switch for those is on the sequencer page.
           </p>
         </section>
 
@@ -64,7 +68,10 @@ export default async function OutreachPage() {
                   id: existing.id,
                   name: existing.name,
                   audience: existing.audience,
-                  steps: existing.steps,
+                  steps: existing.steps.filter(
+                    (step): step is typeof step & { kind: "connect" | "message" | "inmail" } =>
+                      step.kind !== "email",
+                  ),
                 }
               : undefined
           }

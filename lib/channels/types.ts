@@ -1,18 +1,20 @@
 /**
  * A channel is a way posts or messages actually reach LinkedIn.
  *
- * There are two, and they are not rivals — they do different halves of the job:
+ * There are three, and they are not rivals — they do different halves of the job:
  *
  *   linkedin-api   publishes content the console has written (inert; the
  *                  founders still copy-and-post by hand).
  *   linked-helper  runs outbound campaigns through the Linked Helper 2 app on
  *                  the Mac mini — connection requests, sequences, replies.
+ *   email          the console's own email sequencer, which does its own
+ *                  scheduling and its own sending, dry by default.
  *
  * Both answer status() the same way, so the console can render "is this thing
  * working" without knowing anything about OAuth or debugger sockets.
  */
 
-export type ChannelId = "linkedin-api" | "linked-helper";
+export type ChannelId = "linkedin-api" | "linked-helper" | "email";
 
 /**
  * off      — deliberately not switched on. Not a problem, just not in use.

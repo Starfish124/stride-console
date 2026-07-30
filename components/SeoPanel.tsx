@@ -6,8 +6,8 @@ import {
   IconLineageDoc,
   IconSearch,
   IconTarget,
-  IconTrend,
 } from "@/components/icons";
+import { Panel } from "@/components/Panel";
 
 /**
  * The website, on the front page.
@@ -56,50 +56,48 @@ export function SeoPanel() {
     .slice(0, 3);
 
   return (
-    <section className="mb-10">
-      <div className="mb-4 flex items-center gap-3">
-        <IconTrend size={22} className="shrink-0 text-indigo" />
-        <h2 className="display flex-1 text-[22px] text-ink">The website.</h2>
-        {last && (
-          <span className="eyebrow shrink-0 text-slate">{when(last.finishedAt)}</span>
-        )}
-      </div>
-
-      <dl className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Figure value={score ?? 0} suffix={score === null ? "" : "/100"} label="Page score" accent={score !== null && score < 60} />
+    <Panel
+      icon="IconTrend"
+      title="The website."
+      href="/seo"
+      linkLabel="Search"
+      meta={last ? when(last.finishedAt) : undefined}
+    >
+      {/* One divided strip rather than four cards. At this size the chrome was
+          most of what the eye saw. */}
+      <dl className="mb-3 grid grid-cols-4 divide-x divide-line">
+        <Figure
+          value={score ?? 0}
+          suffix={score === null ? "" : "/100"}
+          label="Score"
+          accent={score !== null && score < 60}
+        />
         <Figure value={audits.length} label="Pages" />
         <Figure value={keywords.length} label="Keywords" />
         <Figure value={published} label="Published" />
       </dl>
 
-      {/* Traffic, or an honest account of why there is none to show. */}
-      <div className="card-glass mb-3 flex items-start gap-3 rounded-card border border-line bg-white px-5 py-4">
-        <IconBars size={18} className="mt-0.5 shrink-0 text-indigo" />
-        {gsc.configured ? (
-          <p className="text-[15px] leading-snug text-ink">
-            Search Console is connected as{" "}
-            <span className="font-mono text-[13px]">{gsc.clientEmail}</span>. Clicks and
-            impressions arrive with the next sweep.
-          </p>
-        ) : (
-          <p className="text-[15px] leading-snug text-ink">
-            No clicks or traffic yet, because Search Console is not connected.
-            <span className="mt-1 block text-[13px] text-slate">
-              {gsc.reason ?? "Add a service account key at data/gsc-key.json."} Until
-              then every number here comes from reading the site itself.
-            </span>
-          </p>
+      <ul className="flex flex-col gap-2">
+        {/* Traffic, or an honest account of why there is none to show. A site
+            with no visitors and a site with no measurement look identical as
+            zeros and mean completely different things. */}
+        {!gsc.configured && (
+          <Row
+            icon={IconBars}
+            tone="text-slate"
+            ring="border-line bg-white"
+            title="Search Console not connected"
+            detail={gsc.reason ?? "Add a service account key at data/gsc-key.json."}
+          />
         )}
-      </div>
 
-      <ul className="flex flex-col gap-2.5">
         {high > 0 && (
           <Row
             icon={IconEscalate}
             tone="text-amber"
             ring="border-amber/40 bg-amber/[0.06]"
             title={`${high} serious page problem${high === 1 ? "" : "s"}`}
-            detail={`Across ${audits.length} pages. Missing keywords in titles and headings, mostly.`}
+            detail={`Across ${audits.length} page${audits.length === 1 ? "" : "s"}`}
           />
         )}
 
@@ -109,7 +107,7 @@ export function SeoPanel() {
             tone="text-indigo"
             ring="border-line bg-white"
             title={`${last.changesApplied} title${last.changesApplied === 1 ? "" : "s"} and description${last.changesApplied === 1 ? "" : "s"} rewritten`}
-            detail="Applied to the site by the last sweep."
+            detail="By the last sweep"
           />
         )}
 
@@ -119,23 +117,23 @@ export function SeoPanel() {
             tone="text-indigo"
             ring="border-indigo/25 bg-indigo-tint/50"
             title={`${articles.length - published} article${articles.length - published === 1 ? "" : "s"} drafted, not published`}
-            detail="Written and through the voice gate. Waiting on a read."
+            detail="Waiting on a read"
           />
         )}
 
         {openKeywords.length > 0 && (
-          <li className="card-glass rounded-card border border-line bg-white px-5 py-4">
-            <p className="flex items-center gap-2.5 text-[15px] font-semibold text-ink">
-              <IconSearch size={18} className="shrink-0 text-indigo" />
+          <li className="rounded-card border border-line bg-white px-4 py-3">
+            <p className="flex items-center gap-2.5 text-[13px] font-semibold text-ink">
+              <IconSearch size={16} className="shrink-0 text-indigo" />
               Best unclaimed terms
             </p>
-            <ul className="mt-2.5 flex flex-col gap-1.5">
+            <ul className="mt-2 flex flex-col gap-1.5">
               {openKeywords.map((k) => (
                 <li key={k.id} className="flex items-baseline gap-2.5 text-[13px]">
-                  <span className="eyebrow tabular shrink-0 text-indigo">
+                  <span className="num shrink-0 text-[11px] text-indigo">
                     {String(k.opportunity ?? 0).padStart(2, "0")}
                   </span>
-                  <span className="text-ink">{k.term}</span>
+                  <span className="min-w-0 truncate text-ink">{k.term}</span>
                   <span className="eyebrow ml-auto shrink-0 text-slate">{k.locale}</span>
                 </li>
               ))}
@@ -145,11 +143,11 @@ export function SeoPanel() {
       </ul>
 
       {last?.outcome && last.outcome !== "ok" && (
-        <p className="mt-3 text-[13px] leading-snug text-slate">
+        <p className="mt-2 text-[11px] leading-snug text-slate">
           Last sweep finished {last.outcome}. {last.message}
         </p>
       )}
-    </section>
+    </Panel>
   );
 }
 
@@ -167,11 +165,11 @@ function Row({
   detail: string;
 }) {
   return (
-    <li className={`flex items-start gap-3 rounded-card border px-5 py-4 ${ring}`}>
-      <Icon size={18} className={`mt-0.5 shrink-0 ${tone}`} />
+    <li className={`flex items-start gap-2.5 rounded-card border px-4 py-3 ${ring}`}>
+      <Icon size={16} className={`mt-0.5 shrink-0 ${tone}`} />
       <span className="min-w-0 flex-1">
-        <span className="block text-[15px] font-semibold leading-snug text-ink">{title}</span>
-        <span className="mt-0.5 block text-[13px] leading-snug text-slate">{detail}</span>
+        <span className="block text-[13px] font-semibold leading-snug text-ink">{title}</span>
+        <span className="mt-0.5 block text-[11px] leading-snug text-slate">{detail}</span>
       </span>
     </li>
   );
@@ -189,13 +187,14 @@ function Figure({
   accent?: boolean;
 }) {
   return (
-    <div className="card-glass rounded-card border border-line bg-white px-4 py-3.5">
-      <dd className={`figure text-[28px] ${accent ? "text-amber" : "text-ink"}`}>
+    <div className="px-3 first:pl-1">
+      <dd className={`figure text-[22px] ${accent ? "text-amber" : "text-ink"}`}>
         {value.toLocaleString("en-GB")}
-        {suffix && <span className="text-[15px] text-slate">{suffix}</span>}
+        {suffix && <span className="text-[13px] text-slate">{suffix}</span>}
       </dd>
-      <span aria-hidden className={`slant-rule mt-2 w-5 ${accent ? "text-amber" : "text-line"}`} />
-      <dt className="eyebrow mt-2 text-slate">{label}</dt>
+      {/* The one signature mark on this panel. Kept, at half the width. */}
+      <span aria-hidden className={`slant-rule mt-1.5 w-4 ${accent ? "text-amber" : "text-line"}`} />
+      <dt className="eyebrow mt-1.5 text-slate">{label}</dt>
     </div>
   );
 }

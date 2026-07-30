@@ -10,7 +10,10 @@ import {
   compact,
   euros,
   medianEngagement,
+  pipelineStages,
   postsThisMonth,
+  sparkPoints,
+  weeklyPosts,
 } from "../lib/dashboard.ts";
 
 const NOW = new Date("2026-07-28T10:00:00.000Z");
@@ -262,4 +265,79 @@ test("Ask Stride carries no count, because it is a tool and not a queue", () => 
   // Undefined and null mean different things here: no queue versus a queue
   // whose length cannot be read. Only the second one prints a dash.
   assert.notEqual(ask.count, null);
+});
+
+test("a tile that carries a tone always carries the words that explain it", () => {
+  // The quick menu only prints a note where the tone is set, so a toned tile
+  // with an empty note would be a number with nothing saying what it counts.
+  const busy = buildQuickMenu({ ...QUIET, replies: 3, late: 2 });
+  for (const tile of busy.filter((t) => t.tone)) {
+    assert.ok(tile.note.length > 0, `${tile.label} is toned but says nothing`);
+  }
+});
+
+// ---------- the deck ----------
+
+test("the pipeline leaves out past clients, because past is not a stage", () => {
+  const stages = pipelineStages([
+    client({ id: "a", stage: "lead", value: 1000 }),
+    client({ id: "b", stage: "past", value: 90_000 }),
+  ]);
+  assert.deepEqual(
+    stages.map((s) => s.stage),
+    ["lead", "talking", "proposal", "client"],
+  );
+  assert.equal(stages[0].count, 1);
+  assert.equal(stages[0].value, "€1,000");
+});
+
+test("a stage nobody has quoted on prints a dash, not nothing owed", () => {
+  const stages = pipelineStages([client({ id: "a", stage: "talking" })]);
+  const talking = stages.find((s) => s.stage === "talking");
+  assert.equal(talking.count, 1);
+  assert.equal(talking.value, "—");
+  // And an empty stage is the same story: no money has been named.
+  assert.equal(stages.find((s) => s.stage === "client").value, "—");
+});
+
+test("weekly posts land in the right bucket, newest last", () => {
+  const log = [
+    post("2026-07-27T10:00:00.000Z"), // this week
+    post("2026-07-21T10:00:00.000Z"), // last week
+    post("2026-07-20T10:00:00.000Z"), // last week
+  ];
+  const weeks = weeklyPosts(log, 4, NOW);
+  assert.equal(weeks.length, 4);
+  assert.deepEqual(weeks, [0, 0, 2, 1]);
+});
+
+test("an empty log is twelve real zeros, not twelve unknowns", () => {
+  const weeks = weeklyPosts([], 12, NOW);
+  assert.equal(weeks.length, 12);
+  assert.equal(
+    weeks.every((n) => n === 0),
+    true,
+  );
+});
+
+test("posts outside the window are not counted anywhere", () => {
+  const log = [
+    post("2026-01-01T10:00:00.000Z"), // long before
+    post("2027-01-01T10:00:00.000Z"), // in the future
+    post("not a date"),
+  ];
+  assert.deepEqual(weeklyPosts(log, 4, NOW), [0, 0, 0, 0]);
+});
+
+test("a flat series draws down the middle rather than dividing by zero", () => {
+  assert.equal(sparkPoints([2, 2, 2], 48, 12), "0,6 24,6 48,6");
+  assert.equal(sparkPoints([], 48, 12), "");
+  // A single reading has nowhere to travel, so it sits at the left.
+  assert.equal(sparkPoints([5], 48, 12), "0,6");
+});
+
+test("a real series runs from the floor to the ceiling of the box", () => {
+  const points = sparkPoints([0, 1, 2], 48, 12).split(" ");
+  assert.equal(points[0], "0,12");
+  assert.equal(points[2], "48,0");
 });
