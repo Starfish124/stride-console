@@ -159,6 +159,18 @@ export function IconTuneLoop(props: IconProps) {
   return <svg {...frame(props)}><path d="M20.4 12a8.4 8.4 0 0 1-14.7 5.6M3.6 12a8.4 8.4 0 0 1 14.7-5.6" /><path d="M3.6 7.2v4.9h4.9M20.4 16.8v-4.9h-4.9" /></svg>;
 }
 
+/**
+ * The disclosure chevron.
+ *
+ * Not in the icon library, which has no navigational glyphs, so it is drawn to
+ * the library's own spec rather than pulled from a second set: 24px grid,
+ * 1.7px stroke, round caps, currentColor. A list row without one does not read
+ * as somewhere you can go.
+ */
+export function IconChevron(props: IconProps) {
+  return <svg {...frame(props)}><path d="M9.6 5.4l6.4 6.6-6.4 6.6" /></svg>;
+}
+
 export function IconWorkflow(props: IconProps) {
   return <svg {...frame(props)}><circle cx="5" cy="6" r="2.4" /><circle cx="19" cy="6" r="2.4" /><circle cx="12" cy="18.4" r="2.4" /><path d="M7.4 6h9.2M6.3 8.2l4.4 8M17.7 8.2l-4.4 8" /></svg>;
 }
@@ -176,7 +188,7 @@ const BY_NAME: Record<string, (props: IconProps) => React.ReactElement> = {
   IconData, IconDeploy, IconEscalate, IconFilter, IconGate, IconGrid,
   IconGuardrail, IconIntegration, IconKey, IconLayers, IconLineageDoc, IconLock,
   IconPipeline, IconResidency, IconReview, IconRuntime, IconSearch, IconSpark,
-  IconTarget, IconTeam, IconTime, IconTrend, IconTuneLoop, IconWorkflow,
+  IconTarget, IconTeam, IconTime, IconTrend, IconTuneLoop, IconWorkflow, IconChevron,
 };
 
 export function iconByName(name: string) {

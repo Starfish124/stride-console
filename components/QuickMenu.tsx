@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { QuickTile } from "@/lib/dashboard";
-import { Glyph } from "@/components/icons";
+import { Glyph, IconChevron } from "@/components/icons";
 
 /**
  * The jump-off grid.
@@ -25,56 +25,61 @@ const TONE: Record<NonNullable<QuickTile["tone"]>, string> = {
   warn: "text-amber",
 };
 
+/** 44px is the smallest thing a thumb hits reliably, so it is the floor. */
+const ROW = "flex min-h-[44px] items-center gap-3 px-4 py-2.5";
+
 export function QuickTileCard({ tile }: { tile: QuickTile }) {
   const hasCount = tile.count !== undefined;
   return (
-    <Link
-      href={tile.href}
-      className="card-lift card-raised flex flex-col rounded-card border border-line bg-white px-3.5 py-3"
-    >
-      <span className="flex items-start justify-between gap-2">
-        <Glyph
-          name={tile.icon}
-          size={18}
-          className={`shrink-0 ${tile.tone ? TONE[tile.tone] : "text-indigo"}`}
-        />
-        {hasCount && (
-          <span
-            className={`figure text-[20px] leading-none ${
-              tile.tone ? TONE[tile.tone] : "text-ink"
-            }`}
-          >
-            {tile.count === null ? "—" : tile.count}
-          </span>
+    <Link href={tile.href} className={`pressable ${ROW} bg-white active:bg-paper`}>
+      <Glyph
+        name={tile.icon}
+        size={19}
+        className={`shrink-0 ${tile.tone ? TONE[tile.tone] : "text-indigo"}`}
+      />
+
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[15px] text-ink">{tile.label}</span>
+        {/* The note only earns its line where the count means somebody is
+            holding something up. A labelled row explains itself. */}
+        {tile.tone && (
+          <span className="block truncate text-[12px] leading-snug text-slate">{tile.note}</span>
         )}
       </span>
-      <span className="mt-2.5 block text-[12px] font-semibold leading-snug text-ink">
-        {tile.label}
-      </span>
-      {/* The note only earns its line where the count means somebody is
-          holding something up. Eight labelled tiles explain themselves. */}
-      {tile.tone && (
-        <span className="mt-0.5 block text-[11px] leading-snug text-slate">{tile.note}</span>
+
+      {hasCount && (
+        <span className={`num text-[15px] ${tile.tone ? TONE[tile.tone] : "text-slate"}`}>
+          {tile.count === null ? "—" : tile.count}
+        </span>
       )}
+      <IconChevron size={16} className="shrink-0 text-line" />
     </Link>
   );
 }
 
 export function QuickTileSkeleton({ label, icon }: { label: string; icon: string }) {
   return (
-    <div
-      className="card-raised flex flex-col rounded-card border border-line bg-white px-3.5 py-3"
-      aria-busy="true"
-    >
-      <span className="flex items-start justify-between gap-2">
-        <Glyph name={icon} size={18} className="shrink-0 text-indigo" />
-        <span className="shimmer block h-[17px] w-7 rounded" />
-      </span>
-      <span className="mt-2.5 block text-[12px] font-semibold leading-snug text-ink">{label}</span>
+    <div className={`${ROW} bg-white`} aria-busy="true">
+      <Glyph name={icon} size={19} className="shrink-0 text-indigo" />
+      <span className="min-w-0 flex-1 text-[15px] text-ink">{label}</span>
+      <span className="shimmer block h-[15px] w-6 rounded" />
+      <IconChevron size={16} className="shrink-0 text-line" />
     </div>
   );
 }
 
+/**
+ * The jump-off list.
+ *
+ * One grouped plate with hairlines between rows, the way Settings.app does it,
+ * rather than eight floating cards on a grey field. A card grid is a web
+ * dashboard idiom: it spends a lot of screen saying very little, and eight
+ * shadows fighting each other is most of why this page did not feel like it
+ * belonged on a home screen.
+ *
+ * Two columns of plates on a desk, because one column of eight rows across a
+ * wide screen is a stripe of white with a lot of nothing beside it.
+ */
 export function QuickMenu({
   tiles,
   leading,
@@ -84,7 +89,7 @@ export function QuickMenu({
 }) {
   return (
     <section className="mb-7">
-      <div className="grid grid-cols-4 gap-2 lg:grid-cols-8">
+      <div className="inset-group lg:columns-2 lg:gap-0 lg:[&>*]:break-inside-avoid">
         {leading}
         {tiles.map((tile) => (
           <QuickTileCard key={tile.label} tile={tile} />

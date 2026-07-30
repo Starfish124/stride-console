@@ -21,11 +21,16 @@ export function StatTile({ stat, className = "" }: { stat: Stat; className?: str
   return (
     <Link
       href={stat.href}
-      className={`card-lift card-glass rounded-card border border-line bg-white px-3.5 py-3 ${className}`}
+      className={`card-lift card-glass rounded-card border border-line bg-white px-3 py-2.5 ${className}`}
     >
-      <p className="eyebrow text-slate">{stat.label}</p>
-      <p className="figure mt-1.5 text-[22px] text-ink">{stat.value}</p>
-      <p className="mt-1 text-[11px] leading-snug text-slate">{stat.note}</p>
+      <p className="eyebrow text-[10px] text-slate">{stat.label}</p>
+      <p className="figure mt-1 text-[21px] text-ink">{stat.value}</p>
+      {/* Two lines is the ceiling. A tile in a grid is as tall as the wordiest
+          note in its row, so one long sentence used to add height to four
+          tiles that had nothing to say. */}
+      <p className="mt-0.5 line-clamp-1 text-[11px] leading-[1.3] text-slate sm:line-clamp-2">
+        {stat.note}
+      </p>
     </Link>
   );
 }
@@ -40,14 +45,14 @@ export function StatTileSkeleton({
 }) {
   return (
     <div
-      className={`card-glass rounded-card border border-line bg-white px-3.5 py-3 ${className}`}
+      className={`card-glass rounded-card border border-line bg-white px-3 py-2.5 ${className}`}
       aria-busy="true"
     >
-      <p className="eyebrow text-slate">{label}</p>
+      <p className="eyebrow text-[10px] text-slate">{label}</p>
       {/* Sized to the digits it is about to be replaced by, so the tile does
           not change height when the number lands. */}
-      <span className="shimmer mt-2 block h-[19px] w-14 rounded" />
-      <span className="shimmer mt-2 block h-[11px] w-24 rounded" />
+      <span className="shimmer mt-1.5 block h-[18px] w-14 rounded" />
+      <span className="shimmer mt-1.5 block h-[11px] w-24 rounded" />
     </div>
   );
 }

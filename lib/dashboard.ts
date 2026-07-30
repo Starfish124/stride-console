@@ -309,7 +309,10 @@ export function buildStats(input: DashboardInput, now = new Date()): Stat[] {
       note:
         input.clients.length === 0
           ? "Nobody in the book yet"
-          : `${talking} in a live conversation, ${input.clients.length} in the book`,
+          // Short on purpose. A tile in a grid is as tall as the wordiest note
+          // in its row, so a sentence here added a line to four tiles that had
+          // nothing more to say.
+          : `${talking} talking, ${input.clients.length} in the book`,
       href: "/clients",
     },
     {
@@ -327,7 +330,7 @@ export function buildStats(input: DashboardInput, now = new Date()): Stat[] {
       note:
         input.siteScore === null
           ? "No page has been checked yet"
-          : `across ${input.pages} pages, out of 100`,
+          : `${input.pages} pages, out of 100`,
       href: "/seo",
     },
     {
