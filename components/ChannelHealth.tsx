@@ -24,7 +24,7 @@ export async function ChannelHealth() {
   const channels = await channelHealth();
 
   return (
-    <section className="mb-10 card-glass rounded-card border border-line bg-white p-6">
+    <section id="health" className="mb-10 card-glass rounded-card border border-line bg-white p-6">
       <p className="eyebrow flex items-center gap-2 text-slate"><IconIntegration size={15} className="text-indigo" />Channels</p>
       <p className="mt-2 text-sm text-slate">
         How posts and campaigns actually reach LinkedIn.

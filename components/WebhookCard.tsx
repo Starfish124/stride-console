@@ -12,7 +12,7 @@ export function WebhookCard({ origin }: { origin: string }) {
   const url = `${origin}/api/hooks/linked-helper?token=${webhookSecret()}`;
 
   return (
-    <section className="card-glass mb-10 rounded-card border border-line bg-white p-6">
+    <section id="webhook" className="card-glass mb-10 rounded-card border border-line bg-white p-6">
       <p className="eyebrow flex items-center gap-2 text-slate"><IconKey size={15} className="text-indigo" />Replies webhook</p>
       <p className="mt-2 text-sm text-slate">
         In Linked Helper, add a &quot;send to webhook&quot; action to a campaign
