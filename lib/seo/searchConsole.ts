@@ -65,9 +65,13 @@ export function loadServiceAccount(): ServiceAccount | undefined {
 export function status(): GscStatus {
   const account = loadServiceAccount();
   if (!account) {
+    // Relative on purpose. This reason is rendered verbatim on /seo, and /seo
+    // gets shown to clients, so an absolute path would put someone's home
+    // directory on a stranger's screen. It stays just as actionable.
+    const where = path.relative(process.cwd(), keyPath()) || keyPath();
     return {
       configured: false,
-      reason: `No service account key at ${keyPath()}. See docs/SEO.md for the five-minute setup.`,
+      reason: `No service account key at ${where}. See docs/SEO.md for the five-minute setup.`,
     };
   }
   return { configured: true, clientEmail: account.client_email, siteUrl: siteUrl() };

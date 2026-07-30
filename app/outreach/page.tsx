@@ -28,7 +28,10 @@ export default async function OutreachPage() {
         </section>
 
         {unhandled.length > 0 && (
-          <section className="card-glass mb-8 rounded-card border border-indigo-tint bg-white p-5">
+          <section
+            id="replies"
+            className="card-glass mb-8 rounded-card border border-indigo-tint bg-white p-5"
+          >
             <p className="eyebrow text-indigo">
               {unhandled.length} repl{unhandled.length === 1 ? "y" : "ies"} waiting
             </p>

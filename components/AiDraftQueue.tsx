@@ -28,7 +28,7 @@ export async function AiDraftQueue() {
   const failing = judged.filter((j) => j.lint.errors > 0);
 
   return (
-    <section className="mb-10">
+    <section id="drafts" className="mb-10">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="display text-[22px] text-ink">Written by the machine.</h2>
         {drafts.length > 0 && (

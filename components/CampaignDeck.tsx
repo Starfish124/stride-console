@@ -113,7 +113,7 @@ export function CampaignDeck({ entry }: { entry: LhAccountCampaigns }) {
         <Figure value={entry.dailyMax ?? 0} label="Daily cap" />
       </dl>
 
-      <div className="card-glass mb-4 rounded-card border border-line bg-white p-5">
+      <div id="runner" className="card-glass mb-4 rounded-card border border-line bg-white p-5">
         <p className="text-[15px] leading-snug text-ink">{status}</p>
 
         <div className="mt-4 flex flex-wrap gap-3">
