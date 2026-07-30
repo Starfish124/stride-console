@@ -32,12 +32,22 @@
   --color-line: #e5e8f0;
   --color-midnight: #0a0c14;
 
-  /* Plus Jakarta Sans carries the interface and JetBrains Mono every label,
-     both from the library. Playfair stays on display type: the founder's
-     call, and the deck is set that way too. */
-  --font-sans: "Plus Jakarta Sans", -apple-system, "Helvetica", sans-serif;
-  --font-display: "Playfair Display", "Iowan Old Style", Georgia, serif;
+  /* The system face, first and on purpose.
+   *
+   * This runs inside a WKWebView on a phone, wrapped in iOS chrome that is set
+   * in SF. Any webfont next to that reads as a website someone opened, which is
+   * the one thing an app must not read as. SF is also the only face that gets
+   * the platform's optical sizing and its numerals for free.
+   *
+   * Plus Jakarta stays as the fallback for anything not on an Apple device, so
+   * the brand still shows up on a Windows laptop. */
+  --font-sans: -apple-system, BlinkMacSystemFont, system-ui, "Plus Jakarta Sans", sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, system-ui, "Plus Jakarta Sans", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Playfair is not gone. It carries /pitch and /login, where an editorial
+     voice is the right one, and nothing else. */
+  --font-editorial: "Playfair Display", "Iowan Old Style", Georgia, serif;
 
   --radius-input: 10px;
   --radius-card: 16px;
@@ -78,20 +88,33 @@ button {
 
 /* ——— type roles ———————————————————————————————————————————————— */
 
-/* Mono label voice: uppercase, +14% tracking, weight 500. */
+/* Mono label voice. Tracking pulled back from 14%: caps that wide read as
+   a lookbook caption rather than a field label. */
 .eyebrow {
   font-family: var(--font-mono);
   font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.05em;
   font-size: 11px;
 }
 
-/* Playfair, set the way the deck sets it. A serif at display size wants air
-   and almost no negative tracking — heavy tracking is what made the old
-   all-sans setting read as machine-set. */
+/* SF at display size. A serif wanted air and almost no tracking; SF wants the
+   opposite — real weight and tight negative tracking, the way every large
+   title in iOS is set. Balance stops a two word heading orphaning its last
+   word, which at this size is very visible. */
 .display {
   font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.026em;
+  text-wrap: balance;
+}
+
+/* The public pitch page keeps Playfair. It is a page somebody is sent, not an
+   app somebody lives in, and an editorial voice is the right one there. It is
+   also the only thing still earning the webfont download. */
+.editorial {
+  font-family: var(--font-editorial);
   font-weight: 500;
   line-height: 1.08;
   letter-spacing: -0.012em;
@@ -105,13 +128,14 @@ button {
   color: var(--color-indigo);
 }
 
-/* iOS large title, in our serif rather than SF. */
+/* The iOS large title, now actually set like one. */
 .title-large {
   font-family: var(--font-display);
-  font-weight: 500;
-  font-size: clamp(30px, 8vw, 38px);
-  line-height: 1.06;
-  letter-spacing: -0.014em;
+  font-weight: 700;
+  font-size: clamp(28px, 7.4vw, 34px);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
 }
 
 /* ——— materials —————————————————————————————————————————————————— */
@@ -243,14 +267,18 @@ button:active:not(:disabled) {
   transform: skewX(-26.57deg);
 }
 
-/* A number that carries the page: Playfair, not the UI sans. Stat tiles set
-   in the body face read like a bootstrap dashboard; set in the display face
-   they read like the rest of the brand. */
+/* A number that carries the page.
+ *
+ * This was Playfair, which meant every stat tile printed old-style figures: a
+ * 7 that drops below the baseline and a small 0. Lovely on a page of prose,
+ * wrong on a dashboard, and the single loudest reason the app read as a
+ * magazine. SF at 700 with lining tabular figures is what a native app shows
+ * you, and the digits stop moving between refreshes. */
 .figure {
   font-family: var(--font-display);
-  font-weight: 500;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums lining-nums;
   line-height: 1;
 }
 
@@ -399,10 +427,15 @@ main {
   }
 }
 
-/* Clearance for the bottom tab bar on phone widths. */
+/* Clearance for the bottom tab bar on phone widths.
+ *
+ * Important on purpose. Pages set their own pb-* utility, and a class beats a
+ * bare element selector however the media query is written, so the tab bar was
+ * sitting on top of the last card with text bleeding through it. A safe-area
+ * inset is not a page's decision to make. */
 @media (max-width: 639px) {
   main {
-    padding-bottom: calc(92px + env(safe-area-inset-bottom));
+    padding-bottom: calc(96px + env(safe-area-inset-bottom)) !important;
   }
 }
 

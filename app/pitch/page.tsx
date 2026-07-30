@@ -14,7 +14,7 @@ export default async function PitchPage() {
         <section className="py-14">
           <Wordmark height={34} />
           <p className="eyebrow mt-8 text-slate">1 Min AI Pitch</p>
-          <h1 className="display mt-3 text-4xl text-ink">
+          <h1 className="editorial mt-3 text-4xl text-ink">
             One minute. One idea.
           </h1>
           <p className="mt-3 text-slate">
