@@ -232,6 +232,13 @@ export interface SeoConfig {
   autoApplyMetadata: boolean;
   /** Push to git automatically once an article is approved. */
   autoPublishOnApproval: boolean;
+  /**
+   * Publish an article the moment the writer produces it, without waiting for
+   * a human. The voice gate still decides: only a draft with zero errors goes,
+   * and anything it flags stays in the queue for a person. Turning this off
+   * makes every article wait for the Publish button on /seo.
+   */
+  autoPublishArticles: boolean;
 }
 
 export const DEFAULT_SEEDS: Record<Locale, string[]> = {

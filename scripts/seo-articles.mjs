@@ -1,8 +1,10 @@
-// The weekly article batch. Drafts articles for the highest-opportunity gaps
-// the sweep queued, and stops there.
+// The weekly article batch. Writes articles for the highest-opportunity gaps
+// the sweep queued, and publishes the ones that come out clean.
 //
-// Nothing is published. Drafts wait on /seo for a human to read and press
-// publish, which is the one part of this system that stays manual on purpose.
+// The voice gate is what decides, not whether anyone was watching: a draft
+// with zero errors goes straight to the site, and anything the gate flags
+// stays on /seo for a person to read and fix. Set autoPublishArticles to
+// false in the config to make every article wait for the button again.
 //
 // Run: npm run seo:articles
 //      npm run seo:articles -- --limit=1
@@ -17,19 +19,27 @@ const result = await weeklyArticles({ limit: Number.isFinite(limit) ? limit : un
 
 console.log(`[seo-articles] ${result.message}`);
 for (const a of result.articles) {
-  console.log(`  ${a.locale}/${a.slug}: "${a.title}"${a.errors > 0 ? ` (${a.errors} voice-gate errors, needs an edit)` : ""}`);
+  const state = a.errors > 0
+    ? `(${a.errors} voice-gate errors, waiting for an edit)`
+    : a.published
+      ? `(published as ${a.commit})`
+      : "(clean, but not sent)";
+  console.log(`  ${a.locale}/${a.slug}: "${a.title}" ${state}`);
 }
 
-// Tell the founders there is something to approve. Push is best effort: a
-// failed notification must not fail the batch, because the drafts are already
-// saved and visible on /seo either way.
+// Tell the founders what went out and what is waiting on them. Push is best
+// effort: a failed notification must not fail the batch, because everything is
+// already saved and visible on /seo either way.
 if (result.drafted > 0) {
   try {
     const subs = listPushSubs();
     if (subs.length > 0) {
+      const waiting = result.drafted - result.published;
       const { sendToAll } = await import("../lib/push.ts");
       const push = await sendToAll({
-        title: `${result.drafted} SEO draft${result.drafted === 1 ? "" : "s"} ready`,
+        title: waiting > 0
+          ? `${result.published} published, ${waiting} need you`
+          : `${result.published} SEO article${result.published === 1 ? "" : "s"} published`,
         body: result.articles.map((a) => a.title).join(" · ").slice(0, 160),
         url: "/seo",
       });

@@ -61,6 +61,10 @@ export const DEFAULT_CONFIG: SeoConfig = {
   // Mondays. Article publication is the thing that waits for a human.
   autoApplyMetadata: true,
   autoPublishOnApproval: true,
+  // The writer publishes its own clean work. The voice gate is what stands
+  // between the machine and the site, not a person's attention: a draft with
+  // any error stays in the queue and waits to be read.
+  autoPublishArticles: true,
 };
 
 export function getConfig(): SeoConfig {

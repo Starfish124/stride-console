@@ -12,6 +12,7 @@ import {
   currentBranch,
   isGitRepo,
   publish,
+  publishArticle,
   renderMarkdown,
 } from "../lib/seo/publish.ts";
 import {
@@ -97,6 +98,42 @@ test("the commit message names the keyword and the human approval", () => {
 test("a metadata-only run gets its own message", () => {
   const msg = buildCommitMessage([], new Date("2026-07-26T09:00:00Z"));
   assert.match(msg, /^seo: metadata pass 2026-07-26/);
+});
+
+// ---------- the voice gate, now that the machine publishes itself ----------
+//
+// Nobody reads these before they go live any more, so the gate is the only
+// thing standing between the writer and stride-ai.nl. It refuses before it
+// touches the store or git, which is why these need no sandbox.
+
+test("an article with voice-gate errors is never published", () => {
+  const flagged = {
+    ...ARTICLE,
+    status: "drafted",
+    lint: {
+      errors: 2,
+      warns: 0,
+      violations: [
+        { rule: "bannedWords", severity: "error", excerpt: "leverage" },
+        { rule: "ceremonyVerbs", severity: "error", excerpt: "serves as" },
+      ],
+    },
+  };
+
+  const outcome = publishArticle(flagged);
+
+  assert.equal(outcome.ok, false, "the gate must stop it");
+  assert.equal(outcome.status, "drafted", "and leave it in the queue for a person");
+  assert.equal(outcome.pushed, false);
+  assert.equal(outcome.blockedBy?.length, 2, "the errors come back so they can be fixed");
+  assert.match(outcome.message, /2 errors/);
+});
+
+test("an already-published article is not published twice", () => {
+  const outcome = publishArticle({ ...ARTICLE, status: "published" });
+  assert.equal(outcome.ok, false);
+  assert.equal(outcome.pushed, false);
+  assert.match(outcome.message, /Already published/);
 });
 
 // ---------- git ----------

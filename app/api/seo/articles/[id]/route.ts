@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getArticle, getConfig, listArticles, saveArticle } from "@/lib/seo/store";
-import { publish } from "@/lib/seo/publish";
+import { getArticle, listArticles, saveArticle } from "@/lib/seo/store";
+import { publishArticle } from "@/lib/seo/publish";
 import { lintArticle } from "@/lib/seo/lint";
 
 export const dynamic = "force-dynamic";
@@ -87,47 +87,26 @@ export async function POST(
     return NextResponse.json({ error: "Already published." }, { status: 409 });
   }
 
-  if (article.lint.errors > 0) {
-    return NextResponse.json(
-      {
-        error: `The voice gate still reports ${article.lint.errors} error${article.lint.errors === 1 ? "" : "s"}. Edit the draft first.`,
-        violations: article.lint.violations.filter((v) => v.severity === "error"),
-      },
-      { status: 422 },
-    );
-  }
-
-  const config = getConfig();
-  const now = new Date();
-  article.publishedAt = now.toISOString();
-
-  const result = publish([article], {
-    repo: config.siteRepo,
-    push: config.autoPublishOnApproval,
-    now,
-  });
+  const result = publishArticle(article);
 
   if (!result.ok) {
-    // Leave the draft approved but unpublished, so a retry after fixing the
-    // repository does not need the article rewritten.
-    article.status = "approved";
-    article.publishedAt = undefined;
-    saveArticle(article);
+    // The gate refusing is the author's problem to fix; anything else is the
+    // repository's, and those deserve different status codes.
+    if (result.blockedBy) {
+      return NextResponse.json(
+        { error: result.message, violations: result.blockedBy },
+        { status: 422 },
+      );
+    }
     return NextResponse.json({ error: result.message }, { status: 500 });
   }
-
-  article.status = "published";
-  article.commit = result.commit;
-  saveArticle(article);
 
   return NextResponse.json({
     ok: true,
     status: "published",
     commit: result.commit,
     pushed: result.pushed,
-    message: result.pushed
-      ? `Published as ${result.commit}. The site is rebuilding.`
-      : `Committed as ${result.commit}. Push it when ready.`,
+    message: result.message,
     remaining: listArticles().filter((a) => a.status === "drafted").length,
   });
 }

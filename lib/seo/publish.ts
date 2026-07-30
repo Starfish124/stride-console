@@ -12,6 +12,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { getConfig, saveArticle } from "./store.ts";
 import type { SeoArticle } from "./types.ts";
 
 export interface GitResult {
@@ -202,6 +203,81 @@ export function publish(
     commit: sha,
     files,
     pushed: true,
+  };
+}
+
+export interface ArticleOutcome {
+  ok: boolean;
+  status: SeoArticle["status"];
+  commit?: string;
+  pushed: boolean;
+  message: string;
+  /** Set when the voice gate refused. */
+  blockedBy?: SeoArticle["lint"]["violations"];
+}
+
+/**
+ * Put one article on the site and record what became of it.
+ *
+ * Both the Publish button and the weekly writer come through here, so the
+ * machine publishing itself can never be held to a laxer standard than a
+ * person pressing the button. The voice gate is the hard stop in both cases:
+ * a draft with errors is refused, and it stays in the queue to be read rather
+ * than being quietly dropped.
+ */
+export function publishArticle(
+  article: SeoArticle,
+  options: { now?: Date } = {},
+): ArticleOutcome {
+  const { now = new Date() } = options;
+
+  if (article.status === "published") {
+    return { ok: false, status: "published", pushed: false, message: "Already published." };
+  }
+
+  if (article.lint.errors > 0) {
+    const errors = article.lint.violations.filter((v) => v.severity === "error");
+    return {
+      ok: false,
+      status: article.status,
+      pushed: false,
+      message: `The voice gate still reports ${article.lint.errors} error${
+        article.lint.errors === 1 ? "" : "s"
+      }. Edit the draft first.`,
+      blockedBy: errors,
+    };
+  }
+
+  const config = getConfig();
+  article.publishedAt = now.toISOString();
+
+  const result = publish([article], {
+    repo: config.siteRepo,
+    push: config.autoPublishOnApproval,
+    now,
+  });
+
+  if (!result.ok) {
+    // Leave it approved rather than drafted, so a retry after the repository
+    // is fixed does not need the article written again.
+    article.status = "approved";
+    article.publishedAt = undefined;
+    saveArticle(article);
+    return { ok: false, status: "approved", pushed: false, message: result.message };
+  }
+
+  article.status = "published";
+  article.commit = result.commit;
+  saveArticle(article);
+
+  return {
+    ok: true,
+    status: "published",
+    commit: result.commit,
+    pushed: result.pushed,
+    message: result.pushed
+      ? `Published as ${result.commit}. The site is rebuilding.`
+      : `Committed as ${result.commit}. Push it when ready.`,
   };
 }
 

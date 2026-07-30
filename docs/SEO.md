@@ -1,12 +1,17 @@
 # The SEO engine
 
 The website works on itself. Every night an agent looks for what people search
-for, checks how each page reads to a crawler, and fixes what it can fix safely.
-Every Monday it drafts articles for the gaps and waits on `/seo` for you to
-press publish.
+for, checks how each page reads to a crawler, fixes what it can fix safely, and
+commits the result so the site rebuilds. Every Monday it writes articles for
+the gaps and publishes the ones that come out clean.
 
-Nothing reaches the live site without either passing a deterministic gate
-(metadata) or a human pressing a button (articles).
+Nothing reaches the live site without passing a deterministic gate: length,
+keyword placement and schema for metadata, and the voice gate for articles.
+What the gate flags is what waits for a person on `/seo` — so a human reads
+the machine's bad work, not its good work.
+
+Everything it does arrives as a git commit authored by `seo-agent`, which
+means one `git revert` undoes any of it.
 
 ---
 
@@ -156,8 +161,11 @@ same voice gate every other piece of Stride writing passes. A proposal that
 fails is dropped rather than applied with a warning, because unattended
 "applied with a warning" means live and wrong until somebody reads a log.
 
-**It may add markdown files under `content/blog/`**, but only after you press
-publish.
+**It may add markdown files under `content/blog/`**, once the article passes
+the long-form voice gate with zero errors. A draft the gate flags is never
+published by the machine — it stays on `/seo` and waits to be read, which is
+also the only place a wrong-target article gets caught. The gate cannot know
+that a well-written piece is about somebody else's product.
 
 **It may not edit any `.tsx` file.** H1s, body copy and page structure live in
 components, and a machine editing JSX is one bad regex from breaking the build.
@@ -179,7 +187,8 @@ message. A bad run is undone with `git revert`.
 | `locales` | `["en","nl"]` | Languages tracked. |
 | `weeklyArticleTarget` | `3` | Drafts per Monday. |
 | `autoApplyMetadata` | `true` | Apply title and description fixes without asking. Reversible with one git revert; holding them for approval means the site never improves between Mondays. |
-| `autoPublishOnApproval` | `true` | Push after you press publish, so the site rebuilds. Set false to commit locally only. |
+| `autoPublishOnApproval` | `true` | Push after publishing, so the site rebuilds. Set false to commit locally only. |
+| `autoPublishArticles` | `true` | Publish an article as soon as the writer produces it, if the voice gate reports zero errors. Set false to make every article wait for the Publish button on `/seo`. |
 
 Seed keywords live in the same file under `seeds`. They are the starting point
 for discovery, not the whole set: each seed is expanded through Google's

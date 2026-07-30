@@ -36,7 +36,7 @@ import {
   toSiteRoutes,
 } from "./optimise.ts";
 import { fetchStats, statsByTerm } from "./searchConsole.ts";
-import { currentBranch, publish } from "./publish.ts";
+import { currentBranch, publish, publishArticle, type ArticleOutcome } from "./publish.ts";
 import { writeArticle } from "./article.ts";
 import type { ArticleBrief, Locale, MetaChange, PageAudit, SweepResult } from "./types.ts";
 
@@ -330,7 +330,15 @@ export async function dailySweep(options: SweepOptions = {}): Promise<SweepResul
 export interface WeeklyResult {
   drafted: number;
   failed: number;
-  articles: { slug: string; locale: Locale; title: string; errors: number }[];
+  published: number;
+  articles: {
+    slug: string;
+    locale: Locale;
+    title: string;
+    errors: number;
+    published?: boolean;
+    commit?: string;
+  }[];
   message: string;
 }
 
@@ -378,11 +386,12 @@ export async function weeklyArticles(
       queued.length === 0
         ? "No briefs queued. Nothing to write."
         : `All ${queued.length} queued briefs already have an article. Nothing to write.`;
-    return { drafted: 0, failed: 0, articles: [], message };
+    return { drafted: 0, failed: 0, published: 0, articles: [], message };
   }
 
   const written: WeeklyResult["articles"] = [];
   let failed = 0;
+  let publishedCount = 0;
 
   for (const brief of briefs) {
     try {
@@ -392,11 +401,25 @@ export async function weeklyArticles(
         continue;
       }
       saveArticle(result.article);
+
+      // The writer ships its own clean work. The voice gate decides, not
+      // whether anyone happened to be looking: publishArticle refuses a draft
+      // with errors, and that one stays in the queue for a person to read.
+      // Same function the Publish button calls, so the machine can never be
+      // held to a laxer standard than a human pressing it.
+      let sent: ArticleOutcome | undefined;
+      if (config.autoPublishArticles && result.article.lint.errors === 0) {
+        sent = publishArticle(result.article, { now });
+        if (sent.ok) publishedCount++;
+      }
+
       written.push({
         slug: result.article.slug,
         locale: result.article.locale,
         title: result.article.title,
         errors: result.article.lint.errors,
+        published: sent?.ok ?? false,
+        commit: sent?.commit,
       });
     } catch {
       failed++;
@@ -404,14 +427,20 @@ export async function weeklyArticles(
   }
 
   const clean = written.filter((w) => w.errors === 0).length;
+  const held = clean - publishedCount;
   return {
     drafted: written.length,
     failed,
+    published: publishedCount,
     articles: written,
     message:
       written.length === 0
         ? `No articles written. ${failed} attempt${failed === 1 ? "" : "s"} failed.`
-        : `${written.length} draft${written.length === 1 ? "" : "s"} ready, ${clean} clean through the voice gate${failed > 0 ? `, ${failed} failed` : ""}.`,
+        : `${written.length} written, ${publishedCount} published${
+            held > 0 ? `, ${held} clean but not sent` : ""
+          }${written.length - clean > 0 ? `, ${written.length - clean} held by the voice gate` : ""}${
+            failed > 0 ? `, ${failed} failed` : ""
+          }.`,
   };
 }
 
