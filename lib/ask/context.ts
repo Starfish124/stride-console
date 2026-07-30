@@ -86,7 +86,12 @@ export async function buildContext(): Promise<AskContext> {
             pulse.licenceDaysLeft !== null
               ? `The Linked Helper licence has ${pulse.licenceDaysLeft} days left. Everything on LinkedIn stops when it lapses.`
               : "The licence state is unknown.",
-            ...pulse.items.map((i) => `Needs a person (${i.urgency}): ${i.title} — ${i.detail}`),
+            // What needs a person is deliberately NOT repeated here. readPulse
+            // merges the email sequencer's items into the same list
+            // (lib/channels/attention.ts), so printing them under this heading
+            // told the model the sequencer was part of LinkedIn — and it duly
+            // reported the machine as stopped because email sending was. They
+            // live in their own section at the top of the sheet instead.
           ],
   });
 
@@ -195,6 +200,37 @@ export async function buildContext(): Promise<AskContext> {
           }).filter(Boolean),
   });
 
+  // ---------- the lede ----------
+  // Measured, not guessed: asked "what needs me today", every model tried
+  // (qwen2.5:3b, hermes3:8b, qwen3:8b) answered from the notes board and the
+  // licence date and missed the blocked campaign entirely. The facts were all
+  // present — buried under a twenty-four line menu, a third of the way down.
+  // So the answer to the question the page leads with now leads the sheet.
+  // These lines repeat what the sections below say in full; that is the job.
+  const waiting = [
+    ...(pulse?.items ?? []).map((i) => `${i.urgency}: ${i.title} — ${i.detail}`),
+    ...late.map(
+      (c) => `blocked: ${c.company} is owed a reply — ${c.nextStepNote ?? "next step"} was due ${c.nextStep}.`,
+    ),
+    ...overdue(calendar, today).map((e) => `blocked: ${e.title} was due ${e.date}.`),
+    ...(drafts.filter((d) => d.status === "draft").length > 0
+      ? [
+          `waiting: ${drafts.filter((d) => d.status === "draft").length} drafts need approving before anything can be posted.`,
+        ]
+      : []),
+  ];
+  blocks.splice(1, 0, {
+    heading: "What needs a person right now",
+    lines:
+      waiting.length > 0
+        ? [
+            "Ranked, most urgent first. This is the answer to what needs doing today.",
+            "These come from every part of the machine at once — LinkedIn, the email sequencer, the client book and the calendar. Use them to say what a founder should do. Do not use them to describe what any one channel is doing; the sections below cover that.",
+            ...waiting,
+          ]
+        : ["Nothing is waiting on a person right now."],
+  });
+
   return { text: render(blocks), at: new Date().toISOString() };
 }
 
@@ -210,6 +246,9 @@ export const SYSTEM_PROMPT = [
   "",
   "Rules:",
   "- Every fact in your answer must come from the notes below. Nothing else.",
+  // Without this the model reads the whole sheet and answers "what needs
+  // doing" from whatever it found most quotable, which was the notes board.
+  "- When asked what needs doing, what is urgent, or what to do today, answer from the section called What needs a person right now, most urgent first. Say it in sentences, do not copy the lines.",
   "- If the notes do not cover it, say exactly what is missing and point at the page that would show it. Never guess a number.",
   "- Where the notes say something is unknown or unreachable, say that. Do not report it as zero.",
   "- Be brief. Two or three sentences unless asked for more.",

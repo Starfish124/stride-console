@@ -5,15 +5,51 @@
 // Mac, which is the point — the fact sheet has the whole client book in it.
 
 /**
- * The smallest model that actually answers the question.
+ * The model that answers without inventing things.
  *
- * Measured on this Mac against the real fact sheet, asking "what needs me
- * today": qwen2.5:0.5b reprints the sheet and then loops, 1.5b answers but
- * picks a minor item over the overdue one, 3b names the right thing. 3b is
- * 1.9GB and replies in a few seconds, so the two sizes below it save nothing
- * worth having. Set STRIDE_ASK_MODEL to override.
+ * Measured on this Mac against the real fact sheet, all five questions the page
+ * offers. Earlier rounds ruled out the small end: qwen2.5:0.5b reprints the
+ * sheet and then loops, 1.5b answers but picks a minor item over the overdue
+ * one, 3b names the right thing.
+ *
+ * Re-measured at 8B once those models were pulled, and 3b lost:
+ * - qwen2.5:3b called four *clients* leads, reported the 150/day cap as though
+ *   the runner had hit it, and split one note on the board into two items.
+ * - hermes3:8b was worse where it counts. It expanded ICP to "Intent,
+ *   Competitor and Product", described three campaigns as paused in a draft
+ *   state, and offered that the clients "appear to be progressing smoothly".
+ *   None of that is in the sheet. It also runs three times slower.
+ * - qwen3:8b got every checked fact right, invented no numbers, and is the only
+ *   one that obeys the brevity and no-bullet-lists rules in the prompt.
+ *
+ * So: qwen3:8b, which is a thinking model, hence THINK below. Set
+ * STRIDE_ASK_MODEL to override.
  */
-export const ASK_MODEL = process.env.STRIDE_ASK_MODEL ?? "qwen2.5:3b";
+export const ASK_MODEL = process.env.STRIDE_ASK_MODEL ?? "qwen3:8b";
+
+/**
+ * Thinking off, always.
+ *
+ * A thinking model streams its reasoning before its answer, which lands in the
+ * chat bubble as garbage. Ollama ignores this field for models that cannot
+ * think, so it costs nothing to send it unconditionally and saves the next
+ * person discovering the leak on stage.
+ */
+const THINK = false;
+
+/**
+ * Keep the model resident between questions, but not for long.
+ *
+ * Reloading costs 17 seconds against 4 warm, which is the difference between a
+ * conversation and a pause. The temptation is to pin it for the afternoon.
+ *
+ * ⚠️ Do not. This is a 16GB Mac that also holds Linked Helper's Electron, two
+ * Next servers, Kokoro and whisper, and it was already 8.7GB into swap when
+ * this was measured. qwen3:8b is 6.2GB resident. Ten minutes covers a burst of
+ * questions, which is how anyone actually uses this, and gives the memory back
+ * before it starts costing the rest of the machine.
+ */
+const KEEP_ALIVE = "10m";
 
 const HOST = process.env.OLLAMA_HOST ?? "http://127.0.0.1:11434";
 
@@ -66,6 +102,8 @@ export async function chat(messages: AskMessage[], options: ChatOptions = {}): P
       model: options.model ?? ASK_MODEL,
       messages,
       stream: false,
+      think: THINK,
+      keep_alive: KEEP_ALIVE,
       format: options.format,
       options: { temperature: options.temperature ?? 0.2, num_ctx: options.numCtx ?? 8192 },
     }),
@@ -97,6 +135,8 @@ export async function* streamChat(
       model: options.model ?? ASK_MODEL,
       messages,
       stream: true,
+      think: THINK,
+      keep_alive: KEEP_ALIVE,
       format: options.format,
       options: {
         // Low temperature: this is a lookup over a fact sheet, not writing.
