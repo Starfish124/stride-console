@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!-- launchd template for scheduled pre-generation. Setup: docs/AUTOMATION.md.
-     Replace REPLACE_WITH_REPO_PATH with the absolute path to stride-console. -->
+     The path below is rewritten to your checkout by `stride install`. -->
 <plist version="1.0">
 <dict>
   <key>Label</key>
@@ -12,7 +12,7 @@
   <array>
     <string>/bin/zsh</string>
     <string>-lc</string>
-    <string>cd REPLACE_WITH_REPO_PATH &amp;&amp; npm run pregen</string>
+    <string>cd /Users/sarveshsingh/stride-console &amp;&amp; npm run pregen</string>
   </array>
 
   <!-- Monday and Wednesday, 07:30. Drafts wait in the console by breakfast. -->

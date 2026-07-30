@@ -48,6 +48,17 @@ LH_APP="/Applications/linked-helper.app"
 LH_DEBUG_PORT=9222
 PUBLIC_URL="https://mac-mini.tailc91701.ts.net"
 
+# Every launchd job this repo owns. One list, so a job cannot be installed but
+# never reported — com.stride.seo was missing from status for four days while
+# the supervisor it starts had never run once.
+JOBS=(
+  com.stride.console
+  com.stride.bridge
+  com.stride.pregen
+  com.stride.linkedhelper
+  com.stride.seo
+)
+
 # ——— the brand, in a terminal ————————————————————————————————————
 #
 # Colours are the library's, in 24-bit ANSI: stride blue, partner lime, alert
@@ -117,6 +128,21 @@ funnel_on() {
   [[ "$status" == *"Funnel on"* ]]
 }
 
+# What launchd actually knows about a job, as "state|runs|last exit code".
+#
+# Reporting that the plist file exists only proves somebody once installed it.
+# pregen sat there for days looking installed with runs = 0, because its
+# template still said REPLACE_WITH_REPO_PATH and every firing died in the cd.
+# A health command that cannot see that is worse than no health command.
+job_health() {
+  local out
+  out="$(launchctl print "gui/$(id -u)/$1" 2>/dev/null)" || { printf 'unloaded||\n'; return; }
+  printf '%s|%s|%s\n' \
+    "$(sed -n 's/^[[:space:]]*state = \(.*\)$/\1/p' <<<"$out" | head -1)" \
+    "$(sed -n 's/^[[:space:]]*runs = \(.*\)$/\1/p' <<<"$out" | head -1)" \
+    "$(sed -n 's/^[[:space:]]*last exit code = \(.*\)$/\1/p' <<<"$out" | head -1)"
+}
+
 cmd_status() {
   banner
   head_ "services"
@@ -156,29 +182,55 @@ cmd_status() {
     warn "linkedin session" "not running — start the account in Linked Helper to create campaigns"
   fi
 
-  head_ "at login"
+  head_ "background jobs"
   local missing=0
-  for job in com.stride.console com.stride.bridge com.stride.pregen com.stride.linkedhelper; do
-    if [[ -f "$HOME/Library/LaunchAgents/$job.plist" ]]; then
-      ok "${job#com.stride.}" "starts automatically"
-    else
-      bad "${job#com.stride.}" "not installed"
+  for job in "${JOBS[@]}"; do
+    local short="${job#com.stride.}"
+    if [[ ! -f "$HOME/Library/LaunchAgents/$job.plist" ]]; then
+      bad "$short" "not installed"
       missing=1
+      continue
     fi
+
+    local state runs code
+    IFS='|' read -r state runs code <<<"$(job_health "$job")"
+    case "$state" in
+      running)
+        ok "$short" "running"
+        ;;
+      unloaded)
+        bad "$short" "installed but not loaded"
+        missing=1
+        ;;
+      *)
+        if [[ -z "$runs" || "$runs" == "0" ]]; then
+          bad "$short" "loaded, but has never run"
+          missing=1
+        elif [[ "$code" == "0" ]]; then
+          ok "$short" "last run finished cleanly, $runs so far"
+        else
+          bad "$short" "last run exited $code"
+          missing=1
+        fi
+        ;;
+    esac
   done
 
   # One line that says whether the thing works, so the detail above is only
   # read when it does not.
   echo
   rule
-  if console_up && funnel_on && bridge_up && lh_debug_up; then
+  # A dead background job counts against "everything is up". Serving the site
+  # while nothing writes to it is exactly the state this command used to call
+  # healthy.
+  if console_up && funnel_on && bridge_up && lh_debug_up && [[ $missing -eq 0 ]]; then
     printf "  ${LIME}everything is up${OFF}  ${MUTE}%s${OFF}\n" "$PUBLIC_URL"
   elif console_up; then
     printf "  ${AMBER}the app is up, part of the machine is not${OFF}  ${MUTE}run: stride${OFF}\n"
   else
     printf "  ${AMBER}the app is down${OFF}  ${MUTE}run: stride${OFF}\n"
   fi
-  [[ $missing -eq 1 ]] && printf "  ${MUTE}some services will not come back after a restart. run: stride install${OFF}\n"
+  [[ $missing -eq 1 ]] && printf "  ${MUTE}a background job is not doing its work. run: stride install${OFF}\n"
   echo
 }
 
@@ -267,12 +319,16 @@ cmd_install() {
     'Print :EnvironmentVariables:STRIDE_PASSWORD' \
     "$HOME/Library/LaunchAgents/com.stride.console.plist" 2>/dev/null || true)"
 
-  for job in com.stride.console com.stride.bridge com.stride.pregen com.stride.linkedhelper; do
+  for job in "${JOBS[@]}"; do
     local src="docs/$job.plist"
     [[ -f "$src" ]] || { bad "$job" "no $src in the repo"; continue; }
 
-    # The plists carry an absolute path that only matches this checkout.
-    sed "s#/Users/sarveshsingh/stride-console#$ROOT#g" "$src" \
+    # The plists carry an absolute path that only matches this checkout. The
+    # second expression is a backstop: a template that still says
+    # REPLACE_WITH_REPO_PATH used to install cleanly and then fail every run,
+    # because the first pattern simply never matched.
+    sed -e "s#/Users/sarveshsingh/stride-console#$ROOT#g" \
+        -e "s#REPLACE_WITH_REPO_PATH#$ROOT#g" "$src" \
       > "$HOME/Library/LaunchAgents/$job.plist"
 
     if [[ "$job" == "com.stride.console" && -n "$live_password" ]]; then
