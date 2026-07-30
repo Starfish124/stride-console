@@ -22,6 +22,7 @@ import {
   saveBriefs,
   saveClusters,
   saveKeywords,
+  usedSlugs,
 } from "./store.ts";
 import { expandKeywords } from "./expand.ts";
 import { buildKeywordSet, clusterKeywords, scoreKeyword } from "./cluster.ts";
@@ -36,7 +37,7 @@ import {
 } from "./optimise.ts";
 import { fetchStats, statsByTerm } from "./searchConsole.ts";
 import { writeArticle } from "./article.ts";
-import type { Locale, MetaChange, PageAudit, SweepResult } from "./types.ts";
+import type { ArticleBrief, Locale, MetaChange, PageAudit, SweepResult } from "./types.ts";
 
 export interface SweepOptions {
   /** Skip the alphabet pass. Faster, shallower; used by the manual refresh. */
@@ -315,6 +316,29 @@ export interface WeeklyResult {
 }
 
 /**
+ * The briefs worth spending a writer run on, highest opportunity first.
+ *
+ * A brief that already has an article is finished, whatever became of that
+ * article. Briefs only leave the queue once their slug is a live route, so
+ * without this the Monday run rewrites the same top briefs every week — and
+ * saveArticle keys on id, so every rewrite lands as a fresh duplicate at the
+ * cost of a long-form Claude call each.
+ *
+ * Keyed by slug AND locale, because keywords are per-locale: a Dutch article
+ * existing says nothing about whether the English one does.
+ */
+export function pendingBriefs(
+  briefs: ArticleBrief[],
+  alreadyWritten: Set<string>,
+  limit: number,
+): ArticleBrief[] {
+  return briefs
+    .filter((b) => !alreadyWritten.has(`${b.suggestedSlug}:${b.locale}`))
+    .sort((a, b) => b.opportunity - a.opportunity)
+    .slice(0, limit);
+}
+
+/**
  * Draft articles for the highest-opportunity queued briefs.
  *
  * Nothing is published here. Drafts wait in the console for a human to read
@@ -327,10 +351,15 @@ export async function weeklyArticles(
   const config = getConfig();
   const { limit = config.weeklyArticleTarget, now = new Date() } = options;
 
-  const briefs = [...listBriefs()].sort((a, b) => b.opportunity - a.opportunity).slice(0, limit);
+  const queued = listBriefs();
+  const briefs = pendingBriefs(queued, usedSlugs(), limit);
 
   if (briefs.length === 0) {
-    return { drafted: 0, failed: 0, articles: [], message: "No briefs queued. Nothing to write." };
+    const message =
+      queued.length === 0
+        ? "No briefs queued. Nothing to write."
+        : `All ${queued.length} queued briefs already have an article. Nothing to write.`;
+    return { drafted: 0, failed: 0, articles: [], message };
   }
 
   const written: WeeklyResult["articles"] = [];
