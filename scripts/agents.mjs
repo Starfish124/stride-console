@@ -12,7 +12,7 @@
 //
 // Schedule, local time:
 //   03:15 daily    sweep     discovery, audit, metadata fixes
-//   07:40 Monday   articles  draft the week's gaps, then notify the phones
+//   07:40 daily    articles  draft the top gap, then notify the phones
 //
 // Both runs are idempotent, so a catch-up after a long sleep is safe.
 
@@ -35,11 +35,14 @@ const JOBS = [
     catchUpUntilHour: 12,
   },
   {
+    // One article a day, not three on a Monday. Google reads a steady
+    // publishing rhythm, and a founder can actually read one a day. It runs
+    // after the sweep so the brief queue is already fresh.
     name: "articles",
     script: "scripts/seo-articles.mjs",
     hour: 7,
     minute: 40,
-    days: [1],
+    days: [0, 1, 2, 3, 4, 5, 6],
     catchUpUntilHour: 20,
   },
   {

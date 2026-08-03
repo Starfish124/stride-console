@@ -2,8 +2,10 @@
 
 The website works on itself. Every night an agent looks for what people search
 for, checks how each page reads to a crawler, fixes what it can fix safely, and
-commits the result so the site rebuilds. Every Monday it writes articles for
-the gaps and publishes the ones that come out clean.
+commits the result so the site rebuilds. Every morning it writes up to three
+articles for the biggest gaps and publishes the ones that come out clean.
+Discovery covers the Netherlands, Belgium, Germany and France; the site itself
+stays English and Dutch.
 
 Nothing reaches the live site without passing a deterministic gate: length,
 keyword placement and schema for metadata, and the voice gate for articles.
@@ -41,7 +43,7 @@ npm run agents -- --now=sweep      # run one job through the supervisor and exit
 | When | Job | What it does |
 |---|---|---|
 | 03:15 daily | sweep | Discovers keywords, pulls Search Console, audits every page, applies safe metadata fixes, queues article briefs |
-| 07:40 Monday | articles | Drafts articles for the highest-opportunity gaps, then notifies your phone |
+| 07:40 daily | articles | Drafts up to three articles for the highest-opportunity gaps, then notifies your phone |
 
 The supervisor holds its own clock rather than using launchd calendar events,
 because the Mac sleeps and a calendar job that fires while asleep is simply
@@ -185,8 +187,9 @@ message. A bad run is undone with `git revert`.
 | `siteRepo` | `~/ai-agency-website` | The website checkout to publish into. Override with `STRIDE_SITE_REPO`. |
 | `baseUrl` | `https://stride-ai.nl` | What the auditor fetches. |
 | `locales` | `["en","nl"]` | Languages tracked. |
-| `weeklyArticleTarget` | `3` | Drafts per Monday. |
-| `autoApplyMetadata` | `true` | Apply title and description fixes without asking. Reversible with one git revert; holding them for approval means the site never improves between Mondays. |
+| `articlesPerRun` | `3` | Drafts per run, and the run is daily. With Dutch twins on, three briefs can mean up to six writer runs. |
+| `dutchTwins` | `true` | After an English article, write the Dutch counterpart under the same slug, using a Dutch keyword found in the store. No matching term, no twin. |
+| `autoApplyMetadata` | `true` | Apply title and description fixes without asking. Reversible with one git revert; holding them for approval means the site only improves when somebody remembers to look. |
 | `autoPublishOnApproval` | `true` | Push after publishing, so the site rebuilds. Set false to commit locally only. |
 | `autoPublishArticles` | `true` | Publish an article as soon as the writer produces it, if the voice gate reports zero errors. Set false to make every article wait for the Publish button on `/seo`. |
 
@@ -212,7 +215,35 @@ Everything under `data/`, gitignored, atomic writes:
 
 Autocomplete surfaces terms that are on-topic but not ours: other companies'
 product names (`ai agent pricing ghl`, `ai agent tools n8n`) and unrelated firms
-that share a word (`ai bureau veritas`). The filters catch wrong audiences and
-wrong markets, not brand noise. These reach the brief queue with real
-opportunity scores, and reading the queue on `/seo` before Monday is how they
-get caught. Discarding a draft costs one click.
+that share a word (`ai bureau veritas`). `OFF_BRAND` in `expand.ts` now catches
+the names that leaked — `bureau` is on-topic for the Dutch AI-bureau, which is
+how the US Census Bureau got an article — but it catches names, not topics. A
+keyword that is off-brief for a subtler reason still needs a person, and at one
+article a day the queue on `/seo` is worth reading daily, not weekly.
+Discarding a draft costs one click.
+
+## Europe
+
+Discovery is European; publishing is not, yet.
+
+Every seed is asked with each European place appended — `ai automation agency
+germany`, `ai agency berlin`, `ai consultant antwerpen` — because that is what
+measurably surfaces demand outside the Netherlands. The obvious approach, a
+market per country (`gl=de`, `gl=fr`, `gl=be`), was tried and measured first:
+asked the same English seed, Germany and France returned **one** term between
+them that the Dutch query had not. Four extra markets, one extra keyword. The
+country code is not where the difference lives; the words are.
+
+Two rules hold this in place:
+
+- **Place-targeted articles never publish themselves.** `isGeoTargeted()` marks
+  any brief whose keyword names a country or city, and those wait on `/seo`
+  however clean they read. A page per city, each saying the same thing with the
+  name swapped, is the doorway pattern Google penalises site-wide — and a
+  site-wide action takes the six pages that convert down with the blog.
+- **American geography stays filtered.** `OFF_MARKET` keeps New York, Boston and
+  the rest out, because a Dutch consultancy cannot sell there. London left the
+  list: Europe is reachable, the Atlantic is not.
+
+German and French *content* would mean new locales in the website repo — routes,
+hreflang, a `Locale` change in both codebases. That decision has not been taken.

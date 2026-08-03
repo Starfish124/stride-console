@@ -327,8 +327,9 @@ export function SeoDashboard() {
         <div className="space-y-5">
           {drafts.length === 0 ? (
             <p className="text-slate">
-              Nothing waiting. The article agent runs Monday morning and writes for the highest
-              opportunity gaps the sweep found.
+              Nothing waiting. The article agent runs every morning and writes for the highest
+              opportunity gap the sweep found. A draft only lands here if the voice gate
+              flagged it.
             </p>
           ) : (
             drafts.map((a) => (

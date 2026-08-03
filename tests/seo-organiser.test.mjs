@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { classifyIntent, isTargetableTerm, normalizeTerm } from "../lib/seo/expand.ts";
+import { classifyIntent, isGeoTargeted, isTargetableTerm, normalizeTerm } from "../lib/seo/expand.ts";
 import { buildKeywordSet, clusterKeywords, scoreKeyword, similarity, tokens } from "../lib/seo/cluster.ts";
 import {
   assignKeywords,
@@ -312,6 +312,19 @@ test("isTargetableTerm drops markets we do not sell into but keeps our own", () 
   assert.equal(isTargetableTerm("ai bureau amsterdam"), true);
 });
 
+test("isTargetableTerm drops other people's names, which reached the live site", () => {
+  // Both of these were published to stride-ai.nl before this filter existed:
+  // "bureau" is on-topic for the Dutch AI-bureau, so the US Census Bureau came
+  // with it, and GoHighLevel's price list became a 2,400-word article.
+  assert.equal(isTargetableTerm("census bureau ai use"), false);
+  assert.equal(isTargetableTerm("ai bureau veritas"), false);
+  assert.equal(isTargetableTerm("ai agent pricing ghl"), false);
+  assert.equal(isTargetableTerm("gohighlevel ai agent cost"), false);
+  // The Dutch word we actually sell on, and our own stack, both survive.
+  assert.equal(isTargetableTerm("ai bureau nederland"), true);
+  assert.equal(isTargetableTerm("ai agent tools n8n"), true);
+});
+
 test("isTargetableTerm drops advice written for consultants rather than buyers", () => {
   assert.equal(isTargetableTerm("how to be a good business consultant"), false);
   assert.equal(isTargetableTerm("how to start an ai agency"), false);
@@ -327,4 +340,23 @@ test("isTargetableTerm catches Dutch job-seeker phrasing, where the verb comes l
   // And still keeps the buyer-side Dutch terms.
   assert.equal(isTargetableTerm("ai consultant mkb"), true);
   assert.equal(isTargetableTerm("ai chatbot laten maken kosten"), true);
+});
+
+test("place-targeted keywords are recognised, so they never self-publish", () => {
+  // The doorway shape: many near-identical pages differing by city name. These
+  // get written and then wait for a person on /seo.
+  assert.equal(isGeoTargeted("ai agency berlin"), true);
+  assert.equal(isGeoTargeted("ai automation agency germany"), true);
+  assert.equal(isGeoTargeted("ai consultant antwerpen"), true);
+  // A problem, not a place. This one publishes itself as before.
+  assert.equal(isGeoTargeted("ai agent pricing"), false);
+  assert.equal(isGeoTargeted("workflow automation for small business"), false);
+});
+
+test("European geography is targetable now, American cities are not", () => {
+  assert.equal(isTargetableTerm("ai agency berlin"), true);
+  assert.equal(isTargetableTerm("ai consultant belgium"), true);
+  assert.equal(isTargetableTerm("ai automation agency london"), true);
+  assert.equal(isTargetableTerm("ai automation agency boston"), false);
+  assert.equal(isTargetableTerm("ai agency new york"), false);
 });

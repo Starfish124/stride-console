@@ -2,8 +2,8 @@
 //
 //   dailySweep()     - discover keywords, pull Search Console numbers, audit
 //                      every live page, fix what is fixable, queue the gaps.
-//   weeklyArticles() - write drafts for the highest-opportunity gaps and put
-//                      them in front of a human.
+//   draftArticles()  - write drafts for the highest-opportunity gaps and put
+//                      them in front of a human. Runs daily, up to three.
 //
 // Neither throws. Both return a report the dashboard renders. A sweep that
 // half-failed is far more useful than a sweep that raised, because the half
@@ -24,7 +24,7 @@ import {
   saveKeywords,
   usedSlugs,
 } from "./store.ts";
-import { expandKeywords } from "./expand.ts";
+import { DISCOVERY_MARKETS, expandKeywords, isGeoTargeted } from "./expand.ts";
 import { buildKeywordSet, clusterKeywords, scoreKeyword } from "./cluster.ts";
 import { assignKeywords, buildBriefs, findCannibalisation } from "./organiser.ts";
 import { auditUrl } from "./audit.ts";
@@ -81,24 +81,29 @@ export async function dailySweep(options: SweepOptions = {}): Promise<SweepResul
 
   // ---- 2. discover keywords ----
 
-  for (const locale of config.locales) {
+  // Two markets, and Europe comes from the seeds rather than the country code —
+  // `gl=de` and `gl=fr` were measured and returned one new term between them.
+  // See DISCOVERY_MARKETS and EU_GEO in expand.ts. The site keeps the two
+  // locales it has; nothing here creates a route.
+  for (const market of DISCOVERY_MARKETS) {
+    if (!config.locales.includes(market.locale)) continue;
     try {
-      const report = await expandKeywords(config.seeds[locale] ?? [], locale, {
-        deep: !shallow,
+      const report = await expandKeywords(config.seeds[market.locale] ?? [], market, {
+        deep: shallow ? false : market.deep,
       });
       if (report.queriesFailed === report.queriesRun && report.queriesRun > 0) {
-        failures.push(`${locale}: every autocomplete query failed`);
+        failures.push(`${market.id}: every autocomplete query failed`);
         continue;
       }
       const added = mergeKeywords(
         buildKeywordSet(
-          report.terms.map((t) => ({ ...t, locale, via: "autocomplete" as const })),
+          report.terms.map((t) => ({ ...t, locale: market.locale, via: "autocomplete" as const })),
           now,
         ),
       );
       keywordsDiscovered += added.length;
     } catch (error) {
-      failures.push(`${locale} discovery: ${msg(error)}`);
+      failures.push(`${market.id} discovery: ${msg(error)}`);
     }
   }
 
@@ -327,7 +332,7 @@ export async function dailySweep(options: SweepOptions = {}): Promise<SweepResul
   }
 }
 
-export interface WeeklyResult {
+export interface ArticleRunResult {
   drafted: number;
   failed: number;
   published: number;
@@ -366,17 +371,85 @@ export function pendingBriefs(
 }
 
 /**
+ * The Dutch counterpart of an English brief, or undefined if the store holds
+ * no Dutch term worth writing for.
+ *
+ * The site is bilingual and the Netherlands is the market that buys, so an
+ * English-only article is half a page. The twin keeps the SAME slug on
+ * purpose: the article template offers the other language when
+ * `availableLocales` has both, and it finds the pair by slug.
+ *
+ * The Dutch keyword is LOOKED UP, never translated. A machine translation of
+ * "ai agent pricing" is not what a Dutch buyer types, and the placement check
+ * would then pass against a phrase nobody searches. When nothing in the store
+ * matches there is no twin, because writing one anyway would mean inventing
+ * the keyword, which is the one thing this engine does not do.
+ *
+ * Matching is on a shared CONTIGUOUS PAIR of words, not on how many words
+ * happen to appear in both. Counting shared words paired "workflow automation
+ * vs agentic ai" with "ai consultant vs data scientist" — two words in common,
+ * "ai" and "vs", and a completely different article. A phrase like "ai agent"
+ * appearing intact is weak evidence of the same subject; an overlapping bag of
+ * words is no evidence at all.
+ */
+export function dutchTwinBrief(
+  brief: ArticleBrief,
+  dutchTerms: { term: string; opportunity: number }[],
+): ArticleBrief | undefined {
+  if (brief.locale !== "en") return undefined;
+
+  // Stopwords and comparison words only. An early filter here dropped words
+  // under three letters and silently threw away "ai" from every keyword an AI
+  // consultancy owns, so nothing is filtered by length.
+  //
+  // "vs", "best" and "top" are dropped because a pair containing one of them
+  // describes the shape of the query, not its subject: "vs agentic" matches any
+  // comparison article ever written.
+  const NOISE = new Set([
+    "for", "the", "and", "with", "your", "van", "voor", "een", "het", "de",
+    "vs", "versus", "best", "beste", "top",
+  ]);
+  const words = brief.primaryKeyword
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w) => w && !NOISE.has(w));
+
+  // Contiguous pairs of the surviving words. A single word is never enough:
+  // every keyword in this store contains "ai".
+  const pairs: string[] = [];
+  for (let i = 0; i < words.length - 1; i++) pairs.push(`${words[i]} ${words[i + 1]}`);
+  if (pairs.length === 0) return undefined;
+
+  const scored = dutchTerms
+    .filter((k) => pairs.some((p) => k.term.toLowerCase().includes(p)))
+    .sort((a, b) => b.opportunity - a.opportunity);
+
+  const match = scored[0];
+  if (!match) return undefined;
+
+  return {
+    ...brief,
+    id: newId("brief"),
+    locale: "nl",
+    primaryKeyword: match.term,
+    secondaryKeywords: scored.slice(1, 6).map((k) => k.term),
+    opportunity: match.opportunity,
+  };
+}
+
+/**
  * Draft articles for the highest-opportunity queued briefs.
  *
- * Nothing is published here. Drafts wait in the console for a human to read
- * and press publish, which is the one part of this system that stays manual by
- * design.
+ * Runs once a day. A clean draft publishes itself (autoPublishArticles); one
+ * the voice gate flags stays on /seo for a person. The daily cadence is why
+ * the brief queue matters more than it used to: at one a day, a bad brief
+ * reaches the live site within a day of being queued.
  */
-export async function weeklyArticles(
+export async function draftArticles(
   options: { limit?: number; now?: Date } = {},
-): Promise<WeeklyResult> {
+): Promise<ArticleRunResult> {
   const config = getConfig();
-  const { limit = config.weeklyArticleTarget, now = new Date() } = options;
+  const { limit = config.articlesPerRun, now = new Date() } = options;
 
   const queued = listBriefs();
   const briefs = pendingBriefs(queued, usedSlugs(), limit);
@@ -389,38 +462,70 @@ export async function weeklyArticles(
     return { drafted: 0, failed: 0, published: 0, articles: [], message };
   }
 
-  const written: WeeklyResult["articles"] = [];
+  const written: ArticleRunResult["articles"] = [];
   let failed = 0;
   let publishedCount = 0;
 
+  /** Write one brief, publish it if the gate is happy, record the outcome. */
+  async function writeOne(brief: ArticleBrief): Promise<boolean> {
+    const result = await writeArticle(brief, { now });
+    if (!result.article) return false;
+    saveArticle(result.article);
+
+    // The writer ships its own clean work. The voice gate decides, not
+    // whether anyone happened to be looking: publishArticle refuses a draft
+    // with errors, and that one stays in the queue for a person to read.
+    // Same function the Publish button calls, so the machine can never be
+    // held to a laxer standard than a human pressing it.
+    // A place-targeted article is the one kind that waits for a person, however
+    // clean it reads. The voice gate cannot see the difference between a page
+    // about the German market and the same page with the city swapped, and the
+    // second is what gets a site penalised.
+    const geo = isGeoTargeted(brief.primaryKeyword);
+    let sent: ArticleOutcome | undefined;
+    if (config.autoPublishArticles && !geo && result.article.lint.errors === 0) {
+      sent = publishArticle(result.article, { now });
+      if (sent.ok) publishedCount++;
+    }
+
+    written.push({
+      slug: result.article.slug,
+      locale: result.article.locale,
+      title: result.article.title,
+      errors: result.article.lint.errors,
+      published: sent?.ok ?? false,
+      commit: sent?.commit,
+    });
+    return true;
+  }
+
+  const dutchTerms =
+    config.dutchTwins
+      ? listKeywords()
+          .filter((k) => k.locale === "nl")
+          .map((k) => ({ term: k.term, opportunity: k.opportunity }))
+      : [];
+  const alreadyWritten = usedSlugs();
+
   for (const brief of briefs) {
     try {
-      const result = await writeArticle(brief, { now });
-      if (!result.article) {
+      if (!(await writeOne(brief))) {
         failed++;
         continue;
       }
-      saveArticle(result.article);
+    } catch {
+      failed++;
+      continue;
+    }
 
-      // The writer ships its own clean work. The voice gate decides, not
-      // whether anyone happened to be looking: publishArticle refuses a draft
-      // with errors, and that one stays in the queue for a person to read.
-      // Same function the Publish button calls, so the machine can never be
-      // held to a laxer standard than a human pressing it.
-      let sent: ArticleOutcome | undefined;
-      if (config.autoPublishArticles && result.article.lint.errors === 0) {
-        sent = publishArticle(result.article, { now });
-        if (sent.ok) publishedCount++;
-      }
-
-      written.push({
-        slug: result.article.slug,
-        locale: result.article.locale,
-        title: result.article.title,
-        errors: result.article.lint.errors,
-        published: sent?.ok ?? false,
-        commit: sent?.commit,
-      });
+    // The Dutch counterpart, written from a Dutch keyword that is actually in
+    // the store. Its own try block: a twin that fails must not lose the
+    // English article that already published.
+    if (!config.dutchTwins) continue;
+    const twin = dutchTwinBrief(brief, dutchTerms);
+    if (!twin || alreadyWritten.has(`${twin.suggestedSlug}:nl`)) continue;
+    try {
+      if (!(await writeOne(twin))) failed++;
     } catch {
       failed++;
     }

@@ -55,7 +55,7 @@ export const DEFAULT_CONFIG: SeoConfig = {
   baseUrl: "https://stride-ai.nl",
   locales: ["en", "nl"],
   seeds: DEFAULT_SEEDS,
-  weeklyArticleTarget: 3,
+  articlesPerRun: 3,
   // Metadata edits go live without asking. They are reversible with one git
   // revert and holding them for approval means the site never improves between
   // Mondays. Article publication is the thing that waits for a human.
@@ -65,6 +65,8 @@ export const DEFAULT_CONFIG: SeoConfig = {
   // between the machine and the site, not a person's attention: a draft with
   // any error stays in the queue and waits to be read.
   autoPublishArticles: true,
+  // The Netherlands is the market that buys, and the site is already bilingual.
+  dutchTwins: true,
 };
 
 export function getConfig(): SeoConfig {

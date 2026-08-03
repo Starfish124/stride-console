@@ -9,13 +9,13 @@
 // Run: npm run seo:articles
 //      npm run seo:articles -- --limit=1
 
-import { weeklyArticles } from "../lib/seo/agent.ts";
+import { draftArticles } from "../lib/seo/agent.ts";
 import { listPushSubs } from "../lib/store.ts";
 
 const limitArg = process.argv.slice(2).find((a) => a.startsWith("--limit="));
 const limit = limitArg ? Number(limitArg.split("=")[1]) : undefined;
 
-const result = await weeklyArticles({ limit: Number.isFinite(limit) ? limit : undefined });
+const result = await draftArticles({ limit: Number.isFinite(limit) ? limit : undefined });
 
 console.log(`[seo-articles] ${result.message}`);
 for (const a of result.articles) {

@@ -226,8 +226,10 @@ export interface SeoConfig {
   locales: Locale[];
   /** Seed terms the keyword expander starts from, per locale. */
   seeds: Record<Locale, string[]>;
-  /** Max articles the weekly batch drafts in one run. */
-  weeklyArticleTarget: number;
+  /** Max articles one article run drafts. The run is daily, so this is a
+   * per-day ceiling: one good article a day beats three on a Monday, because
+   * Google reads a steady publishing rhythm and a founder can read one. */
+  articlesPerRun: number;
   /** Apply metadata changes automatically, or hold them for approval. */
   autoApplyMetadata: boolean;
   /** Push to git automatically once an article is approved. */
@@ -239,6 +241,12 @@ export interface SeoConfig {
    * makes every article wait for the Publish button on /seo.
    */
   autoPublishArticles: boolean;
+  /**
+   * After an English article, write the Dutch counterpart under the same slug.
+   * Doubles the writer runs a day, and only happens when the keyword store
+   * holds a Dutch term that overlaps the brief — no term, no twin.
+   */
+  dutchTwins: boolean;
 }
 
 export const DEFAULT_SEEDS: Record<Locale, string[]> = {

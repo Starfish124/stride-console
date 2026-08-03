@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { pendingBriefs } from "../lib/seo/agent.ts";
+import { dutchTwinBrief, pendingBriefs } from "../lib/seo/agent.ts";
 
 function brief(suggestedSlug, locale, opportunity) {
   return {
@@ -78,5 +78,68 @@ test("the queue stays ordered by opportunity", () => {
   assert.deepEqual(
     out.map((b) => b.suggestedSlug),
     ["high", "mid", "low"],
+  );
+});
+
+// ---- the Dutch twin ----
+//
+// Pure function on purpose. An earlier test called the article run directly and
+// took 90 seconds, because it fired a real long-form Claude call.
+
+test("the Dutch twin takes its keyword from the store, never a translation", () => {
+  const en = brief("ai-agent-pricing", "en", 51);
+  const twin = dutchTwinBrief(en, [
+    { term: "ai agent kosten", opportunity: 44 },
+    { term: "ai agent bouwen", opportunity: 60 },
+    { term: "chatbot laten maken", opportunity: 80 },
+  ]);
+  // "chatbot laten maken" scores highest but shares no words with the brief, so
+  // it would be a different article wearing this one's slug.
+  assert.equal(twin.primaryKeyword, "ai agent bouwen");
+  assert.equal(twin.locale, "nl");
+  // Same slug: the article template pairs the two languages by slug.
+  assert.equal(twin.suggestedSlug, en.suggestedSlug);
+  assert.notEqual(twin.id, en.id);
+  assert.ok(twin.secondaryKeywords.includes("ai agent kosten"));
+});
+
+test("no Dutch term in the store means no twin, rather than an invented one", () => {
+  const en = brief("workflow-automation-software", "en", 49);
+  assert.equal(dutchTwinBrief(en, [{ term: "ai consultant inhuren", opportunity: 70 }]), undefined);
+  assert.equal(dutchTwinBrief(en, []), undefined);
+});
+
+test("a Dutch brief has no twin of its own", () => {
+  assert.equal(
+    dutchTwinBrief(brief("wat-is-ai-consultant", "nl", 57), [
+      { term: "wat is ai consultant", opportunity: 57 },
+    ]),
+    undefined,
+  );
+});
+
+test("the twin matcher keeps short words, because 'ai' is one of them", () => {
+  // A length filter here would drop "ai" from every keyword this business owns.
+  const twin = dutchTwinBrief(brief("ai-consultant", "en", 50), [
+    { term: "ai consultant inhuren", opportunity: 66 },
+  ]);
+  assert.equal(twin.primaryKeyword, "ai consultant inhuren");
+});
+
+test("a shared bag of words is not a shared subject", () => {
+  // The real pairing this rejects: two words in common, "ai" and "vs", and a
+  // completely different article. Counting shared words accepted it.
+  assert.equal(
+    dutchTwinBrief(brief("workflow-automation-vs-agentic-ai", "en", 49), [
+      { term: "ai consultant vs data scientist", opportunity: 70 },
+    ]),
+    undefined,
+  );
+  // The same brief with a Dutch term that shares an intact phrase does pair.
+  assert.equal(
+    dutchTwinBrief(brief("workflow-automation-vs-agentic-ai", "en", 49), [
+      { term: "workflow automation uitbesteden", opportunity: 40 },
+    ]).primaryKeyword,
+    "workflow automation uitbesteden",
   );
 });

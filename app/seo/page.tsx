@@ -15,8 +15,10 @@ export default function SeoPage() {
           <h1 className="display mt-3 text-4xl text-ink">The site works on itself.</h1>
           <p className="mt-2 max-w-xl text-slate">
             Every night the agent looks for what people search for, checks how each page reads to
-            a crawler, and fixes the titles and descriptions it can fix safely. On Monday it
-            drafts articles for the gaps and waits here for you to press publish.
+            a crawler, and fixes the titles and descriptions it can fix safely. It looks across
+            the Netherlands, Belgium, Germany and France. Every morning it writes up to three
+            articles for the biggest gaps — clean ones publish themselves, anything the voice
+            gate flags waits here for you, and so does anything aimed at a city or country.
           </p>
         </section>
         <SeoDashboard />
