@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Header } from "@/components/ui";
 import { Ramp } from "@/components/Ramp";
 import { Glyph } from "@/components/icons";
+import { WorkspaceSearch } from "@/components/WorkspaceSearch";
 import { listClients } from "@/lib/store";
 import { listIssues, listProjects, listRuns } from "@/lib/workspace/store";
 
@@ -26,6 +27,8 @@ export default function WorkspacesPage() {
             that works on them. Open a client to drop files in or set a run going.
           </p>
         </section>
+
+        <WorkspaceSearch />
 
         {clients.length === 0 ? (
           <p className="text-sm text-mute">
