@@ -163,10 +163,37 @@ function stitchSessions(graph) {
   // share a source_file (the functions inside it); the file itself is the one
   // declared at the top.
   const byFile = new Map();
+  const repos = new Set();
   for (const node of graph.nodes) {
+    if (!node.source_file) continue;
+    repos.add(node.repo);
     const key = `${node.repo}::${node.source_file}`;
     const existing = byFile.get(key);
     if (!existing || node.source_location === "L1") byFile.set(key, node);
+  }
+
+  /**
+   * A transcript records the absolute path a file had on the day of the run —
+   * "/Users/.../stride-console/lib/store.ts" — while the graph knows files by
+   * their path inside the repo. Find the repo the path runs through and keep
+   * the tail. Matching on the session's own folder is not enough: most of this
+   * work was done from the home directory, against a repo somewhere else.
+   */
+  function resolveTouched(touched) {
+    for (const repo of repos) {
+      const marker = `/${repo}/`;
+      const at = touched.indexOf(marker);
+      if (at >= 0) {
+        const node = byFile.get(`${repo}::${touched.slice(at + marker.length)}`);
+        if (node) return node;
+      }
+    }
+    // Already relative: try it against every repo.
+    for (const repo of repos) {
+      const node = byFile.get(`${repo}::${touched}`);
+      if (node) return node;
+    }
+    return undefined;
   }
 
   let edges = 0;
@@ -187,8 +214,10 @@ function stitchSessions(graph) {
       branch: session.branch,
     });
     for (const touched of session.files) {
-      const node = byFile.get(`${session.project}::${touched}`);
+      const node = resolveTouched(touched);
       if (!node) {
+        // A file since renamed, deleted, or in a repo we do not graph. Counted,
+        // never invented as a node.
         unresolved++;
         continue;
       }
@@ -263,14 +292,6 @@ function main() {
     }
   }
 
-  // The viewer is whatever graphify drew for the largest single body of
-  // work; a merged graph has no page of its own.
-  const biggest = graphs
-    .map((g) => ({ g, size: fs.statSync(g).size }))
-    .sort((a, b) => b.size - a.size)[0];
-  const html = path.join(path.dirname(biggest.g), "graph.html");
-  if (fs.existsSync(html)) fs.copyFileSync(html, path.join(OUT, "graph.html"));
-
   const graph = JSON.parse(fs.readFileSync(merged, "utf8"));
   // node-link JSON calls them links; older graphify output says edges.
   if (!graph.links) graph.links = graph.edges ?? [];
@@ -282,6 +303,21 @@ function main() {
       ? `, ${stitched.unresolved} path${stitched.unresolved === 1 ? "" : "s"} no longer in the code`
       : "";
     say(`  ✓ sessions — ${stitched.sessions} joined by ${stitched.edges} touched ${stitched.edges === 1 ? "file" : "files"}${missed}`);
+  }
+
+  // Draw the merged graph — sessions included. Left to itself graphify only
+  // ever renders one repo at a time, which is how the drawn view came to show
+  // the console and none of the work done on it. Re-clustering here reads the
+  // file we just wrote, so the picture and the map are the same graph.
+  const drawn = spawnSync(bin, ["cluster-only", OUT, "--graph", merged], {
+    encoding: "utf8",
+    timeout: 900_000,
+    // No LLM backend on purpose: community names would need one, and the
+    // nightly build must stay free and offline. Nodes carry their own labels.
+    env: { ...process.env },
+  });
+  if (drawn.status !== 0) {
+    say("  ✗ the drawn view could not be redrawn; the map is unaffected");
   }
 
   const nodes = graph.nodes.length;
