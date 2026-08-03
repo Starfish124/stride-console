@@ -27,7 +27,10 @@ export function LoginForm() {
       router.push("/");
       router.refresh();
     } else {
-      setError("Wrong password.");
+      // The route's own sentence: a rate-limited founder told "Wrong
+      // password." retypes it nine more times and locks the door harder.
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      setError(body.error ?? "Wrong password.");
     }
   }
 
