@@ -182,9 +182,9 @@ export function buildBriefs(
   keywords: Keyword[],
   assignments: Assignment[],
   existingRoutes: SiteRoute[],
-  options: { limit?: number; now?: Date } = {},
+  options: { limit?: number; now?: Date; publishedSlugs?: Set<string> } = {},
 ): ArticleBrief[] {
-  const { limit = 10, now = new Date() } = options;
+  const { limit = 10, now = new Date(), publishedSlugs = new Set<string>() } = options;
 
   const byId = new Map(keywords.map((k) => [k.id, k]));
   const assignedIds = new Set(assignments.map((a) => a.keywordId));
@@ -209,6 +209,11 @@ export function buildBriefs(
 
     const slug = slugify(primary.term);
     if (usedSlugs.has(slug)) continue;
+    // Already an article on the site. usedSlugs only knows the routes in
+    // pages.json, and a published article is a file on disk before it is a
+    // route here, so without this the queue keeps proposing a rewrite of work
+    // that is already live — at a twelve-minute writer run each.
+    if (publishedSlugs.has(`${slug}:${cluster.locale}`)) continue;
     usedSlugs.add(slug);
 
     // A cluster with a real spread of terms deserves the pillar treatment;

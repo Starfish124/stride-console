@@ -32,11 +32,14 @@
     <key>CLAUDE_CLI_MODEL</key>
     <string>sonnet</string>
 
-    <!-- stride-ai.nl is registered as a URL-prefix property. The code default
-         is sc-domain:stride-ai.nl, which only matches a Domain property, so a
-         scheduled sweep without this reads nothing and reports "not measured". -->
-    <key>GSC_SITE_URL</key>
-    <string>https://stride-ai.nl/</string>
+    <!-- GSC_SITE_URL is deliberately NOT set. stride-ai.nl was registered on
+         2026-08-02 as a DOMAIN property, verified by a DNS TXT record in
+         Cloudflare, so the identifier is sc-domain:stride-ai.nl — which is
+         already the code default in searchConsole.ts. This file used to set
+         https://stride-ai.nl/ in anticipation of a URL-prefix property that was
+         never created; a scheduled sweep with that set asks the API for a
+         property that does not exist and fails only at 03:15, where nobody is
+         watching. If a URL-prefix property is ever added, set it here again. -->
   </dict>
 
   <key>StandardOutPath</key>

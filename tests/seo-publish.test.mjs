@@ -13,6 +13,7 @@ import {
   isGitRepo,
   publish,
   publishArticle,
+  publishedSlugs,
   renderMarkdown,
 } from "../lib/seo/publish.ts";
 import {
@@ -315,4 +316,27 @@ test("localeOfPage reads the locale out of the URL", () => {
   assert.equal(localeOfPage("https://stride-ai.nl/nl/blog/wat-is-een-ai-agent"), "nl");
   assert.equal(localeOfPage("https://stride-ai.nl/blog/what-is-an-ai-agent"), "en");
   assert.equal(localeOfPage("not a url"), "en");
+});
+
+test("publishedSlugs reads the site, and an unreadable repo is empty not fatal", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stride-published-"));
+  const blog = path.join(dir, "content", "blog");
+  fs.mkdirSync(blog, { recursive: true });
+  for (const file of [
+    "ai-agent-pricing.en.md",
+    "ai-agent-pricing.nl.md",
+    "wat-is-ai-consultant.nl.md",
+    "notes.txt",
+    "draft.md",
+  ]) {
+    fs.writeFileSync(path.join(blog, file), "---\ntitle: x\n---\n", "utf8");
+  }
+
+  const found = publishedSlugs(dir);
+  assert.equal(found.size, 3, "only slug.locale.md files count");
+  assert.ok(found.has("ai-agent-pricing:en"));
+  assert.ok(found.has("ai-agent-pricing:nl"));
+
+  // Failing closed here would stop the writer for a missing directory.
+  assert.equal(publishedSlugs(path.join(dir, "nope")).size, 0);
 });

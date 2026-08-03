@@ -123,16 +123,30 @@ const OFF_MARKET = new RegExp(
  *   - organisations that merely contain an on-topic word
  *   - products we do not sell, where the searcher wants that vendor's page
  *
- * Tools we genuinely build with (n8n, Make, OpenAI) are deliberately absent —
- * writing about the stack is our work, writing a competitor's pricing page is
- * not. This list catches names, never topics; a keyword that is off-brief for
- * a subtler reason is still a human's call on /seo.
+ * Tools we build WITH — n8n, Make, Zapier, OpenAI — are deliberately absent,
+ * and that is the one live disagreement with the list Jort's session proposed.
+ * "ai agent tools n8n" is a buyer asking how to do the thing we do; we have
+ * something true to say about it and a reason to be on that page. "uipath
+ * pricing" is someone who wants UiPath's own page. The rule is not "is it a
+ * brand" but "does the searcher want that vendor, or the work" — flip any of
+ * the stack names into this list if we stop implementing them.
+ *
+ * Generic words stay out regardless: "make" and "flow" would take "make an ai
+ * chatbot" with them.
+ *
+ * This list catches names, never topics; a keyword that is off-brief for a
+ * subtler reason is still a human's call on /seo.
  */
 const OFF_BRAND = new RegExp(
   [
-    "census bureau", "bureau veritas", "bureau of ",
+    "census bureau", "\\bveritas\\b", "bureau of ",
     "\\bghl\\b", "gohighlevel", "go high level",
     "\\bclickfunnels\\b", "\\bhubspot\\b", "\\bsalesforce\\b",
+    "\\bairtable\\b", "monday\\.com", "\\bdatadog\\b",
+    // Enterprise RPA. Somebody comparing UiPath licence tiers wants UiPath's
+    // page, and will not read a Dutch consultancy's take on it.
+    "\\buipath\\b", "automation anywhere", "blue prism", "\\bservicenow\\b",
+    "\\bpowerapps\\b", "power automate", "\\bmulesoft\\b",
   ].join("|"),
   "i",
 );

@@ -109,6 +109,36 @@ export function articlePath(repo: string, article: SeoArticle): string {
   return path.join(repo, "content", "blog", `${article.slug}.${article.locale}.md`);
 }
 
+/**
+ * What is actually live on the site, read from the files in the checkout.
+ *
+ * `usedSlugs()` in store.ts looks like this function and answers a different
+ * question: what has THIS console drafted. That store is under data/, which is
+ * gitignored and exists on one Mac — clear it, or run on a fresh machine, and
+ * the console believes nothing has ever been published while the site still
+ * carries every article. The markdown files are the record that survives.
+ *
+ * Keyed slug:locale, because the Dutch and English articles on one subject are
+ * two pages and both are wanted.
+ *
+ * An unreadable directory returns an empty set rather than throwing. Failing
+ * closed here would stop the writer entirely; failing open at worst re-queues a
+ * brief the article store also has to admit to.
+ */
+export function publishedSlugs(repo: string): Set<string> {
+  try {
+    const dir = path.join(repo, "content", "blog");
+    const keys = fs
+      .readdirSync(dir)
+      .map((file) => /^(.+)\.([a-z]{2})\.md$/.exec(file))
+      .filter((m): m is RegExpExecArray => m !== null)
+      .map((m) => `${m[1]}:${m[2]}`);
+    return new Set(keys);
+  } catch {
+    return new Set();
+  }
+}
+
 export interface PublishOptions {
   repo: string;
   /** Push to the remote. Off means commit locally and stop. */
@@ -184,6 +214,19 @@ export function publish(
   }
 
   const branch = options.branch ?? currentBranch(repo) ?? "main";
+  
+  // Reconcile concurrent remote changes before pushing
+  const pull = git(repo, ["pull", "--rebase", "origin", branch]);
+  if (!pull.ok) {
+    return {
+      ok: false,
+      message: `committed ${sha} but rebase pull failed: ${pull.output}`,
+      commit: sha,
+      files,
+      pushed: false,
+    };
+  }
+
   const pushed = git(repo, ["push", "origin", branch], 180_000);
   if (!pushed.ok) {
     return {

@@ -360,3 +360,52 @@ test("European geography is targetable now, American cities are not", () => {
   assert.equal(isTargetableTerm("ai automation agency boston"), false);
   assert.equal(isTargetableTerm("ai agency new york"), false);
 });
+
+test("no brief for a subject the site has already published", () => {
+  // Not the same question as usedSlugs(): that reads the console's own store,
+  // which lives in gitignored data/ and is empty on a fresh machine while the
+  // site still carries every article. The files on disk are the record.
+  const keywords = buildKeywordSet([
+    { term: "ai agent pricing", intent: "transactional", locale: "en", via: "autocomplete" },
+    { term: "ai agent pricing calculator", intent: "commercial", locale: "en", via: "autocomplete" },
+  ]);
+  const { clusters } = clusterKeywords(
+    keywords.map((k) => ({ id: k.id, term: k.term, locale: k.locale, intent: k.intent })),
+  );
+
+  const open = buildBriefs(clusters, keywords, [], [], { publishedSlugs: new Set() });
+  assert.equal(open.length, 1, "an uncovered cluster is a brief");
+
+  const done = buildBriefs(clusters, keywords, [], [], {
+    publishedSlugs: new Set(["ai-agent-pricing:en"]),
+  });
+  assert.equal(done.length, 0, "rewriting a live article costs a 12-minute writer run");
+
+  const dutch = buildBriefs(clusters, keywords, [], [], {
+    publishedSlugs: new Set(["ai-agent-pricing:nl"]),
+  });
+  assert.equal(dutch.length, 1, "the other locale is a different page and still wanted");
+});
+
+test("vendor names are dropped, our own stack is not", () => {
+  for (const term of [
+    "ai agent pricing ghl",
+    "datadog workflow automation cost",
+    "ai bureau veritas",
+    "uipath vs ai agents",
+    "power automate pricing for business",
+  ]) {
+    assert.equal(isTargetableTerm(term), false, `should drop "${term}"`);
+  }
+  // Tools we implement. A buyer asking how to do the thing we do is our page to
+  // win, and "make" as a plain verb must survive.
+  for (const term of [
+    "ai agent tools n8n",
+    "make an ai chatbot",
+    "ai chatbot laten maken",
+    "ai consultant mkb",
+    "ai agent pricing",
+  ]) {
+    assert.equal(isTargetableTerm(term), true, `should keep "${term}"`);
+  }
+});

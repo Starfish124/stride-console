@@ -36,7 +36,13 @@ import {
   toSiteRoutes,
 } from "./optimise.ts";
 import { fetchStats, statsByTerm } from "./searchConsole.ts";
-import { currentBranch, publish, publishArticle, type ArticleOutcome } from "./publish.ts";
+import {
+  currentBranch,
+  publish,
+  publishArticle,
+  publishedSlugs,
+  type ArticleOutcome,
+} from "./publish.ts";
 import { writeArticle } from "./article.ts";
 import type { ArticleBrief, Locale, MetaChange, PageAudit, SweepResult } from "./types.ts";
 
@@ -285,7 +291,11 @@ export async function dailySweep(options: SweepOptions = {}): Promise<SweepResul
 
   try {
     const fresh = addBriefs(
-      buildBriefs(clusters, keywords, assignments, routes, { limit: 10, now }),
+      buildBriefs(clusters, keywords, assignments, routes, {
+        limit: 10,
+        now,
+        publishedSlugs: publishedSlugs(config.siteRepo),
+      }),
     );
     briefsCreated = fresh.length;
   } catch (error) {
