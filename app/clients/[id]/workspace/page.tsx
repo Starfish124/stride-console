@@ -5,6 +5,7 @@ import { hasSecret, listConnectors, listProjects } from "@/lib/workspace/store";
 import { Header } from "@/components/ui";
 import { Ramp } from "@/components/Ramp";
 import { ConnectorCard } from "@/components/ConnectorCard";
+import { ProjectNotes } from "@/components/ProjectNotes";
 import { SshConsole } from "@/components/SshConsole";
 import { NewProjectForm } from "@/components/NewProjectForm";
 import { RunnerPanel } from "@/components/RunnerPanel";
@@ -79,6 +80,7 @@ export default async function WorkspacePage({
             )}
           </div>
           <aside className="space-y-6">
+            {selected && <ProjectNotes key={`notes-${selected.id}`} projectId={selected.id} />}
             <ConnectorCard clientId={client.id} connectors={connectors} />
             <SshConsole clientId={client.id} connectors={connectors} />
           </aside>
