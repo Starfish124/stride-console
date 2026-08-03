@@ -5,6 +5,7 @@ import { listProjects } from "@/lib/workspace/store";
 import { Header } from "@/components/ui";
 import { Ramp } from "@/components/Ramp";
 import { NewProjectForm } from "@/components/NewProjectForm";
+import { RunnerPanel } from "@/components/RunnerPanel";
 import { WorkspaceFiles } from "@/components/WorkspaceFiles";
 
 export const dynamic = "force-dynamic";
@@ -57,7 +58,10 @@ export default async function WorkspacePage({
         </div>
 
         {selected ? (
-          <WorkspaceFiles key={selected.id} projectId={selected.id} />
+          <div className="space-y-6 xl:grid xl:grid-cols-[1.4fr_1fr] xl:items-start xl:gap-6 xl:space-y-0">
+            <WorkspaceFiles key={selected.id} projectId={selected.id} />
+            <RunnerPanel key={`run-${selected.id}`} projectId={selected.id} />
+          </div>
         ) : (
           <p className="text-sm text-mute">
             No projects yet. Create one and drop the files in.

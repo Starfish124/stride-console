@@ -1,0 +1,157 @@
+"use client";
+
+// Give the project a task, watch Claude work, read the diff it left.
+
+import { useCallback, useEffect, useState } from "react";
+
+interface RunView {
+  id: string;
+  task: string;
+  status: string;
+  startedAt: string;
+  endedAt?: string;
+  output?: string;
+  diff?: string;
+  by?: string;
+}
+
+export function RunnerPanel({ projectId }: { projectId: string }) {
+  const [task, setTask] = useState("");
+  const [full, setFull] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [transcript, setTranscript] = useState<string | null>(null);
+  const [run, setRun] = useState<RunView | null>(null);
+  const [history, setHistory] = useState<RunView[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadHistory = useCallback(async () => {
+    const res = await fetch(`/api/workspace/runs?projectId=${projectId}`, {
+      cache: "no-store",
+    });
+    if (res.ok) setHistory(await res.json());
+  }, [projectId]);
+
+  useEffect(() => {
+    // Fetch-on-mount: every setState in loadHistory happens after an await,
+    // never synchronously during the effect.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadHistory();
+  }, [loadHistory]);
+
+  const start = useCallback(async () => {
+    if (!task.trim() || running) return;
+    setRunning(true);
+    setError(null);
+    setRun(null);
+    setTranscript("");
+    const res = await fetch(`/api/workspace/projects/${projectId}/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ task, full }),
+    });
+    if (!res.ok || !res.body) {
+      const body = await res.json().catch(() => ({}));
+      setError(body.error ?? "The run could not start.");
+      setRunning(false);
+      return;
+    }
+    const runId = res.headers.get("X-Run-Id");
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const text = decoder.decode(value, { stream: true });
+      setTranscript((t) => (t ?? "") + text);
+    }
+    if (runId) {
+      const record = await fetch(`/api/workspace/runs/${runId}`, { cache: "no-store" });
+      if (record.ok) setRun(await record.json());
+    }
+    setRunning(false);
+    setFull(false); // per run, never sticky
+    setTask("");
+    loadHistory();
+  }, [full, loadHistory, projectId, running, task]);
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-card border border-line bg-white p-4">
+        <p className="eyebrow text-slate">Run Claude on this project</p>
+        <textarea
+          value={task}
+          onChange={(e) => setTask(e.target.value)}
+          placeholder="What should change? Plain words. It reads the files itself."
+          rows={3}
+          className="mt-3 w-full rounded-input border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-mute"
+        />
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <label className="flex items-center gap-2 text-sm text-slate">
+            <input
+              type="checkbox"
+              checked={full}
+              onChange={(e) => setFull(e.target.checked)}
+            />
+            Full permissions — Claude may run commands in this project
+          </label>
+          <button
+            type="button"
+            onClick={start}
+            disabled={running || !task.trim()}
+            className="rounded-input bg-indigo px-4 py-1.5 text-sm text-white pressable disabled:bg-mute"
+          >
+            {running ? "Running…" : "Run"}
+          </button>
+        </div>
+        {error && <p className="mt-2 text-sm text-amber">{error}</p>}
+      </div>
+
+      {transcript !== null && (
+        <div className="rounded-card border border-line bg-white">
+          <p className="eyebrow border-b border-line px-4 py-2 text-slate">
+            {running ? "Working…" : "Transcript"}
+          </p>
+          <pre className="max-h-96 overflow-auto whitespace-pre-wrap px-4 py-3 text-xs text-ink">
+            {transcript || "…"}
+          </pre>
+        </div>
+      )}
+
+      {run?.diff && (
+        <div className="rounded-card border border-line bg-white">
+          <p className="eyebrow border-b border-line px-4 py-2 text-slate">What changed</p>
+          <pre className="max-h-96 overflow-auto px-4 py-3 text-xs text-ink">{run.diff}</pre>
+        </div>
+      )}
+
+      {history.length > 0 && (
+        <div>
+          <p className="eyebrow mb-2 text-slate">Past runs</p>
+          <ul className="inset-group">
+            {history.map((h) => (
+              <li key={h.id}>
+                <button
+                  type="button"
+                  className="flex min-h-11 w-full items-center gap-3 px-4 py-2 text-left pressable"
+                  onClick={() => {
+                    setRun(h);
+                    setTranscript(h.output ?? "");
+                  }}
+                >
+                  <span className="flex-1 truncate text-sm text-ink">{h.task}</span>
+                  <span
+                    className={`tabular text-xs ${
+                      h.status === "failed" ? "text-amber" : "text-mute"
+                    }`}
+                  >
+                    {h.status} · {h.startedAt.slice(0, 10)}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}

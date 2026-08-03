@@ -168,12 +168,24 @@ const CLI_TIMEOUT_MS = 240_000;
 
 /**
  * Run the local Claude Code CLI in print mode with the prompt on stdin.
- * Runs from the OS temp dir so it never picks up a project's CLAUDE.md or
- * permission prompts. Uses the founders' Claude subscription auth.
+ * By default it runs from the OS temp dir so it never picks up a project's
+ * CLAUDE.md or permission prompts. Uses the founders' Claude subscription
+ * auth.
+ *
+ * The workspace runner opts INTO a real working directory and a permission
+ * mode — that is the whole point of a delivery run, and it is an explicit
+ * argument here so no writer path ever gains it by accident.
  */
 export function callClaudeCli(
   prompt: string,
-  options: { timeoutMs?: number } = {},
+  options: {
+    timeoutMs?: number;
+    cwd?: string;
+    permissionMode?: "acceptEdits" | "dangerous";
+    outputFormat?: "json" | "stream-json";
+    /** Raw stdout tap, for streaming a run to the browser as it happens. */
+    onData?: (chunk: string) => void;
+  } = {},
 ): Promise<string> {
   // A LinkedIn post lands well inside four minutes. A 2,500-word pillar
   // article does not: the first live batch died at exactly 240s with nothing
@@ -181,21 +193,33 @@ export function callClaudeCli(
   const timeoutMs = options.timeoutMs ?? CLI_TIMEOUT_MS;
   const bin = claudeCliPath();
   if (!bin) return Promise.reject(new Error("Claude Code CLI not found"));
-  const args = ["-p", "--output-format", "json"];
+  const format = options.outputFormat ?? "json";
+  const args = ["-p", "--output-format", format];
+  // stream-json refuses to run without --verbose in print mode.
+  if (format === "stream-json") args.push("--verbose");
+  if (options.permissionMode === "acceptEdits") {
+    args.push("--permission-mode", "acceptEdits");
+  } else if (options.permissionMode === "dangerous") {
+    args.push("--dangerously-skip-permissions");
+  }
   const model = process.env.CLAUDE_CLI_MODEL;
   if (model) args.push("--model", model);
   return new Promise<string>((resolve, reject) => {
     const env = { ...process.env };
     // The CLI should bill the subscription, never a stray key in the app's env.
     delete env.ANTHROPIC_API_KEY;
-    const child = spawn(bin, args, { cwd: os.tmpdir(), env });
+    const child = spawn(bin, args, { cwd: options.cwd ?? os.tmpdir(), env });
     let stdout = "";
     let stderr = "";
     const timer = setTimeout(() => {
       child.kill("SIGKILL");
       reject(new Error(`Claude CLI timed out after ${timeoutMs / 1000}s`));
     }, timeoutMs);
-    child.stdout.on("data", (d: Buffer) => (stdout += d.toString()));
+    child.stdout.on("data", (d: Buffer) => {
+      const text = d.toString();
+      stdout += text;
+      options.onData?.(text);
+    });
     child.stderr.on("data", (d: Buffer) => (stderr += d.toString()));
     child.on("error", (err) => {
       clearTimeout(timer);
