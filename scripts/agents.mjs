@@ -42,6 +42,17 @@ const JOBS = [
     days: [1],
     catchUpUntilHour: 20,
   },
+  {
+    // The knowledge graph. Costs nothing but a few seconds of CPU — the code
+    // extraction is tree-sitter and calls no API — so it can simply run every
+    // night and pick up the day's sessions and commits.
+    name: "graph",
+    script: "scripts/graph-build.mjs",
+    hour: 4,
+    minute: 30,
+    days: [0, 1, 2, 3, 4, 5, 6],
+    catchUpUntilHour: 23,
+  },
 ];
 
 function readState() {
