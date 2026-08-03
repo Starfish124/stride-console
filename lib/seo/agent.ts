@@ -30,6 +30,14 @@ import {
 } from "./store.ts";
 import { DISCOVERY_MARKETS, expandKeywords, isGeoTargeted } from "./expand.ts";
 import { decideCap } from "./governor.ts";
+import {
+  answerQuestions,
+  mergeEntry,
+  nextRouteToAnswer,
+  questionsForRoute,
+  readFaqFile,
+  writeFaqFile,
+} from "./faq.ts";
 import { buildKeywordSet, clusterKeywords, scoreKeyword } from "./cluster.ts";
 import { assignKeywords, buildBriefs, findCannibalisation } from "./organiser.ts";
 import { auditUrl } from "./audit.ts";
@@ -83,6 +91,7 @@ export async function dailySweep(options: SweepOptions = {}): Promise<SweepResul
   let published: SweepResult["published"];
   let briefsCreated = 0;
   let clustersTotal = 0;
+  let faqWritten: { route: string; locale: Locale; answers: number } | undefined;
 
   // ---- 1. read the site's own map of itself ----
 
@@ -314,7 +323,40 @@ export async function dailySweep(options: SweepOptions = {}): Promise<SweepResul
     failures.push(`briefs: ${msg(error)}`);
   }
 
-  // ---- 9. how fast to publish, decided from results ----
+  // ---- 9. answer the long tail on pages that already exist ----
+
+  // One route per sweep. The long tail wants answering on strong pages, not a
+  // page per question — that shape is a doorway with a question mark on it. A
+  // route answered inside the last month is not a candidate, so a settled site
+  // stops spending calls here entirely.
+  try {
+    const faqFile = readFaqFile(config.siteRepo);
+    const candidates = routes.map((r) => ({
+      route: r.route,
+      locale: r.locale,
+      questions: questionsForRoute(keywords, r.route, r.locale).length,
+    }));
+    const target = nextRouteToAnswer(candidates, faqFile, now);
+
+    if (target && !dryRun) {
+      const questions = questionsForRoute(keywords, target.route, target.locale);
+      const { entry, result } = await answerQuestions(questions, target.route, target.locale);
+      if (entry) {
+        writeFaqFile(config.siteRepo, mergeEntry(faqFile, entry));
+        faqWritten = { route: entry.route, locale: entry.locale, answers: entry.items.length };
+        // publish() stages faq.json, so the answers reach visitors on the same
+        // commit as the metadata rather than sitting as a local diff.
+        const sent = publish([], { repo: config.siteRepo, push: true, now });
+        if (!sent.ok) failures.push(`publishing answers: ${sent.message}`);
+      } else if (result.rejected.length > 0) {
+        failures.push(`answers for ${target.route}: ${result.rejected.slice(0, 2).join("; ")}`);
+      }
+    }
+  } catch (error) {
+    failures.push(`faq: ${msg(error)}`);
+  }
+
+  // ---- 10. how fast to publish, decided from results ----
 
   // Last, because it judges what the earlier steps produced, and it runs inside
   // the sweep rather than the article run so the pace is already settled by the
@@ -344,7 +386,9 @@ export async function dailySweep(options: SweepOptions = {}): Promise<SweepResul
     outcome: failures.length === 0 ? "ok" : "partial",
     message:
       failures.length === 0
-        ? `${keywordsDiscovered} new keywords, ${audits.length} pages audited, average ${averageScore}/100, ${changesApplied} fixes applied, ${briefsCreated} briefs queued.`
+        ? `${keywordsDiscovered} new keywords, ${audits.length} pages audited, average ${averageScore}/100, ${changesApplied} fixes applied, ${briefsCreated} briefs queued${
+            faqWritten ? `, ${faqWritten.answers} answers written for ${faqWritten.route}` : ""
+          }.`
         : `Completed with ${failures.length} problem${failures.length === 1 ? "" : "s"}: ${failures.slice(0, 3).join("; ")}`,
   });
 

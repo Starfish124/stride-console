@@ -75,7 +75,11 @@ const OFF_AUDIENCE = new RegExp(
     "\\bhiring\\b", "\\brecruit",
     // Advice aimed at practitioners rather than buyers. "how to be a good
     // business consultant" is a reader who does our job, not one who hires us.
-    "how to be an? ", "how to start an? .*(agency|consultanc)",
+    // The article is OPTIONAL. "how to start ai agency" is autocomplete's own
+    // phrasing and walked straight past a pattern that demanded "a" or "an" —
+    // and it is the practitioner audience this whole list exists to keep out.
+    "how to be (an? )?", "how to start (an? )?.*(agency|consultanc)",
+    "how to (build|run|grow) (an? )?(ai )?(agency|consultanc)",
     "hoe begin je", "zelf .*(bouwen|maken) zonder",
     // Dutch puts the verb last, so "how to become an AI consultant" surfaces
     // as "ai consultant worden". The English patterns above never matched it,

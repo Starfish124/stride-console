@@ -308,3 +308,43 @@ the floor to 0 to let a bad run stop publishing entirely.
 First real decision: the earliest published articles date from 30 July, so the
 governor has something to judge from about 20 August, assuming Search Console
 data by then.
+
+## The FAQ layer
+
+The long tail gets answered on pages that already exist, not on a page each. A
+page per question is the doorway pattern with a question mark on it; a block of
+answers on a page that already ranks is the shape that works, and it is what an
+AI assistant quotes when somebody asks the question out loud.
+
+One route per sweep, chosen by `nextRouteToAnswer` — never answered first, then
+the stalest, and nothing at all once every route with questions has a block
+under thirty days old, so a settled site stops spending calls. One Claude call
+per page, not per question. Answers land in `content/seo/faq.json`, which the
+site reads through `components/seo/Faq.tsx` and which `publish()` stages
+alongside `pages.json`.
+
+**Questions must be measured.** This was a correction, not the original design.
+The first version allowed unmeasured question-shaped keywords on the theory that
+a paragraph on a strong page is cheap. Pointed at the real store, it proposed
+putting `What is AI agency?`, `How to AI agency?` and `How to start AI agency?`
+on the homepage: a fragment, a non-sentence, and the practitioner audience the
+whole filter chain exists to keep out. Autocomplete fragments read as questions
+without being questions, and no amount of prompt care fixes a bad question.
+
+That third one also exposed a real leak: `OFF_AUDIENCE` demanded an article, so
+"how to start **an** ai agency" was blocked and "how to start **ai** agency" —
+autocomplete's own phrasing — was not. Fixed, and the tightened filter prunes 41
+stored keywords on its next sweep.
+
+**Answers are gated on what they may not contain.** No invented price,
+percentage, timeline or statistic: a figure the answer cannot source is a
+promise somebody has to honour on a call, and `€2,500` on a live consultancy
+site is exactly that. The parser refuses any answer containing a currency figure
+or a percentage, any answer to a question we did not ask, anything over ninety
+words, and anything carrying the house banned vocabulary — the same
+`BANNED_WORDS` list every other gate in the console reads.
+
+FAQPage schema is emitted because these are genuinely questions and answers. It
+is not emitted for rich results: Google restricted those to health and
+government sites, so the stars are not coming and the docs should not pretend
+otherwise.

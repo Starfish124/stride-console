@@ -182,8 +182,15 @@ export function publish(
     files.push(path.relative(repo, target));
   }
 
-  const pagesJson = path.join("content", "seo", "pages.json");
-  if (fs.existsSync(path.join(repo, pagesJson))) files.push(pagesJson);
+  // Agent-owned data files. Named explicitly rather than globbed, because the
+  // rule that a founder's work in this checkout never gets swept into the
+  // agent's commit is only as good as this list.
+  for (const owned of [
+    path.join("content", "seo", "pages.json"),
+    path.join("content", "seo", "faq.json"),
+  ]) {
+    if (fs.existsSync(path.join(repo, owned))) files.push(owned);
+  }
 
   const add = git(repo, ["add", "--", ...files]);
   if (!add.ok) {
