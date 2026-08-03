@@ -31,6 +31,12 @@ export default async function ClientPage({
             {client.name}
             {client.role && ` · ${client.role}`} · {STAGE_LABELS[client.stage]}
           </p>
+          <Link
+            href={`/clients/${client.id}/workspace`}
+            className="eyebrow mt-3 inline-block text-indigo hover:text-indigo-deep"
+          >
+            Workspace →
+          </Link>
         </section>
 
         <ClientDetail client={client} deckUrl={process.env.STRIDE_DECK_URL} />

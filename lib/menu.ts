@@ -15,6 +15,7 @@ export type MenuArea =
   | "linkedin"
   | "automation"
   | "sales"
+  | "delivery"
   | "team";
 
 export interface MenuItem {
@@ -201,6 +202,20 @@ export const MENU: MenuSection[] = [
         label: "Events",
         hint: "The 1 Min AI Pitch nights, the checklist, and who signed up.",
         icon: "IconBolt",
+      },
+    ],
+  },
+  {
+    id: "delivery",
+    label: "Delivery",
+    nav: { label: "Delivery", href: "/workspaces" },
+    blurb: "Client work on this machine: the files, the repos, and what changed.",
+    items: [
+      {
+        href: "/workspaces",
+        label: "Workspaces",
+        hint: "Every client's project files, and the machine that works on them.",
+        icon: "IconIntegration",
       },
     ],
   },
