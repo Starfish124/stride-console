@@ -30,6 +30,10 @@ function seedLibrary() {
     "---\\nname: house-style\\ndescription: How Stride writes interfaces.\\n---\\nBody.");
   fs.writeFileSync(path.join(lib, "skills", "house-style", "extra.md"), "More.");
   fs.mkdirSync(path.join(lib, "skills", "not-a-skill"), { recursive: true });
+  // A real pack writes its description as a YAML folded block.
+  fs.mkdirSync(path.join(lib, "skills", "folded"), { recursive: true });
+  fs.writeFileSync(path.join(lib, "skills", "folded", "SKILL.md"),
+    "---\\nname: folded\\ndescription: >-\\n  First half of the sentence\\n  and the second half.\\n---\\nBody.");
   fs.mkdirSync(path.join(lib, "agents"), { recursive: true });
   fs.writeFileSync(path.join(lib, "agents", "reviewer.md"),
     "---\\nname: reviewer\\ndescription: Reviews code.\\n---\\nBody.");
@@ -70,10 +74,15 @@ test("listLibrary reads skills with SKILL.md and agent files, with descriptions"
   `);
   assert.deepEqual(
     result.map((i) => `${i.kind}:${i.name}`).sort(),
-    ["agent:reviewer", "skill:house-style"],
+    ["agent:reviewer", "skill:folded", "skill:house-style"],
     "a dir without SKILL.md is not a skill",
   );
   assert.equal(result.find((i) => i.name === "house-style").description, "How Stride writes interfaces.");
+  assert.equal(
+    result.find((i) => i.name === "folded").description,
+    "First half of the sentence and the second half.",
+    "a YAML folded block reads as its text, never as the block marker",
+  );
 });
 
 test("an empty library is a real answer, not a crash", () => {

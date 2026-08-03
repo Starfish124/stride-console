@@ -66,7 +66,7 @@ export function ProjectNotes({ projectId }: { projectId: string }) {
       {notes.map((note) => (
         <div key={note.id} className="mt-3 rounded-input border border-line p-2">
           <div className="flex items-center justify-between gap-2">
-            <p className="flex-1 truncate text-sm font-medium text-ink">{note.title}</p>
+            <p className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{note.title}</p>
             <button
               type="button"
               aria-label={`Remove ${note.title}`}

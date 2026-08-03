@@ -68,7 +68,9 @@ export function listDir(project: Project, rel = ""): DirEntry[] {
   const target = rel ? safeJoin(root, rel) : root;
   const entries = fs.readdirSync(target, { withFileTypes: true });
   return entries
-    .filter((e) => e.name !== ".git")
+    // .git and .claude are machine-managed: git's plumbing and the tooling
+    // the Equip card installs. Neither is the client's content.
+    .filter((e) => e.name !== ".git" && e.name !== ".claude")
     .map((e) => {
       const stat = fs.statSync(path.join(target, e.name));
       return {

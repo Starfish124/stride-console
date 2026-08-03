@@ -239,7 +239,7 @@ export function RunnerPanel({ projectId, repo = false }: { projectId: string; re
                     setTranscript(h.output ?? "");
                   }}
                 >
-                  <span className="flex-1 truncate text-sm text-ink">{h.task}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm text-ink">{h.task}</span>
                   <span
                     className={`tabular text-xs ${
                       h.status === "failed" ? "text-amber" : "text-mute"

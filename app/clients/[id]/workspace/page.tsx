@@ -62,7 +62,9 @@ export default async function WorkspacePage({
           <NewProjectForm clientId={client.id} />
         </div>
 
-        <div className="space-y-6 xl:grid xl:grid-cols-[1fr_400px] xl:items-start xl:gap-6 xl:space-y-0">
+        {/* minmax(0,…) not 1fr: an auto-sized track grows to its widest child,
+            which pushes the rail off the screen the moment a run's task is long. */}
+        <div className="space-y-6 xl:grid xl:grid-cols-[minmax(0,1fr)_400px] xl:items-start xl:gap-6 xl:space-y-0">
           <div className="space-y-6">
             {selected ? (
               <>

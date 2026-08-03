@@ -26,12 +26,25 @@ export interface Equipped {
   agents: string[];
 }
 
-/** The frontmatter description line, for the card. */
+/**
+ * The frontmatter description, for the card. Real packs write it both ways:
+ * inline, and as a YAML folded block (`description: >-`) whose text lives on
+ * the indented lines below. Taking the rest of the line would print ">-".
+ */
 function readDescription(file: string): string {
   try {
-    const raw = fs.readFileSync(file, "utf8").slice(0, 2000);
-    const match = raw.match(/^description:\s*(.+)$/m);
-    return (match?.[1] ?? "").trim().slice(0, 200);
+    const raw = fs.readFileSync(file, "utf8").slice(0, 4000);
+    const lines = raw.split("\n");
+    const start = lines.findIndex((l) => /^description:/.test(l));
+    if (start < 0) return "";
+    const inline = lines[start].replace(/^description:\s*/, "").trim();
+    if (inline && !/^[>|][-+]?$/.test(inline)) return inline.slice(0, 200);
+    const folded: string[] = [];
+    for (const line of lines.slice(start + 1)) {
+      if (!/^\s+\S/.test(line)) break; // the block ends at the first unindented line
+      folded.push(line.trim());
+    }
+    return folded.join(" ").slice(0, 200);
   } catch {
     return "";
   }
