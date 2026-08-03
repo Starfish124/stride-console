@@ -101,6 +101,11 @@ export function markDeviceUsed(id: string): void {
 
 export interface SessionNote {
   name: string;
+  /** What the session was called, from the note's own frontmatter. */
+  title: string;
+  /** The day it ran, not the day the file was written. */
+  date: string;
+  project: string;
   size: number;
   at: string;
 }
@@ -132,10 +137,28 @@ export function listSessionNotes(): SessionNote[] {
       .readdirSync(SESSIONS_DIR)
       .filter((n) => n.endsWith(".md"))
       .map((name) => {
-        const stat = fs.statSync(path.join(SESSIONS_DIR, name));
-        return { name, size: stat.size, at: stat.mtime.toISOString() };
+        const file = path.join(SESSIONS_DIR, name);
+        const stat = fs.statSync(file);
+        // The filename is a slug built for the disk; what a person recognises
+        // is the title the session gave itself.
+        let head = "";
+        try {
+          head = fs.readFileSync(file, "utf8").slice(0, 500);
+        } catch {
+          // Listed anyway, under its filename.
+        }
+        const field = (key: string) =>
+          new RegExp(`^${key}:\\s*"?(.+?)"?\\s*$`, "m").exec(head)?.[1] ?? "";
+        return {
+          name,
+          title: field("title") || name.replace(/\.md$/, ""),
+          date: field("date"),
+          project: field("project"),
+          size: stat.size,
+          at: stat.mtime.toISOString(),
+        };
       })
-      .sort((a, b) => b.at.localeCompare(a.at));
+      .sort((a, b) => (b.date || b.at).localeCompare(a.date || a.at));
   } catch {
     return [];
   }

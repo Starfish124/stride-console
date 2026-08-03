@@ -69,13 +69,12 @@ export default function GraphPage() {
                 <>
                   <p className="tabular mt-2 text-sm text-slate">{notes.length} in the graph</p>
                   <ul className="inset-group mt-3">
-                    {notes.slice(0, 8).map((note) => (
+                    {notes.slice(0, 10).map((note) => (
                       <li key={note.name} className="px-4 py-2">
-                        <span className="block truncate text-sm text-ink">
-                          {note.name.replace(/\.md$/, "").replace(/-/g, " ")}
-                        </span>
+                        <span className="block truncate text-sm text-ink">{note.title}</span>
                         <span className="tabular block text-xs text-mute">
-                          {note.at.slice(0, 10)}
+                          {note.date || note.at.slice(0, 10)}
+                          {note.project && ` · ${note.project}`}
                         </span>
                       </li>
                     ))}
