@@ -16,6 +16,7 @@ import {
   type SeoConfig,
   type SweepResult,
 } from "./types.ts";
+import type { GovernorDecision } from "./governor.ts";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 
@@ -27,6 +28,7 @@ const FILES = {
   audits: path.join(DATA_DIR, "seo-audits.json"),
   sweeps: path.join(DATA_DIR, "seo-sweeps.json"),
   config: path.join(DATA_DIR, "seo-config.json"),
+  governor: path.join(DATA_DIR, "seo-governor.json"),
 } as const;
 
 function readJson<T>(file: string, fallback: T): T {
@@ -81,6 +83,29 @@ export function saveConfig(patch: Partial<SeoConfig>): SeoConfig {
   const next = { ...getConfig(), ...patch };
   writeJson(FILES.config, next);
   return next;
+}
+
+// ---------- the governor ----------
+
+/**
+ * Every pace decision, newest first, including the ones that changed nothing.
+ *
+ * The holds matter as much as the changes: "it stayed at three because four of
+ * six articles are earning" is the sentence that makes an automated cap
+ * trustworthy, and without it a founder finds a number that moved on its own and
+ * has no way to ask why.
+ */
+export function listGovernorDecisions(): GovernorDecision[] {
+  return readJson<GovernorDecision[]>(FILES.governor, []);
+}
+
+export function appendGovernorDecision(decision: GovernorDecision): void {
+  writeJson(FILES.governor, [decision, ...listGovernorDecisions()].slice(0, 60));
+}
+
+/** When the pace was last RAISED, which is the only direction with a cooldown. */
+export function lastRaisedAt(): string | undefined {
+  return listGovernorDecisions().find((d) => d.changed && d.to > d.from)?.at;
 }
 
 // ---------- keywords ----------

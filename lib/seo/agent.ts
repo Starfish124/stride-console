@@ -11,8 +11,11 @@
 
 import {
   addBriefs,
+  appendGovernorDecision,
   appendSweep,
   getConfig,
+  lastRaisedAt,
+  listArticles,
   listBriefs,
   listKeywords,
   mergeKeywords,
@@ -21,10 +24,12 @@ import {
   saveAudits,
   saveBriefs,
   saveClusters,
+  saveConfig,
   saveKeywords,
   usedSlugs,
 } from "./store.ts";
 import { DISCOVERY_MARKETS, expandKeywords, isGeoTargeted } from "./expand.ts";
+import { decideCap } from "./governor.ts";
 import { buildKeywordSet, clusterKeywords, scoreKeyword } from "./cluster.ts";
 import { assignKeywords, buildBriefs, findCannibalisation } from "./organiser.ts";
 import { auditUrl } from "./audit.ts";
@@ -307,6 +312,28 @@ export async function dailySweep(options: SweepOptions = {}): Promise<SweepResul
     briefsCreated = fresh.length;
   } catch (error) {
     failures.push(`briefs: ${msg(error)}`);
+  }
+
+  // ---- 9. how fast to publish, decided from results ----
+
+  // Last, because it judges what the earlier steps produced, and it runs inside
+  // the sweep rather than the article run so the pace is already settled by the
+  // time the writer reads it. A held decision is logged too: a cap that moves
+  // on its own needs a sentence explaining every move, including the ones that
+  // did not happen.
+  try {
+    const decision = decideCap({
+      current: config.articlesPerRun,
+      articles: listArticles(),
+      pages: stats.pages,
+      statsAvailable: stats.available,
+      lastRaisedAt: lastRaisedAt(),
+      now,
+    });
+    appendGovernorDecision(decision);
+    if (decision.changed) saveConfig({ articlesPerRun: decision.to });
+  } catch (error) {
+    failures.push(`governor: ${msg(error)}`);
   }
 
   const scored = audits.filter((a) => a.ok);

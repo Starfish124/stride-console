@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import {
   appliedChanges,
+  getConfig,
+  listGovernorDecisions,
   listArticles,
   listAudits,
   listBriefs,
@@ -47,6 +49,10 @@ export async function GET() {
 
   return NextResponse.json({
     at: new Date().toISOString(),
+    pace: {
+      perDay: getConfig().articlesPerRun,
+      decisions: listGovernorDecisions().slice(0, 8),
+    },
     gsc: gscStatus(),
     stats,
     analytics: buildAnalytics(stats, previous, daily, keywords.map((k) => k.term)),

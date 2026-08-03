@@ -272,3 +272,39 @@ and one that gets a domain penalised for scaled content.
 
 `npm run seo:articles -- --ignore-demand` writes on the score alone, for a human
 who has read the queue and wants a specific piece written anyway.
+
+## The governor
+
+The daily article cap is not a setting anybody maintains. It is set from
+results: articles that earn impressions buy a faster pace, articles that do not
+take it away. The decision runs at the end of every sweep, writes
+`articlesPerRun`, and logs itself to `data/seo-governor.json` — including the
+decisions that changed nothing, because a number that moves on its own needs a
+sentence explaining every move.
+
+Three properties matter more than the thresholds:
+
+**It reads outcomes, never its own opinions.** The input is Search Console
+impressions against published article URLs. An opportunity score cannot vote on
+how fast to publish, or the engine grades its own homework.
+
+**It is asymmetric.** Raising takes a good window AND a fortnight since the last
+raise. Cutting happens on the spot, with no cooldown. Publishing too little
+costs some traffic; publishing too much of what nobody reads costs the domain,
+and a site-wide penalty would take the six pages that convert down with the
+blog. Two mistakes of different sizes do not get the same caution.
+
+**It refuses to decide without history.** Fewer than four articles older than
+three weeks, or no Search Console data, and it holds and says so. Judging a
+three-day-old article judges Google's crawl schedule, not the writing.
+
+Defaults, all in `DEFAULT_POLICY`: mature at 21 days, 10 impressions counts as
+earning, speed up above 60% earning, slow down below 25%, ceiling 5 a day, floor
+1, fortnight between raises, four articles of history minimum. The ceiling is a
+person's decision and the governor stops there — "it was working, so it kept
+going" is how a blog becomes a content farm without anybody choosing that. Set
+the floor to 0 to let a bad run stop publishing entirely.
+
+First real decision: the earliest published articles date from 30 July, so the
+governor has something to judge from about 20 August, assuming Search Console
+data by then.

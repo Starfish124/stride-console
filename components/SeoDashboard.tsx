@@ -41,6 +41,17 @@ interface Payload {
     queries: { query: string; clicks: number; impressions: number; ctr: number; position: number }[];
     pages: { page: string; clicks: number; impressions: number; position: number }[];
   };
+  pace: {
+    perDay: number;
+    decisions: {
+      at: string;
+      from: number;
+      to: number;
+      changed: boolean;
+      reason: string;
+      evidence: { matured: number; earning: number; hitRate?: number; windowDays: number };
+    }[];
+  };
   analytics: {
     available: boolean;
     reason?: string;
@@ -409,6 +420,51 @@ export function SeoDashboard() {
               />
             </div>
           ) : null}
+
+          <section>
+            <h2 className="display text-xl text-ink">Publishing pace</h2>
+            <p className="mt-1 text-[14px] text-slate">
+              Set from results, not ambition. Articles that earn impressions buy a faster pace;
+              articles that do not take it away. It speeds up one step at a time with a fortnight
+              between raises, and slows down the moment the work stops landing — publishing too
+              little costs some traffic, publishing too much of what nobody reads costs the domain.
+            </p>
+            <div className="mt-3 rounded-card border border-line bg-white p-4 card-glass">
+              <p className="figure text-3xl text-ink">
+                {data.pace.perDay} <span className="text-[15px] text-slate">a day</span>
+              </p>
+              {data.pace.decisions[0] ? (
+                <p className="mt-2 text-[13px] text-slate">{data.pace.decisions[0].reason}</p>
+              ) : (
+                <p className="mt-2 text-[13px] text-mute">
+                  No decision recorded yet. The first one lands with tonight&apos;s sweep.
+                </p>
+              )}
+            </div>
+            {data.pace.decisions.length > 1 ? (
+              <div className="mt-3 inset-group">
+                {data.pace.decisions.slice(1).map((d) => (
+                  <div key={d.at} className="px-4 py-2.5">
+                    <p className="text-[13px] text-ink">
+                      {d.changed ? (
+                        <>
+                          <span className="tabular">{d.from}</span> to{" "}
+                          <span className="tabular">{d.to}</span> a day
+                        </>
+                      ) : (
+                        <>held at <span className="tabular">{d.from}</span></>
+                      )}
+                      <span className="text-mute">
+                        {" "}
+                        · {new Date(d.at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                      </span>
+                    </p>
+                    <p className="mt-0.5 text-[12px] text-mute">{d.reason}</p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </section>
 
           <section>
             <h2 className="display text-xl text-ink">Within reach</h2>
