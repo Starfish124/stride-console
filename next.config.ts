@@ -17,6 +17,7 @@ const nextConfig: NextConfig = {
       "./tests/**/*",
       "./data/renders/**/*",
       "./data/test-renders/**/*",
+      "./library/**/*",
       "./data/demo/**/*",
     ],
   },
