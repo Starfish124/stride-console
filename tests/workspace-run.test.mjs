@@ -22,7 +22,7 @@ import fs from "node:fs";
 import path from "node:path";
 import * as store from ${mod("lib/workspace/store.ts")};
 import * as files from ${mod("lib/workspace/files.ts")};
-import { activeRun, cliEventLine, contextBlock, runProject } from ${mod("lib/workspace/run.ts")};
+import { activeRun, cliEventLine, contextBlock, parseIssues, runProject } from ${mod("lib/workspace/run.ts")};
 
 const project = { id: "proj_r", clientId: "cl_r", name: "R", kind: "files", createdAt: "x", updatedAt: "x" };
 const out = (value) => console.log(JSON.stringify(value));
@@ -37,6 +37,7 @@ const STUB = `#!/bin/sh
 if [ "$1" = "--version" ]; then echo "stub 1.0"; exit 0; fi
 cat > /dev/null
 printf '{"argv":"%s","cwd":"%s"}' "$*" "$(pwd)" > "$CAPTURE_FILE"
+[ -n "$ISSUES_JSON" ] && printf '%s' "$ISSUES_JSON" > .stride-issues.json
 echo 'hello from the run' > run-made-this.txt
 printf '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit","input":{"file_path":"run-made-this.txt"}}]}}\\n'
 printf '{"type":"assistant","message":{"content":[{"type":"text","text":"Done. I made the change."}]}}\\n'
@@ -44,7 +45,7 @@ printf '{"type":"result","result":"ok"}\\n'
 exit 0
 `;
 
-function inSandbox(source) {
+function inSandbox(source, env = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stride-wsrun-"));
   const stub = path.join(dir, "claude");
   fs.writeFileSync(stub, STUB);
@@ -58,6 +59,7 @@ function inSandbox(source) {
         encoding: "utf8",
         env: {
           ...process.env,
+          ...env,
           CLAUDE_BIN: stub,
           CAPTURE_FILE: path.join(dir, "capture.json"),
           STRIDE_WORKSPACES: path.join(dir, "workspaces"),
@@ -148,6 +150,102 @@ test("one run at a time: a second is refused while the first is live", () => {
   assert.equal(result.refusedOk, false);
   assert.ok(result.problem.includes("One at a time"));
   assert.equal(result.allowedOk, true, "a stale claim must not wedge the machine forever");
+});
+
+test("an audit's findings are ingested, and its file never reaches the diff or the history", () => {
+  const result = inSandbox(
+    `
+    const dir = files.ensureProjectDir(project);
+    const started = runProject({ project, task: "hunt" });
+    if (!started.ok) throw new Error(started.problem);
+    const finished = await started.done;
+    const { execFileSync } = await import("node:child_process");
+    out({
+      issues: store.listIssues(),
+      fileGone: !fs.existsSync(path.join(dir, ".stride-issues.json")),
+      diff: finished.diff ?? "",
+      status: execFileSync("git", ["status", "--porcelain"], { cwd: dir, encoding: "utf8" }).trim(),
+      show: execFileSync("git", ["show", "--name-only", "--format=", "HEAD"], { cwd: dir, encoding: "utf8" }),
+      runId: finished.id,
+    });
+  `,
+    {
+      ISSUES_JSON: JSON.stringify([
+        { title: "Password compared with ==", severity: "HIGH", file: "auth.py", line: 12, detail: "Timing attack.", fix: "Use compare_digest." },
+        { title: "No cap on upload size", severity: "medium", detail: "A big file fills the disk." },
+      ]),
+    },
+  );
+  assert.equal(result.issues.length, 2);
+  const [second, first] = result.issues; // newest first
+  assert.equal(first.title, "Password compared with ==");
+  assert.equal(first.severity, "high", "severity is normalized to the console's scale");
+  assert.equal(first.file, "auth.py");
+  assert.equal(first.line, 12);
+  assert.equal(first.status, "open");
+  assert.equal(first.runId, result.runId, "every finding names the run that found it");
+  assert.equal(second.severity, "med", "\"medium\" normalizes to med");
+  assert.equal(result.fileGone, true, "the handoff file is cleaned up");
+  assert.ok(!result.diff.includes(".stride-issues"), "findings never eat the diff record");
+  assert.ok(!result.show.includes(".stride-issues"), "and never land in the project's history");
+  assert.equal(result.status, "", "nothing left behind");
+});
+
+test("an unreadable findings file says so instead of failing silently", () => {
+  const result = inSandbox(
+    `
+    const dir = files.ensureProjectDir(project);
+    const started = runProject({ project, task: "hunt" });
+    if (!started.ok) throw new Error(started.problem);
+    const finished = await started.done;
+    out({
+      status: finished.status,
+      issues: store.listIssues().length,
+      output: finished.output,
+      fileGone: !fs.existsSync(path.join(dir, ".stride-issues.json")),
+    });
+  `,
+    { ISSUES_JSON: "not json at all {{{" },
+  );
+  assert.equal(result.status, "done", "a bad findings file does not fail the run");
+  assert.equal(result.issues, 0);
+  assert.equal(result.fileGone, true);
+  assert.ok(result.output.includes("could not be read"), "the empty list is explained");
+});
+
+test("a run with no findings file is just an ordinary run", () => {
+  const result = inSandbox(`
+    files.ensureProjectDir(project);
+    const started = runProject({ project, task: "ordinary" });
+    if (!started.ok) throw new Error(started.problem);
+    const finished = await started.done;
+    out({ issues: store.listIssues().length, output: finished.output });
+  `);
+  assert.equal(result.issues, 0);
+  assert.ok(!result.output.includes("could not be read"));
+});
+
+test("parseIssues salvages, normalizes and refuses the useless", () => {
+  const result = inSandbox(`
+    out({
+      bare: parseIssues('[{"title":"a","detail":"d"}]').length,
+      wrapped: parseIssues('{"issues":[{"title":"a","detail":"d"}]}').length,
+      chatty: parseIssues('Here you go:\\n[{"title":"a","detail":"d"}]\\nThat is all.').length,
+      titleless: parseIssues('[{"detail":"no title"},{"title":"ok","detail":"d"}]').map((i) => i.title),
+      severities: parseIssues('[{"title":"a"},{"title":"b","severity":"weird"},{"title":"c","severity":"low"}]').map((i) => i.severity),
+      capped: parseIssues(JSON.stringify(Array.from({ length: 80 }, (_, i) => ({ title: "t" + i })))).length,
+      garbage: parseIssues("absolutely not json").length,
+      badLine: parseIssues('[{"title":"a","line":"nope"}]')[0].line ?? null,
+    });
+  `);
+  assert.equal(result.bare, 1);
+  assert.equal(result.wrapped, 1, "a wrapped array is accepted");
+  assert.equal(result.chatty, 1, "an array inside chatter is salvaged");
+  assert.deepEqual(result.titleless, ["ok"], "a finding with nothing to say is dropped");
+  assert.deepEqual(result.severities, ["med", "med", "low"]);
+  assert.equal(result.capped, 50, "one audit cannot flood the list");
+  assert.equal(result.garbage, 0);
+  assert.equal(result.badLine, null);
 });
 
 test("cliEventLine ignores plumbing and survives garbage", () => {

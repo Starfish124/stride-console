@@ -97,7 +97,36 @@ export interface RunRecipe {
   builtin?: boolean;
 }
 
+/** The file an audit run leaves behind for the console to ingest. */
+export const ISSUES_FILE = ".stride-issues.json";
+
+export type IssueSeverity = "low" | "med" | "high";
+export type IssueStatus = "open" | "dismissed" | "fixed";
+
+/** One finding from an audit run, reviewable long after the run scrolled away. */
+export interface WorkspaceIssue {
+  id: string; // issue_...
+  projectId: string;
+  clientId: string;
+  runId: string;
+  title: string;
+  severity: IssueSeverity;
+  file?: string;
+  line?: number;
+  detail: string;
+  fix?: string;
+  status: IssueStatus;
+  createdAt: string;
+}
+
 export const DEFAULT_RECIPES: RunRecipe[] = [
+  {
+    id: "builtin-issue-hunt",
+    name: "Hunt for issues",
+    builtin: true,
+    task:
+      `Audit this project for real problems: bugs, security holes, error handling that loses data, broken edge cases, race conditions. Do not change any source file.\n\nWhen you are done, write ONE file called ${ISSUES_FILE} in the project root. It holds a JSON array, and nothing else. Each entry is:\n{"title": "one line", "severity": "low" | "med" | "high", "file": "path/from/project/root", "line": 42, "detail": "the failure in one or two sentences", "fix": "the smallest fix"}\n\nOnly real findings. A style nit is not a finding, and an empty array is a fine answer.`,
+  },
   {
     id: "builtin-add-tests",
     name: "Add tests",

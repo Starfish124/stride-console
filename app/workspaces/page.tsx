@@ -3,7 +3,7 @@ import { Header } from "@/components/ui";
 import { Ramp } from "@/components/Ramp";
 import { Glyph } from "@/components/icons";
 import { listClients } from "@/lib/store";
-import { listProjects, listRuns } from "@/lib/workspace/store";
+import { listIssues, listProjects, listRuns } from "@/lib/workspace/store";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +11,7 @@ export default function WorkspacesPage() {
   const clients = listClients();
   const projects = listProjects();
   const runs = listRuns();
+  const openIssues = listIssues().filter((i) => i.status === "open");
 
   return (
     <div className="min-h-screen bg-paper">
@@ -35,6 +36,7 @@ export default function WorkspacesPage() {
             {clients.map((client) => {
               const own = projects.filter((p) => p.clientId === client.id);
               const last = runs.find((r) => r.clientId === client.id);
+              const issues = openIssues.filter((i) => i.clientId === client.id).length;
               return (
                 <li key={client.id}>
                   <Link
@@ -48,6 +50,7 @@ export default function WorkspacesPage() {
                         ? "no projects"
                         : `${own.length} project${own.length > 1 ? "s" : ""}`}
                       {last && ` · last run ${last.startedAt.slice(0, 10)}`}
+                      {issues > 0 && ` · ${issues} open issue${issues > 1 ? "s" : ""}`}
                     </span>
                   </Link>
                 </li>

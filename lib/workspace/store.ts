@@ -17,6 +17,7 @@ import {
   type RunLog,
   type RunRecipe,
   type SshAuditLine,
+  type WorkspaceIssue,
   type WorkspaceNote,
 } from "./types.ts";
 
@@ -28,6 +29,7 @@ const FILES = {
   runs: path.join(DATA_DIR, "workspace-runs.json"),
   notes: path.join(DATA_DIR, "workspace-notes.json"),
   recipes: path.join(DATA_DIR, "workspace-recipes.json"),
+  issues: path.join(DATA_DIR, "workspace-issues.json"),
   sshLog: path.join(DATA_DIR, "workspace-ssh-log.jsonl"),
 } as const;
 
@@ -110,6 +112,29 @@ export function putNote(note: WorkspaceNote): void {
 export function deleteNote(id: string): void {
   const all = readJson<WorkspaceNote[]>(FILES.notes, []);
   writeJson(FILES.notes, all.filter((n) => n.id !== id), MODE);
+}
+
+// ---------- issues found by audit runs ----------
+
+/** Findings outlive the run that found them, but this is not an archive. */
+const MAX_ISSUES = 500;
+
+export function listIssues(filter: { projectId?: string; clientId?: string } = {}): WorkspaceIssue[] {
+  return readJson<WorkspaceIssue[]>(FILES.issues, []).filter(
+    (i) =>
+      (!filter.projectId || i.projectId === filter.projectId) &&
+      (!filter.clientId || i.clientId === filter.clientId),
+  );
+}
+
+export function getIssue(id: string): WorkspaceIssue | undefined {
+  return readJson<WorkspaceIssue[]>(FILES.issues, []).find((i) => i.id === id);
+}
+
+/** Newest first, capped. Upserts on id. */
+export function putIssue(issue: WorkspaceIssue): void {
+  const all = readJson<WorkspaceIssue[]>(FILES.issues, []).filter((i) => i.id !== issue.id);
+  writeJson(FILES.issues, [issue, ...all].slice(0, MAX_ISSUES), MODE);
 }
 
 // ---------- run recipes ----------

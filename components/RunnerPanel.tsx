@@ -3,6 +3,7 @@
 // Give the project a task, watch Claude work, read the diff it left.
 
 import { useCallback, useEffect, useState } from "react";
+import { IssuesPanel, type IssueView } from "@/components/IssuesPanel";
 
 interface RunView {
   id: string;
@@ -34,14 +35,17 @@ export function RunnerPanel({ projectId, repo = false }: { projectId: string; re
   const [pushNote, setPushNote] = useState<string | null>(null);
   const [recipes, setRecipes] = useState<RecipeView[]>([]);
   const [recipeId, setRecipeId] = useState("");
+  const [issues, setIssues] = useState<IssueView[]>([]);
 
   const loadHistory = useCallback(async () => {
-    const [runsRes, recipesRes] = await Promise.all([
+    const [runsRes, recipesRes, issuesRes] = await Promise.all([
       fetch(`/api/workspace/runs?projectId=${projectId}`, { cache: "no-store" }),
       fetch("/api/workspace/recipes", { cache: "no-store" }),
+      fetch(`/api/workspace/issues?projectId=${projectId}`, { cache: "no-store" }),
     ]);
     if (runsRes.ok) setHistory(await runsRes.json());
     if (recipesRes.ok) setRecipes(await recipesRes.json());
+    if (issuesRes.ok) setIssues(await issuesRes.json());
   }, [projectId]);
 
   useEffect(() => {
@@ -169,6 +173,15 @@ export function RunnerPanel({ projectId, repo = false }: { projectId: string; re
         </div>
         {error && <p className="mt-2 text-sm text-amber">{error}</p>}
       </div>
+
+      <IssuesPanel
+        issues={issues}
+        onFix={(t) => {
+          setTask(t);
+          setRecipeId("");
+        }}
+        onChanged={loadHistory}
+      />
 
       {transcript !== null && (
         <div className="rounded-card border border-line bg-white">
