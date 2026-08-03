@@ -8,7 +8,8 @@ import {
   listKeywords,
   listSweeps,
 } from "@/lib/seo/store";
-import { fetchStats, status as gscStatus } from "@/lib/seo/searchConsole";
+import { fetchDaily, fetchStats, status as gscStatus } from "@/lib/seo/searchConsole";
+import { buildAnalytics } from "@/lib/seo/analytics";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,15 @@ export async function GET() {
     listAudits(),
   ];
 
-  const stats = await fetchStats(28);
+  // Three reads: this window, the one before it for the deltas, and the daily
+  // series for the trend. They go together because a number with nothing to
+  // compare against is a number nobody can act on. All three fail soft — a
+  // missing key comes back as available:false, never as a thrown request.
+  const [stats, previous, daily] = await Promise.all([
+    fetchStats(28),
+    fetchStats(28, new Date(), { shiftDays: 28 }),
+    fetchDaily(28),
+  ]);
 
   const scored = audits.filter((a) => a.ok);
   const averageScore =
@@ -40,6 +49,7 @@ export async function GET() {
     at: new Date().toISOString(),
     gsc: gscStatus(),
     stats,
+    analytics: buildAnalytics(stats, previous, daily, keywords.map((k) => k.term)),
     lastSweep: sweeps[0] ?? null,
     sweeps: sweeps.slice(0, 14),
     changes: appliedChanges(30),

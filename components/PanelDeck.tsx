@@ -29,22 +29,30 @@ export function PanelDeck({ slides }: { slides: DeckSlide[] }) {
       className="deck -mx-4 mb-7 sm:mx-0"
       style={{ "--deck-n": slides.length } as React.CSSProperties}
     >
+      {/* A segmented control rather than a row of bare links. The old strip
+          gave no press, no focus ring and no sense of being one control, which
+          is most of why the rail read as unfinished. */}
       <nav className="deck-tabs" aria-label="Dashboards">
         {slides.map((s) => (
-          <a
-            key={s.id}
-            href={`#${s.id}`}
-            className="eyebrow flex min-h-11 shrink-0 items-center px-3 text-slate hover:text-indigo"
-          >
+          <a key={s.id} href={`#${s.id}`} className="deck-tab pressable">
             {s.label}
           </a>
         ))}
       </nav>
 
-      {/* Where scroll-driven animation is supported this tracks the finger.
-          Where it is not it stays put as a 1/n mark. */}
+      {/* Position, two ways. The dots say how many panels there are even when
+          nothing is moving; the pill rides the finger where scroll-driven
+          animation exists and sits at the left as a 1/n mark where it does
+          not. Neither ever animates on its own. */}
       <div aria-hidden className="deck-progress">
-        <span />
+        <div className="deck-dots">
+          {slides.map((s) => (
+            <span key={s.id} />
+          ))}
+        </div>
+        <div className="deck-bar">
+          <span />
+        </div>
       </div>
 
       <ol className="deck-rail" tabIndex={0} role="group" aria-label="Dashboard panels">

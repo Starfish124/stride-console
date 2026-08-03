@@ -172,11 +172,17 @@ export function emptyStats(from: string, to: string, reason: string): SearchStat
   };
 }
 
-export function dateRange(days: number, now = new Date()): { from: string; to: string } {
+export function dateRange(
+  days: number,
+  now = new Date(),
+  /** Shift the whole window back this many days, for a previous-period read. */
+  shiftDays = 0,
+): { from: string; to: string } {
   // Search Console data lags roughly two days, so a window ending today is
   // mostly empty and reads as a traffic collapse.
-  const end = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
-  const start = new Date(end.getTime() - days * 24 * 60 * 60 * 1000);
+  const day = 24 * 60 * 60 * 1000;
+  const end = new Date(now.getTime() - (2 + shiftDays) * day);
+  const start = new Date(end.getTime() - days * day);
   return { from: start.toISOString().slice(0, 10), to: end.toISOString().slice(0, 10) };
 }
 
@@ -208,8 +214,12 @@ async function queryApi(
  * come back as available:false with the reason attached, because this runs
  * inside a nightly sweep that must finish either way.
  */
-export async function fetchStats(days = 28, now = new Date()): Promise<SearchStats> {
-  const { from, to } = dateRange(days, now);
+export async function fetchStats(
+  days = 28,
+  now = new Date(),
+  options: { shiftDays?: number } = {},
+): Promise<SearchStats> {
+  const { from, to } = dateRange(days, now, options.shiftDays ?? 0);
 
   const check = status();
   if (!check.configured) return emptyStats(from, to, check.reason ?? "not configured");
@@ -260,6 +270,52 @@ export async function fetchStats(days = 28, now = new Date()): Promise<SearchSta
     };
   } catch (error) {
     return emptyStats(from, to, error instanceof Error ? error.message : String(error));
+  }
+}
+
+export interface DayRow {
+  date: string;
+  clicks: number;
+  impressions: number;
+}
+
+/**
+ * Clicks and impressions per day, for the trend.
+ *
+ * Days Google reports nothing for are absent from its response rather than
+ * zero, so the series is filled in here — a line that skips a quiet Sunday
+ * draws a slope through it and invents traffic that never happened.
+ */
+export async function fetchDaily(days = 28, now = new Date()): Promise<DayRow[]> {
+  const { from, to } = dateRange(days, now);
+  if (!status().configured) return [];
+
+  try {
+    const res = await queryApi({
+      startDate: from,
+      endDate: to,
+      dimensions: ["date"],
+      rowLimit: 500,
+    });
+    const byDate = new Map(
+      (res.rows ?? []).map((r) => [
+        r.keys?.[0] ?? "",
+        { clicks: r.clicks ?? 0, impressions: r.impressions ?? 0 },
+      ]),
+    );
+
+    const out: DayRow[] = [];
+    const day = 24 * 60 * 60 * 1000;
+    for (let t = Date.parse(from); t <= Date.parse(to); t += day) {
+      const date = new Date(t).toISOString().slice(0, 10);
+      const row = byDate.get(date);
+      out.push({ date, clicks: row?.clicks ?? 0, impressions: row?.impressions ?? 0 });
+    }
+    return out;
+  } catch {
+    // The dashboard still has totals; a missing trend is not worth an error
+    // card of its own.
+    return [];
   }
 }
 

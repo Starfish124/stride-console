@@ -319,28 +319,85 @@ button:active:not(:disabled) {
   overflow-x: auto;
   padding-inline: var(--deck-pad);
   scrollbar-width: none;
+  /* Fades the strip into the page edge instead of chopping a label in half,
+     which is the tell that a row is scrollable and was cut off. */
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--deck-pad),
+    #000 calc(100% - 18px),
+    transparent 100%
+  );
+}
+
+.deck-tab {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  flex-shrink: 0;
+  padding-inline: 12px;
+  border-radius: 9px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-slate);
+  transition:
+    background-color 160ms var(--ease-out-quint),
+    color 160ms var(--ease-out-quint);
+}
+
+.deck-tab:hover {
+  background: var(--color-indigo-tint);
+  color: var(--color-indigo);
+}
+
+.deck-tab:active {
+  background: var(--color-indigo-tint);
+  color: var(--color-indigo);
+}
+
+.deck-tab:focus-visible {
+  outline: 2px solid var(--color-indigo);
+  outline-offset: 2px;
 }
 
 .deck-progress {
-  height: 2px;
-  margin: 8px var(--deck-pad) 10px;
+  position: relative;
+  margin: 9px var(--deck-pad) 11px;
+  height: 3px;
+}
+
+/* One dot per panel, so the count is legible standing still. */
+.deck-dots {
+  display: flex;
+  gap: 3px;
+  height: 100%;
+}
+
+.deck-dots > span {
+  flex: 1;
+  border-radius: 2px;
   background: var(--color-line);
-  border-radius: 1px;
+}
+
+.deck-bar {
+  position: absolute;
+  inset: 0;
   overflow: hidden;
 }
 
-.deck-progress > span {
+.deck-bar > span {
   display: block;
   height: 100%;
   width: calc(100% / var(--deck-n));
-  border-radius: 1px;
+  border-radius: 2px;
   background: var(--color-indigo);
 }
 
 .deck-rail {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: 100%;
   gap: 12px;
   padding-inline: var(--deck-pad);
   scroll-padding-inline: var(--deck-pad);
@@ -350,6 +407,10 @@ button:active:not(:disabled) {
   overscroll-behavior-x: contain;
   scrollbar-width: none;
   height: clamp(300px, 52vh, 380px);
+  /* The next panel peeks past the edge. Without it the rail looks like a
+     single card and the only clue that more exists is a 2px bar — this is the
+     affordance every native carousel uses, and it costs one calc. */
+  grid-auto-columns: calc(100% - 26px);
 }
 
 .deck-tabs::-webkit-scrollbar,
@@ -361,6 +422,14 @@ button:active:not(:disabled) {
   display: flex;
   min-width: 0;
   scroll-snap-align: start;
+}
+
+/* A tab's href points at the slide, so :target lands HERE and not on the tab —
+   which is why there is no active tab style. Tapping a tab marks the panel it
+   brought you to. Scrolling by finger does not change the hash, so this marks
+   a deliberate jump only, which is exactly what it should mean. */
+.deck-rail > li:target > * {
+  box-shadow: 0 0 0 1.5px var(--color-indigo);
 }
 
 /* The panel frame itself: the header holds still, the body scrolls. */
@@ -378,7 +447,7 @@ button:active:not(:disabled) {
   }
   /* Two up on a desk, so five panels read as a set rather than a slideshow. */
   .deck-rail {
-    grid-auto-columns: calc(50% - 6px);
+    grid-auto-columns: calc(50% - 18px);
     height: 340px;
   }
 }
@@ -406,6 +475,15 @@ button:active:not(:disabled) {
 @keyframes deck-run {
   to {
     transform: translateX(calc((var(--deck-n) - 1) * 100%));
+  }
+}
+
+/* The rail's own edge fade, so a peeking panel dissolves rather than being
+   sliced. Vertical is untouched: masking that would fade panel content mid
+   sentence. */
+@media (min-width: 640px) {
+  .deck-rail {
+    mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 22px), transparent 100%);
   }
 }
 
