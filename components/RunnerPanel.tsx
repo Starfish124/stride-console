@@ -15,6 +15,13 @@ interface RunView {
   by?: string;
 }
 
+interface RecipeView {
+  id: string;
+  name: string;
+  task: string;
+  builtin?: boolean;
+}
+
 export function RunnerPanel({ projectId, repo = false }: { projectId: string; repo?: boolean }) {
   const [task, setTask] = useState("");
   const [full, setFull] = useState(false);
@@ -25,12 +32,16 @@ export function RunnerPanel({ projectId, repo = false }: { projectId: string; re
   const [error, setError] = useState<string | null>(null);
   const [pushing, setPushing] = useState(false);
   const [pushNote, setPushNote] = useState<string | null>(null);
+  const [recipes, setRecipes] = useState<RecipeView[]>([]);
+  const [recipeId, setRecipeId] = useState("");
 
   const loadHistory = useCallback(async () => {
-    const res = await fetch(`/api/workspace/runs?projectId=${projectId}`, {
-      cache: "no-store",
-    });
-    if (res.ok) setHistory(await res.json());
+    const [runsRes, recipesRes] = await Promise.all([
+      fetch(`/api/workspace/runs?projectId=${projectId}`, { cache: "no-store" }),
+      fetch("/api/workspace/recipes", { cache: "no-store" }),
+    ]);
+    if (runsRes.ok) setHistory(await runsRes.json());
+    if (recipesRes.ok) setRecipes(await recipesRes.json());
   }, [projectId]);
 
   useEffect(() => {
@@ -80,6 +91,37 @@ export function RunnerPanel({ projectId, repo = false }: { projectId: string; re
     <div className="space-y-4">
       <div className="rounded-card border border-line bg-white p-4">
         <p className="eyebrow text-slate">Run Claude on this project</p>
+        <div className="mt-3 flex items-center gap-2">
+          <select
+            value={recipeId}
+            onChange={(e) => {
+              const recipe = recipes.find((r) => r.id === e.target.value);
+              setRecipeId(e.target.value);
+              if (recipe) setTask(recipe.task);
+            }}
+            className="flex-1 rounded-input border border-line bg-white px-3 py-1.5 text-sm text-ink"
+          >
+            <option value="">A recipe, or write your own below</option>
+            {recipes.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+          {recipeId && !recipes.find((r) => r.id === recipeId)?.builtin && (
+            <button
+              type="button"
+              className="eyebrow text-mute pressable hover:text-amber"
+              onClick={async () => {
+                await fetch(`/api/workspace/recipes?id=${recipeId}`, { method: "DELETE" });
+                setRecipeId("");
+                loadHistory();
+              }}
+            >
+              Remove
+            </button>
+          )}
+        </div>
         <textarea
           value={task}
           onChange={(e) => setTask(e.target.value)}
@@ -96,14 +138,34 @@ export function RunnerPanel({ projectId, repo = false }: { projectId: string; re
             />
             Full permissions — Claude may run commands in this project
           </label>
-          <button
-            type="button"
-            onClick={start}
-            disabled={running || !task.trim()}
-            className="rounded-input bg-indigo px-4 py-1.5 text-sm text-white pressable disabled:bg-mute"
-          >
-            {running ? "Running…" : "Run"}
-          </button>
+          <span className="flex items-center gap-3">
+            {task.trim() && (
+              <button
+                type="button"
+                className="eyebrow text-indigo pressable"
+                onClick={async () => {
+                  const name = window.prompt("Name this recipe");
+                  if (!name?.trim()) return;
+                  await fetch("/api/workspace/recipes", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name, task }),
+                  });
+                  loadHistory();
+                }}
+              >
+                Save as recipe
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={start}
+              disabled={running || !task.trim()}
+              className="rounded-input bg-indigo px-4 py-1.5 text-sm text-white pressable disabled:bg-mute"
+            >
+              {running ? "Running…" : "Run"}
+            </button>
+          </span>
         </div>
         {error && <p className="mt-2 text-sm text-amber">{error}</p>}
       </div>

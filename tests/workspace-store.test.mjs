@@ -112,6 +112,29 @@ test("the SSH audit log appends, survives a torn last line, and cannot be rewrit
   assert.deepEqual(result.editors, [], "no function may edit or delete the audit log");
 });
 
+test("recipes: built-ins first, saved after, and built-ins immune to delete", () => {
+  const result = inSandbox(`
+    const before = store.listRecipes();
+    store.putRecipe({ id: "recipe_a", name: "House deploy", task: "Deploy it the house way." });
+    store.putRecipe({ id: "recipe_a", name: "House deploy v2", task: "Deploy it better." });
+    const after = store.listRecipes();
+    store.deleteRecipe("builtin-add-tests");
+    store.deleteRecipe("recipe_a");
+    const end = store.listRecipes();
+    out({
+      builtinsFirst: before.every((r) => r.builtin === true),
+      afterCount: after.length,
+      upserted: after.find((r) => r.id === "recipe_a").name,
+      endCount: end.length,
+      builtinSurvives: end.some((r) => r.id === "builtin-add-tests"),
+    });
+  `);
+  assert.equal(result.builtinsFirst, true);
+  assert.equal(result.afterCount, result.endCount + 1, "one saved recipe added then removed");
+  assert.equal(result.upserted, "House deploy v2", "put on the same id upserts");
+  assert.equal(result.builtinSurvives, true, "deleting a builtin id is a no-op");
+});
+
 test("notes round-trip per project", () => {
   const result = inSandbox(`
     store.putNote({ id: "wnote_1", projectId: "proj_a", title: "Stack", body: "Laravel 11, MySQL.", updatedAt: "2026-08-03" });

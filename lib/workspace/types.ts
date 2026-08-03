@@ -88,3 +88,35 @@ export interface WorkspaceNote {
   body: string; // markdown
   updatedAt: string;
 }
+
+/** A canned task for the runner: one click instead of retyping the prompt. */
+export interface RunRecipe {
+  id: string; // recipe_... or builtin-...
+  name: string;
+  task: string;
+  builtin?: boolean;
+}
+
+export const DEFAULT_RECIPES: RunRecipe[] = [
+  {
+    id: "builtin-add-tests",
+    name: "Add tests",
+    builtin: true,
+    task:
+      "Find how this project already tests (framework, layout, naming) and add the missing tests that matter most: the cases that fail if the core logic breaks. Match the existing conventions exactly, and run the project's own test command to prove everything passes.",
+  },
+  {
+    id: "builtin-explain",
+    name: "Explain this codebase",
+    builtin: true,
+    task:
+      "Read this project and explain it: what it does, how it is structured, where the entry points are, what depends on what, and anything surprising or fragile a new developer should know before touching it. Change nothing.",
+  },
+  {
+    id: "builtin-security",
+    name: "Security pass",
+    builtin: true,
+    task:
+      "Review this project for security problems: injection, missing validation at trust boundaries, secrets in code, auth gaps, unsafe file or path handling. Report what you find with file and line, ranked by severity, and fix only the clear-cut ones.",
+  },
+];

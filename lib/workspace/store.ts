@@ -10,7 +10,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import { DATA_DIR, readJson, writeJson } from "../store.ts";
-import type { Connector, Project, RunLog, SshAuditLine, WorkspaceNote } from "./types.ts";
+import {
+  DEFAULT_RECIPES,
+  type Connector,
+  type Project,
+  type RunLog,
+  type RunRecipe,
+  type SshAuditLine,
+  type WorkspaceNote,
+} from "./types.ts";
 
 const MODE = 0o600;
 
@@ -19,6 +27,7 @@ const FILES = {
   connectors: path.join(DATA_DIR, "workspace-connectors.json"),
   runs: path.join(DATA_DIR, "workspace-runs.json"),
   notes: path.join(DATA_DIR, "workspace-notes.json"),
+  recipes: path.join(DATA_DIR, "workspace-recipes.json"),
   sshLog: path.join(DATA_DIR, "workspace-ssh-log.jsonl"),
 } as const;
 
@@ -101,6 +110,24 @@ export function putNote(note: WorkspaceNote): void {
 export function deleteNote(id: string): void {
   const all = readJson<WorkspaceNote[]>(FILES.notes, []);
   writeJson(FILES.notes, all.filter((n) => n.id !== id), MODE);
+}
+
+// ---------- run recipes ----------
+
+/** Built-ins first, then whatever the founders saved. */
+export function listRecipes(): RunRecipe[] {
+  return [...DEFAULT_RECIPES, ...readJson<RunRecipe[]>(FILES.recipes, [])];
+}
+
+export function putRecipe(recipe: RunRecipe): void {
+  const stored = readJson<RunRecipe[]>(FILES.recipes, []).filter((r) => r.id !== recipe.id);
+  writeJson(FILES.recipes, [...stored, recipe], MODE);
+}
+
+/** Only the stored file is filtered, so built-ins are immune by construction. */
+export function deleteRecipe(id: string): void {
+  const stored = readJson<RunRecipe[]>(FILES.recipes, []);
+  writeJson(FILES.recipes, stored.filter((r) => r.id !== id), MODE);
 }
 
 // ---------- the SSH audit log ----------
