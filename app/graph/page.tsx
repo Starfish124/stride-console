@@ -4,6 +4,7 @@ import { Header } from "@/components/ui";
 import { Ramp } from "@/components/Ramp";
 import { GraphBuild } from "@/components/GraphBuild";
 import { GraphDevices } from "@/components/GraphDevices";
+import { GraphMap } from "@/components/GraphMap";
 import { GRAPH_DIR, listSessionNotes } from "@/lib/graph/store";
 
 export const dynamic = "force-dynamic";
@@ -51,17 +52,19 @@ export default function GraphPage() {
 
         <div className="space-y-6 xl:grid xl:grid-cols-[minmax(0,1fr)_400px] xl:items-start xl:gap-6 xl:space-y-0">
           <div className="space-y-4">
-            {hasGraph ? (
-              <div className="overflow-hidden rounded-card border border-line bg-white">
-                <iframe
-                  src="/api/graph/view"
-                  title="The Stride knowledge graph"
-                  className="h-[70vh] w-full"
-                />
-              </div>
-            ) : (
-              <p className="text-sm text-mute">
-                No graph yet. Press rebuild — the first one takes a few seconds.
+            <GraphMap />
+            {hasGraph && (
+              <p className="text-xs text-mute">
+                There is also{" "}
+                <a
+                  href="/api/graph/view"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-indigo hover:text-indigo-deep"
+                >
+                  the drawn version
+                </a>
+                , which shows the shape of the console but not the sessions.
               </p>
             )}
           </div>
