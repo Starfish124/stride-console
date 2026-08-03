@@ -18,6 +18,16 @@ export async function proxy(request: NextRequest) {
     // never will. Both verify their own caller; neither can present one.
     pathname === "/api/hooks/resend" ||
     pathname === "/api/salesnav/unsubscribe" ||
+    // A session-end hook on a founder's own Mac, posting what it just did.
+    // It is a script, not a browser: no cookie, ever. It carries a per-device
+    // bearer token and answers a wrong one with a bare 404. POST-only, and
+    // alone on its path — reading the notes back lives elsewhere, behind the
+    // login, because this allowlist matches paths and not verbs.
+    pathname === "/api/graph/ingest" ||
+    // The installer that machine fetches once, before it has a token on
+    // disk. Same guard: the token is in the URL, and without a live one this
+    // is a bare 404 too.
+    pathname === "/api/graph/connect" ||
     pathname === "/favicon.ico" ||
     pathname === "/manifest.webmanifest" ||
     pathname === "/sw.js" ||

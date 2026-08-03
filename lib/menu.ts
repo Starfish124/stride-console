@@ -217,6 +217,12 @@ export const MENU: MenuSection[] = [
         hint: "Every client's project files, and the machine that works on them.",
         icon: "IconIntegration",
       },
+      {
+        href: "/graph",
+        label: "The graph",
+        hint: "Every codebase and every session that worked on one, in one map.",
+        icon: "IconBranch",
+      },
     ],
   },
   {
