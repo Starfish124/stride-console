@@ -232,6 +232,12 @@ export const MENU: MenuSection[] = [
     blurb: "The two of you, and the thing that knows where everything is.",
     items: [
       {
+        href: "/today",
+        label: "Today",
+        hint: "Every commit, sweep, article and run since midnight. Read only.",
+        icon: "IconTime",
+      },
+      {
         href: "/ask",
         label: "Ask Stride",
         hint: "A local model that can answer anything about this console.",
