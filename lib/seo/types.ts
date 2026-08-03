@@ -247,6 +247,13 @@ export interface SeoConfig {
    * holds a Dutch term that overlaps the brief — no term, no twin.
    */
   dutchTwins: boolean;
+  /**
+   * Only write an article when something external says the term is searched:
+   * measured impressions, or a term Search Console reported. Off means the
+   * writer trusts its own opportunity score, which is a guess until Search
+   * Console has data.
+   */
+  requireMeasuredDemand: boolean;
 }
 
 export const DEFAULT_SEEDS: Record<Locale, string[]> = {

@@ -67,6 +67,9 @@ export const DEFAULT_CONFIG: SeoConfig = {
   autoPublishArticles: true,
   // The Netherlands is the market that buys, and the site is already bilingual.
   dutchTwins: true,
+  // Evidence before work. The guesses run out, and what is left at the top of
+  // the queue scores well and means nothing.
+  requireMeasuredDemand: true,
 };
 
 export function getConfig(): SeoConfig {

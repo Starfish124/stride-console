@@ -6,8 +6,13 @@
 // stays on /seo for a person to read and fix. Set autoPublishArticles to
 // false in the config to make every article wait for the button again.
 //
+// Nothing is written for a keyword nobody has been measured searching. That is
+// the demand gate, and it is why an empty run is a correct run on a property
+// whose Search Console data has not arrived yet.
+//
 // Run: npm run seo:articles
 //      npm run seo:articles -- --limit=1
+//      npm run seo:articles -- --ignore-demand    (write on the score alone)
 
 import { draftArticles } from "../lib/seo/agent.ts";
 import { listPushSubs } from "../lib/store.ts";
@@ -15,7 +20,11 @@ import { listPushSubs } from "../lib/store.ts";
 const limitArg = process.argv.slice(2).find((a) => a.startsWith("--limit="));
 const limit = limitArg ? Number(limitArg.split("=")[1]) : undefined;
 
-const result = await draftArticles({ limit: Number.isFinite(limit) ? limit : undefined });
+const ignoreDemand = process.argv.includes("--ignore-demand");
+const result = await draftArticles({
+  limit: Number.isFinite(limit) ? limit : undefined,
+  ignoreDemand,
+});
 
 console.log(`[seo-articles] ${result.message}`);
 for (const a of result.articles) {

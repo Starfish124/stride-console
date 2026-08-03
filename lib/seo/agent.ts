@@ -44,7 +44,14 @@ import {
   type ArticleOutcome,
 } from "./publish.ts";
 import { writeArticle } from "./article.ts";
-import type { ArticleBrief, Locale, MetaChange, PageAudit, SweepResult } from "./types.ts";
+import type {
+  ArticleBrief,
+  Keyword,
+  Locale,
+  MetaChange,
+  PageAudit,
+  SweepResult,
+} from "./types.ts";
 
 export interface SweepOptions {
   /** Skip the alphabet pass. Faster, shallower; used by the manual refresh. */
@@ -380,6 +387,70 @@ export function pendingBriefs(
     .slice(0, limit);
 }
 
+export interface DemandCheck {
+  /** Briefs with evidence that somebody actually searches for this. */
+  writable: ArticleBrief[];
+  /** The rest, with why, for the dashboard and the run log. */
+  held: { brief: ArticleBrief; why: string }[];
+}
+
+/**
+ * Which briefs have EVIDENCE behind them.
+ *
+ * This is the difference between an engine that compounds and one that gets a
+ * site penalised. Until Search Console is connected, opportunity is guessed
+ * from the shape of a phrase, and the guesses run out: once the good briefs are
+ * written, the top of the queue fills with leftovers that score well and mean
+ * nothing — "bureau ai company", "yuvi ai consultant" (a person's name),
+ * "ai bureau eu". Writing three of those a day at a twelve-minute Claude call
+ * each, straight onto a live company site, is how a blog becomes a liability.
+ *
+ * Evidence is one of two things, both external:
+ *   - Google has SHOWN the site for the term, measured in impressions.
+ *   - The term came FROM Search Console, so somebody typed it to get here.
+ *
+ * A term nobody has been measured searching is not evidence, however plausible
+ * it looks. When nothing qualifies the run writes nothing and says so, which is
+ * the honest state for a property whose data has not arrived yet — and costs
+ * nothing while it waits.
+ */
+export function withDemand(
+  briefs: ArticleBrief[],
+  keywords: Keyword[],
+  options: { minImpressions?: number } = {},
+): DemandCheck {
+  const { minImpressions = 5 } = options;
+
+  // Keyed by locale as well as term: the same phrase can be tracked in both,
+  // and a Dutch measurement is not evidence for an English page.
+  const byTerm = new Map(keywords.map((k) => [`${k.locale}:${k.term.toLowerCase()}`, k]));
+
+  const writable: ArticleBrief[] = [];
+  const held: { brief: ArticleBrief; why: string }[] = [];
+
+  for (const brief of briefs) {
+    const kw = byTerm.get(`${brief.locale}:${brief.primaryKeyword.toLowerCase()}`);
+
+    if (kw?.discoveredVia === "search-console") {
+      writable.push(brief);
+      continue;
+    }
+    if (kw?.stats && kw.stats.impressions >= minImpressions) {
+      writable.push(brief);
+      continue;
+    }
+
+    held.push({
+      brief,
+      why: kw?.stats
+        ? `only ${kw.stats.impressions} impressions, under the ${minImpressions} needed`
+        : "never measured in Search Console",
+    });
+  }
+
+  return { writable, held };
+}
+
 /**
  * The Dutch counterpart of an English brief, or undefined if the store holds
  * no Dutch term worth writing for.
@@ -456,19 +527,36 @@ export function dutchTwinBrief(
  * reaches the live site within a day of being queued.
  */
 export async function draftArticles(
-  options: { limit?: number; now?: Date } = {},
+  options: { limit?: number; now?: Date; ignoreDemand?: boolean } = {},
 ): Promise<ArticleRunResult> {
   const config = getConfig();
-  const { limit = config.articlesPerRun, now = new Date() } = options;
+  const { limit = config.articlesPerRun, now = new Date(), ignoreDemand = false } = options;
 
   const queued = listBriefs();
-  const briefs = pendingBriefs(queued, usedSlugs(), limit);
+  // The site's own files, not the console's store: data/ is gitignored and on
+  // one Mac, while the articles are on the site whatever this machine thinks.
+  const onTheSite = new Set([...usedSlugs(), ...publishedSlugs(config.siteRepo)]);
+  const open = pendingBriefs(queued, onTheSite, queued.length);
+
+  // Evidence before work. Without this the run writes whatever scored highest
+  // on a guess, which after the good briefs are gone means junk — daily, onto a
+  // live company site.
+  const gate =
+    config.requireMeasuredDemand && !ignoreDemand
+      ? withDemand(open, listKeywords())
+      : { writable: open, held: [] };
+
+  const briefs = gate.writable.slice(0, limit);
 
   if (briefs.length === 0) {
     const message =
       queued.length === 0
         ? "No briefs queued. Nothing to write."
-        : `All ${queued.length} queued briefs already have an article. Nothing to write.`;
+        : open.length === 0
+          ? `All ${queued.length} queued briefs already have an article. Nothing to write.`
+          : `${open.length} briefs queued, none with measured demand yet — ${
+              gate.held[0]?.why ?? "nothing measured"
+            }. Nothing written, which costs nothing while Search Console fills in.`;
     return { drafted: 0, failed: 0, published: 0, articles: [], message };
   }
 
@@ -515,7 +603,8 @@ export async function draftArticles(
           .filter((k) => k.locale === "nl")
           .map((k) => ({ term: k.term, opportunity: k.opportunity }))
       : [];
-  const alreadyWritten = usedSlugs();
+  // The twin check consults the site too, for the same reason the brief filter does.
+  const alreadyWritten = onTheSite;
 
   for (const brief of briefs) {
     try {

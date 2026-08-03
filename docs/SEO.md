@@ -188,6 +188,7 @@ message. A bad run is undone with `git revert`.
 | `baseUrl` | `https://stride-ai.nl` | What the auditor fetches. |
 | `locales` | `["en","nl"]` | Languages tracked. |
 | `articlesPerRun` | `3` | Drafts per run, and the run is daily. With Dutch twins on, three briefs can mean up to six writer runs. |
+| `requireMeasuredDemand` | `true` | Only write for a term with measured Search Console impressions, or one Search Console itself reported. Off means the writer trusts its own opportunity score, which is a guess until there is data. |
 | `dutchTwins` | `true` | After an English article, write the Dutch counterpart under the same slug, using a Dutch keyword found in the store. No matching term, no twin. |
 | `autoApplyMetadata` | `true` | Apply title and description fixes without asking. Reversible with one git revert; holding them for approval means the site only improves when somebody remembers to look. |
 | `autoPublishOnApproval` | `true` | Push after publishing, so the site rebuilds. Set false to commit locally only. |
@@ -247,3 +248,27 @@ Two rules hold this in place:
 
 German and French *content* would mean new locales in the website repo — routes,
 hreflang, a `Locale` change in both codebases. That decision has not been taken.
+
+## The demand gate
+
+The engine will not write an article for a phrase nobody has been measured
+searching. Evidence is one of two external things: Google has shown the site for
+the term (impressions, five or more), or the term came from Search Console in
+the first place, meaning somebody typed it to get here. An opportunity score is
+not evidence — it is this engine's own opinion.
+
+This exists because of a specific near miss. On 3 August, with the queue's good
+briefs already written, the top three were `bureau ai company`,
+`yuvi ai consultant` — a person's name — and `ai bureau eu`. All three scored in
+the fifties, all three were about to be written and auto-published to
+stride-ai.nl the next morning, and none of them is a thing anyone searches for.
+The guesses had run out and the machine had no way to know.
+
+So an empty run is a correct run: `0 written, 8 briefs queued, none with
+measured demand yet`. It costs nothing and publishes nothing wrong while the
+property's data arrives. When numbers land the same machine starts writing
+against proven demand, which is the difference between an engine that compounds
+and one that gets a domain penalised for scaled content.
+
+`npm run seo:articles -- --ignore-demand` writes on the score alone, for a human
+who has read the queue and wants a specific piece written anyway.
