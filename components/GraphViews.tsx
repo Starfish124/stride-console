@@ -4,9 +4,12 @@
 
 import { useState } from "react";
 import { GraphMap } from "@/components/GraphMap";
+import { GraphNet } from "@/components/GraphNet";
 
 export function GraphViews({ hasDrawing }: { hasDrawing: boolean }) {
-  const [drawn, setDrawn] = useState(false);
+  // The drawing leads. It is the thing worth looking at, and the thing a
+  // founder is shown first.
+  const [drawn, setDrawn] = useState(true);
 
   return (
     <div className="space-y-4">
@@ -16,8 +19,8 @@ export function GraphViews({ hasDrawing }: { hasDrawing: boolean }) {
         className="inline-flex rounded-input border border-line bg-white p-0.5"
       >
         {[
+          { id: true, label: "See it", hint: "The whole thing drawn as a network" },
           { id: false, label: "Read it", hint: "The parts, and what leans on what" },
-          { id: true, label: "See it", hint: "The whole thing drawn" },
         ].map((tab) => (
           <button
             key={String(tab.id)}
@@ -35,33 +38,24 @@ export function GraphViews({ hasDrawing }: { hasDrawing: boolean }) {
       </div>
 
       {drawn ? (
-        hasDrawing ? (
-          <div className="space-y-2">
-            <div className="overflow-hidden rounded-card border border-line bg-white">
-              <iframe
-                src="/api/graph/view"
-                title="The Stride knowledge graph, drawn"
-                className="h-[75vh] w-full"
-              />
-            </div>
+        <div className="space-y-2">
+          <GraphNet />
+          {hasDrawing && (
             <p className="text-xs text-mute">
-              Every codebase and every session in one picture. Clusters are numbered
-              rather than named — naming them needs a model, and the nightly build
-              stays offline. Nodes carry their own labels.{" "}
+              graphify&apos;s own render, a dot per function rather than per file, is
+              still there if you want the raw extraction:{" "}
               <a
                 href="/api/graph/view"
                 target="_blank"
                 rel="noreferrer"
                 className="text-indigo hover:text-indigo-deep"
               >
-                Open it full screen
+                open it full screen
               </a>
               .
             </p>
-          </div>
-        ) : (
-          <p className="text-sm text-mute">Nothing drawn yet. Press rebuild.</p>
-        )
+          )}
+        </div>
       ) : (
         <GraphMap />
       )}

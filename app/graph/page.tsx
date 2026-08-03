@@ -34,19 +34,25 @@ export default function GraphPage() {
   return (
     <div className="min-h-screen bg-paper">
       <Header />
-      <main className="mx-auto max-w-6xl px-6 pb-20">
-        <section className="py-10">
-          <Ramp width={52} className="mb-4 text-indigo" />
+      <main className="mx-auto max-w-7xl px-6 pb-20">
+        {/* The drawing is the point of this page, so the words above it are
+            kept to what a first-time viewer needs and no more. Anything taller
+            pushes the graph under the fold, which is where it was. */}
+        <section className="pb-5 pt-6">
+          <Ramp width={52} className="mb-3 text-indigo" />
           <p className="eyebrow text-slate">Delivery</p>
-          <h1 className="display mt-3 text-4xl text-ink">The graph</h1>
-          <p className="mt-2 max-w-xl text-slate">
+          <h1 className="display mt-2 text-3xl text-ink sm:text-4xl">The graph</h1>
+          {/* Desktop only. On a phone this is three lines that push the drawing
+              under the tab bar, and the caption beneath the graph already says
+              how to read it — which is the part that actually helps. */}
+          <p className="mt-2 hidden max-w-xl text-sm text-slate sm:block">
             Every Stride codebase and every session that worked on one, in a single
             map. Code is read locally with tree-sitter, so building it calls nothing
             and costs nothing.
           </p>
         </section>
 
-        <section className="mb-8">
+        <section className="mb-5">
           <GraphBuild built={built} />
         </section>
 

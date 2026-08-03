@@ -13,9 +13,15 @@ import { GRAPH_DIR } from "./store.ts";
 const GRAPH_FILE = path.join(GRAPH_DIR, "out", "graph.json");
 
 /** Edges that mean "this depends on that", as opposed to structure. */
-const DEPENDS = new Set(["imports", "imports_from", "calls", "indirect_call", "references"]);
+export const DEPENDS = new Set([
+  "imports",
+  "imports_from",
+  "calls",
+  "indirect_call",
+  "references",
+]);
 
-interface RawNode {
+export interface RawNode {
   source_location?: string;
   id: string;
   label: string;
@@ -25,7 +31,7 @@ interface RawNode {
   date?: string;
 }
 
-interface RawLink {
+export interface RawLink {
   source: string;
   target: string;
   relation?: string;
@@ -85,7 +91,7 @@ export interface Neighbourhood {
 // Keyed on mtime, so a rebuild is picked up without a restart.
 let cache: { key: string; graph: RawGraph } | undefined;
 
-function load(): RawGraph | undefined {
+export function load(): RawGraph | undefined {
   let key: string;
   try {
     key = String(fs.statSync(GRAPH_FILE).mtimeMs);
@@ -111,7 +117,7 @@ function areaOf(file: string | undefined): string {
   return parts.slice(0, Math.min(2, parts.length - 1)).join("/");
 }
 
-const idOf = (end: RawLink["source"]): string =>
+export const idOf = (end: RawLink["source"]): string =>
   typeof end === "string" ? end : ((end as { id: string }).id ?? String(end));
 
 export function graphMap(): GraphMap {
