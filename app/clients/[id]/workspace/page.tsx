@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getClient } from "@/lib/store";
-import { listProjects } from "@/lib/workspace/store";
+import { hasSecret, listConnectors, listProjects } from "@/lib/workspace/store";
 import { Header } from "@/components/ui";
 import { Ramp } from "@/components/Ramp";
+import { ConnectorCard } from "@/components/ConnectorCard";
 import { NewProjectForm } from "@/components/NewProjectForm";
 import { RunnerPanel } from "@/components/RunnerPanel";
 import { WorkspaceFiles } from "@/components/WorkspaceFiles";
@@ -22,6 +23,7 @@ export default async function WorkspacePage({
   if (!client) notFound();
 
   const projects = listProjects(id);
+  const connectors = listConnectors(id).map((c) => ({ ...c, hasSecret: hasSecret(c.id) }));
   const { p } = await searchParams;
   const selected = projects.find((project) => project.id === p) ?? projects[0];
 
@@ -57,16 +59,28 @@ export default async function WorkspacePage({
           <NewProjectForm clientId={client.id} />
         </div>
 
-        {selected ? (
-          <div className="space-y-6 xl:grid xl:grid-cols-[1.4fr_1fr] xl:items-start xl:gap-6 xl:space-y-0">
-            <WorkspaceFiles key={selected.id} projectId={selected.id} />
-            <RunnerPanel key={`run-${selected.id}`} projectId={selected.id} />
+        <div className="space-y-6 xl:grid xl:grid-cols-[1fr_400px] xl:items-start xl:gap-6 xl:space-y-0">
+          <div className="space-y-6">
+            {selected ? (
+              <>
+                <WorkspaceFiles key={selected.id} projectId={selected.id} />
+                <RunnerPanel
+                  key={`run-${selected.id}`}
+                  projectId={selected.id}
+                  repo={selected.kind === "repo"}
+                />
+              </>
+            ) : (
+              <p className="text-sm text-mute">
+                No projects yet. Create one and drop the files in, or clone the
+                client&apos;s repo from the connector.
+              </p>
+            )}
           </div>
-        ) : (
-          <p className="text-sm text-mute">
-            No projects yet. Create one and drop the files in.
-          </p>
-        )}
+          <aside className="space-y-6">
+            <ConnectorCard clientId={client.id} connectors={connectors} />
+          </aside>
+        </div>
       </main>
     </div>
   );

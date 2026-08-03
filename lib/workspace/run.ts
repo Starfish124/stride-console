@@ -10,7 +10,7 @@ import { callClaudeCli } from "../pipeline/write.ts";
 import { newId } from "../store.ts";
 import { getProject, listNotes, listRuns, putRun } from "./store.ts";
 import { ensureProjectDir } from "./files.ts";
-import { commitAll, diffSummary } from "./git.ts";
+import { commitAll, diffSummary, ensureWorkBranch } from "./git.ts";
 import type { Project, RunLog } from "./types.ts";
 
 /** Deep runs have died at exactly the 240s default before; same budget as research. */
@@ -112,6 +112,9 @@ export function runProject(options: {
   }
 
   const dir = ensureProjectDir(project);
+  // A repo project always works on its standing branch, never the client's
+  // default.
+  ensureWorkBranch(project, dir);
 
   // Claim the ledger row before the first await, so a crash mid-run leaves a
   // visible running row rather than a silent nothing.

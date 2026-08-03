@@ -15,7 +15,7 @@ interface RunView {
   by?: string;
 }
 
-export function RunnerPanel({ projectId }: { projectId: string }) {
+export function RunnerPanel({ projectId, repo = false }: { projectId: string; repo?: boolean }) {
   const [task, setTask] = useState("");
   const [full, setFull] = useState(false);
   const [running, setRunning] = useState(false);
@@ -23,6 +23,8 @@ export function RunnerPanel({ projectId }: { projectId: string }) {
   const [run, setRun] = useState<RunView | null>(null);
   const [history, setHistory] = useState<RunView[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [pushing, setPushing] = useState(false);
+  const [pushNote, setPushNote] = useState<string | null>(null);
 
   const loadHistory = useCallback(async () => {
     const res = await fetch(`/api/workspace/runs?projectId=${projectId}`, {
@@ -119,8 +121,32 @@ export function RunnerPanel({ projectId }: { projectId: string }) {
 
       {run?.diff && (
         <div className="rounded-card border border-line bg-white">
-          <p className="eyebrow border-b border-line px-4 py-2 text-slate">What changed</p>
+          <div className="flex items-center justify-between border-b border-line px-4 py-2">
+            <p className="eyebrow text-slate">What changed</p>
+            {repo && (
+              <button
+                type="button"
+                disabled={pushing}
+                className="eyebrow text-indigo pressable disabled:text-mute"
+                onClick={async () => {
+                  setPushing(true);
+                  setPushNote(null);
+                  const res = await fetch(`/api/workspace/projects/${projectId}/push`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: run.task }),
+                  });
+                  const body = await res.json().catch(() => ({}));
+                  setPushing(false);
+                  setPushNote(body.message ?? body.error ?? "Done.");
+                }}
+              >
+                {pushing ? "Pushing…" : "Push to their repo"}
+              </button>
+            )}
+          </div>
           <pre className="max-h-96 overflow-auto px-4 py-3 text-xs text-ink">{run.diff}</pre>
+          {pushNote && <p className="border-t border-line px-4 py-2 text-sm text-slate">{pushNote}</p>}
         </div>
       )}
 
