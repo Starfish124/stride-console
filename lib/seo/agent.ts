@@ -598,10 +598,15 @@ export function dutchTwinBrief(
  * reaches the live site within a day of being queued.
  */
 export async function draftArticles(
-  options: { limit?: number; now?: Date; ignoreDemand?: boolean } = {},
+  options: { limit?: number; now?: Date; ignoreDemand?: boolean; only?: string[] } = {},
 ): Promise<ArticleRunResult> {
   const config = getConfig();
-  const { limit = config.articlesPerRun, now = new Date(), ignoreDemand = false } = options;
+  const {
+    limit = config.articlesPerRun,
+    now = new Date(),
+    ignoreDemand = false,
+    only,
+  } = options;
 
   const queued = listBriefs();
   // The site's own files, not the console's store: data/ is gitignored and on
@@ -609,13 +614,24 @@ export async function draftArticles(
   const onTheSite = new Set([...usedSlugs(), ...publishedSlugs(config.siteRepo)]);
   const open = pendingBriefs(queued, onTheSite, queued.length);
 
+  // A person naming the briefs by keyword. Overriding the demand gate takes the
+  // top of a GUESSED ranking, and until Search Console has data the top of that
+  // ranking is where the junk collects — "ai speakers bureau aisb" outscored
+  // "ai automation agency cost" by six points. Naming them is how a human picks
+  // three without loosening anything for the scheduled run that follows.
+  const chosen = only?.length
+    ? open.filter((b) =>
+        only.some((k) => k.trim().toLowerCase() === b.primaryKeyword.trim().toLowerCase()),
+      )
+    : open;
+
   // Evidence before work. Without this the run writes whatever scored highest
   // on a guess, which after the good briefs are gone means junk — daily, onto a
   // live company site.
   const gate =
     config.requireMeasuredDemand && !ignoreDemand
-      ? withDemand(open, listKeywords())
-      : { writable: open, held: [] };
+      ? withDemand(chosen, listKeywords())
+      : { writable: chosen, held: [] };
 
   const briefs = gate.writable.slice(0, limit);
 
@@ -625,9 +641,13 @@ export async function draftArticles(
         ? "No briefs queued. Nothing to write."
         : open.length === 0
           ? `All ${queued.length} queued briefs already have an article. Nothing to write.`
-          : `${open.length} briefs queued, none with measured demand yet — ${
-              gate.held[0]?.why ?? "nothing measured"
-            }. Nothing written, which costs nothing while Search Console fills in.`;
+          : only?.length && chosen.length === 0
+            ? `No open brief matches ${only.map((k) => `"${k}"`).join(", ")}. Open: ${open
+                .map((b) => `"${b.primaryKeyword}"`)
+                .join(", ")}`
+            : `${chosen.length} briefs queued, none with measured demand yet — ${
+                gate.held[0]?.why ?? "nothing measured"
+              }. Nothing written, which costs nothing while Search Console fills in.`;
     return { drafted: 0, failed: 0, published: 0, articles: [], message };
   }
 

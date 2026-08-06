@@ -13,6 +13,11 @@
 // Run: npm run seo:articles
 //      npm run seo:articles -- --limit=1
 //      npm run seo:articles -- --ignore-demand    (write on the score alone)
+//      npm run seo:articles -- --only="ai automation agency cost"   (repeatable)
+//
+// --only is the human's pick. --ignore-demand alone writes the top of a guessed
+// ranking, which is not the same thing as writing the best briefs; naming them
+// is how somebody chooses three without changing what the 07:40 run does.
 
 import { draftArticles } from "../lib/seo/agent.ts";
 import { listPushSubs } from "../lib/store.ts";
@@ -20,10 +25,16 @@ import { listPushSubs } from "../lib/store.ts";
 const limitArg = process.argv.slice(2).find((a) => a.startsWith("--limit="));
 const limit = limitArg ? Number(limitArg.split("=")[1]) : undefined;
 
+const only = process.argv
+  .slice(2)
+  .filter((a) => a.startsWith("--only="))
+  .map((a) => a.slice("--only=".length));
+
 const ignoreDemand = process.argv.includes("--ignore-demand");
 const result = await draftArticles({
-  limit: Number.isFinite(limit) ? limit : undefined,
+  limit: Number.isFinite(limit) ? limit : only.length || undefined,
   ignoreDemand,
+  only,
 });
 
 console.log(`[seo-articles] ${result.message}`);

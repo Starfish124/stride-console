@@ -353,6 +353,34 @@ test("place-targeted keywords are recognised, so they never self-publish", () =>
   assert.equal(isGeoTargeted("workflow automation for small business"), false);
 });
 
+test("a country blocked without its cities is a hole, not a shorter list", () => {
+  // "canada" was blocked and "ottawa" was not, so `ai consultant ottawa`
+  // reached the brief queue at rank 5 — and isGeoTargeted only knew the
+  // European seed cities, so it would have self-published as a doorway page.
+  assert.equal(isTargetableTerm("ai consultant ottawa"), false);
+  assert.equal(isGeoTargeted("ai consultant ottawa"), true);
+  assert.equal(isGeoTargeted("ai agency boston"), true);
+  // The European cities still pass the market gate and still wait for a person.
+  assert.equal(isTargetableTerm("ai agency berlin"), true);
+  assert.equal(isGeoTargeted("ai agency berlin"), true);
+});
+
+test("an acronym is still somebody else's name", () => {
+  assert.equal(isTargetableTerm("ai speakers bureau aisb"), false);
+  // And the Dutch word for agency, which is why that one got through ON_TOPIC.
+  assert.equal(isTargetableTerm("ai bureau nederland"), true);
+});
+
+test("a year that has already passed is not worth writing", () => {
+  const now = new Date("2026-08-06T00:00:00Z");
+  assert.equal(isTargetableTerm("ai agent pricing 2025", now), false);
+  // This year and next are exactly right to write now.
+  assert.equal(isTargetableTerm("ai agent pricing 2026", now), true);
+  assert.equal(isTargetableTerm("ai agent pricing 2027", now), true);
+  // A number that is not a year is left alone.
+  assert.equal(isTargetableTerm("ai chatbot 24 7 support", now), true);
+});
+
 test("European geography is targetable now, American cities are not", () => {
   assert.equal(isTargetableTerm("ai agency berlin"), true);
   assert.equal(isTargetableTerm("ai consultant belgium"), true);

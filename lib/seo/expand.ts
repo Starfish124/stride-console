@@ -102,17 +102,23 @@ const OFF_AUDIENCE = new RegExp(
  * North America, Asia-Pacific, the Gulf. That is a market decision, not a
  * language one, which is why "london" left this list and "new york" did not.
  */
+const OFF_MARKET_PLACES = [
+  "india", "pakistan", "nigeria", "philippines",
+  "bangladesh", "indonesia", "kenya",
+  "usa", "united states", "canada", "australia",
+  "singapore", "dubai", "uae", "saudi",
+  "china", "japan", "brazil",
+  "nyc", "new york", "toronto", "sydney",
+  "boston", "chicago", "los angeles", "san francisco",
+  "texas", "florida", "california",
+  // A country without its cities is a hole, not a shorter list: "canada" was
+  // blocked and "ottawa" was not, so `ai consultant ottawa` reached the brief
+  // queue and would have self-published as a Canadian doorway page.
+  "ottawa", "montreal", "vancouver",
+];
+
 const OFF_MARKET = new RegExp(
-  [
-    "\\bindia\\b", "\\bpakistan\\b", "\\bnigeria\\b", "\\bphilippines\\b",
-    "\\bbangladesh\\b", "\\bindonesia\\b", "\\bkenya\\b",
-    "\\busa\\b", "\\bunited states\\b", "\\bcanada\\b", "\\baustralia\\b",
-    "\\bsingapore\\b", "\\bdubai\\b", "\\buae\\b", "\\bsaudi\\b",
-    "\\bchina\\b", "\\bjapan\\b", "\\bbrazil\\b",
-    "\\bnyc\\b", "\\bnew york\\b", "\\btoronto\\b", "\\bsydney\\b",
-    "\\bboston\\b", "\\bchicago\\b", "\\blos angeles\\b", "\\bsan francisco\\b",
-    "\\btexas\\b", "\\bflorida\\b", "\\bcalifornia\\b",
-  ].join("|"),
+  OFF_MARKET_PLACES.map((p) => `\\b${p}\\b`).join("|"),
   "i",
 );
 
@@ -151,9 +157,26 @@ const OFF_BRAND = new RegExp(
     // page, and will not read a Dutch consultancy's take on it.
     "\\buipath\\b", "automation anywhere", "blue prism", "\\bservicenow\\b",
     "\\bpowerapps\\b", "power automate", "\\bmulesoft\\b",
+    // An acronym is still a name. "ai speakers bureau aisb" scored 57 and sat
+    // at the top of the queue, one forced run away from a 2,500-word article
+    // about somebody else's speaker agency.
+    "\\baisb\\b",
   ].join("|"),
   "i",
 );
+
+/**
+ * A year that has already gone by.
+ *
+ * "ai agent pricing 2025" was a real search in 2025 and is a stale page the
+ * morning it publishes in 2026 — the article cannot honestly carry the year in
+ * its own title. The current year and the next one stay targetable, because
+ * "ai agent pricing 2026" written now is exactly right.
+ */
+function namesAPastYear(term: string, now: Date): boolean {
+  const found = term.match(/\b(20\d{2})\b/);
+  return found ? Number(found[1]) < now.getFullYear() : false;
+}
 
 /**
  * Vocabulary the business actually sells into. A suggestion that shares none
@@ -186,13 +209,22 @@ const ON_TOPIC = new RegExp(
  */
 export function isGeoTargeted(term: string): boolean {
   const t = term.toLowerCase();
-  return [...EU_GEO.en, ...EU_GEO.nl].some((g) => new RegExp(`\\b${g}\\b`, "i").test(t));
+  // Every place we know the name of, not only the ones the seeds use. Holding
+  // Berlin while letting an unlisted city through is the wrong way round: the
+  // European cities are the ones we have a reason to write about, and the rest
+  // are exactly what must never publish itself.
+  // ponytail: a list, so a city on no list still slips through to the voice
+  // gate. Swap in a gazetteer or an NER pass if that ever actually happens.
+  return [...EU_GEO.en, ...EU_GEO.nl, ...OFF_MARKET_PLACES].some((g) =>
+    new RegExp(`\\b${g}\\b`, "i").test(t),
+  );
 }
 
-export function isTargetableTerm(term: string): boolean {
+export function isTargetableTerm(term: string, now = new Date()): boolean {
   if (OFF_AUDIENCE.test(term)) return false;
   if (OFF_MARKET.test(term)) return false;
   if (OFF_BRAND.test(term)) return false;
+  if (namesAPastYear(term, now)) return false;
   return ON_TOPIC.test(term);
 }
 
