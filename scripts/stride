@@ -128,6 +128,23 @@ funnel_on() {
   [[ "$status" == *"Funnel on"* ]]
 }
 
+# "Funnel on" is not the same as "founders can reach it". On 2026-08-09 the node
+# was renamed (tailscaled took the DHCP hostname `mac.home`), so the serve config
+# still printed the old mac-mini URL, funnel_on stayed true, and the name it
+# advertised had no public DNS record at all — the app was down for everyone.
+# Ask a public resolver, the way a phone does. Same lesson as the pipefail bug
+# above: a check that takes the same shortcut as the thing it checks sees nothing.
+# Two resolvers, because one is not evidence: 1.1.1.1 negative-cached the name
+# for minutes after the rename was fixed and kept saying the app was down.
+funnel_public() {
+  local host r
+  host="${PUBLIC_URL#https://}"
+  for r in 1.1.1.1 8.8.8.8; do
+    [[ -n "$(dig +short +time=3 +tries=1 "@$r" "$host" A 2>/dev/null)" ]] && return 0
+  done
+  return 1
+}
+
 # What launchd actually knows about a job, as "state|runs|last exit code".
 #
 # Reporting that the plist file exists only proves somebody once installed it.
@@ -147,7 +164,13 @@ cmd_status() {
   banner
   head_ "services"
   console_up && ok "console" "http://localhost:$CONSOLE_PORT" || bad "console" "down — run: stride"
-  funnel_on  && ok "funnel"  "$PUBLIC_URL" || bad "funnel" "off — tailscale funnel --bg $CONSOLE_PORT"
+  if ! funnel_on; then
+    bad "funnel" "off — tailscale funnel --bg $CONSOLE_PORT"
+  elif ! funnel_public; then
+    bad "funnel" "on, but $PUBLIC_URL has no public DNS — run: tailscale set --hostname=mac-mini"
+  else
+    ok "funnel" "$PUBLIC_URL"
+  fi
   bridge_up  && ok "bridge"  "127.0.0.1:$BRIDGE_PORT" || bad "bridge" "down — run: stride"
 
   if lh_debug_up; then
@@ -223,7 +246,7 @@ cmd_status() {
   # A dead background job counts against "everything is up". Serving the site
   # while nothing writes to it is exactly the state this command used to call
   # healthy.
-  if console_up && funnel_on && bridge_up && lh_debug_up && [[ $missing -eq 0 ]]; then
+  if console_up && funnel_on && funnel_public && bridge_up && lh_debug_up && [[ $missing -eq 0 ]]; then
     printf "  ${LIME}everything is up${OFF}  ${MUTE}%s${OFF}\n" "$PUBLIC_URL"
   elif console_up; then
     printf "  ${AMBER}the app is up, part of the machine is not${OFF}  ${MUTE}run: stride${OFF}\n"
