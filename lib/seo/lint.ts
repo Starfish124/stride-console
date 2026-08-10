@@ -88,6 +88,14 @@ export const EMPTY_CONCLUSIONS: string[] = [
   "watch this space",
 ];
 
+// No rule here tries to catch a first-person claim about the company. It was
+// tried: "first person plus a quantity" is the shape of "we work in a first
+// block of two weeks", and it also flagged all 18 live articles, because "we
+// are two people in the Netherlands" is the house intro. A regex cannot tell a
+// true fact about this company from an invented one, and a gate that fires on
+// everything is a gate nobody reads. What would work is a fact sheet the writer
+// may assert from, checked against; that needs the founders to write it.
+
 function splitSentences(text: string): string[] {
   return text
     .split(/(?<=[.?!])\s+/)

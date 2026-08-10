@@ -354,7 +354,7 @@ Reply with the corrected JSON only.`;
   };
 }
 
-function buildArticle(
+export function buildArticle(
   brief: ArticleBrief,
   draft: ParsedArticle,
   sources: { title: string; url: string; publisher?: string }[],
@@ -364,6 +364,19 @@ function buildArticle(
   droppedSources: string[],
 ): SeoArticle {
   const violations = [...lintResult.violations];
+  // An article citing nothing is the writer's own memory presented as fact.
+  // Four of the Dutch articles reached the site this way; the uurtarief piece
+  // invented terms of business inside one of them. The sources are gathered
+  // before the draft is written, so having none is a failure of the draft, not
+  // a fact about the world.
+  if (sources.length === 0) {
+    violations.push({
+      rule: "uncited",
+      severity: "error",
+      excerpt: "(the article cites no sources at all)",
+      fix: "Cite the source material the brief was researched from, or cut the claims that need one.",
+    });
+  }
   if (droppedSources.length > 0) {
     violations.push({
       rule: "fabricatedSource",

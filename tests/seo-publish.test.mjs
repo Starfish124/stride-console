@@ -14,6 +14,7 @@ import {
   publish,
   publishArticle,
   publishedSlugs,
+  publishedKeywords,
   renderMarkdown,
 } from "../lib/seo/publish.ts";
 import {
@@ -339,4 +340,22 @@ test("publishedSlugs reads the site, and an unreadable repo is empty not fatal",
 
   // Failing closed here would stop the writer for a missing directory.
   assert.equal(publishedSlugs(path.join(dir, "nope")).size, 0);
+});
+
+test("publishedKeywords finds the terms a locale already owns", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stride-keywords-"));
+  const blog = path.join(dir, "content", "blog");
+  fs.mkdirSync(blog, { recursive: true });
+  const page = (kw) => `---\ntitle: x\nprimaryKeyword: "${kw}"\n---\n`;
+  fs.writeFileSync(path.join(blog, "ai-agent-tools-n8n.nl.md"), page("AI agents voor bedrijven"), "utf8");
+  fs.writeFileSync(path.join(blog, "wat-is-ai-consultant.nl.md"), page("wat is ai consultant"), "utf8");
+  fs.writeFileSync(path.join(blog, "ai-agent-pricing.en.md"), page("ai agent pricing"), "utf8");
+
+  const taken = publishedKeywords(dir, "nl");
+  // The real miss: a twin picked this term while it was already live, and the
+  // slug check could not see it because the twin's slug was free.
+  assert.ok(taken.has("ai agents voor bedrijven"), "matched case-insensitively");
+  assert.equal(taken.size, 2, "the English article is a different locale");
+  assert.equal(publishedKeywords(dir, "fr").size, 0);
+  assert.equal(publishedKeywords(path.join(dir, "nope"), "nl").size, 0);
 });

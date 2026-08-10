@@ -54,6 +54,7 @@ import {
   publish,
   publishArticle,
   publishedSlugs,
+  publishedKeywords,
   type ArticleOutcome,
 } from "./publish.ts";
 import { writeArticle } from "./article.ts";
@@ -688,10 +689,14 @@ export async function draftArticles(
     return true;
   }
 
+  // A term a live Dutch article already targets is off the table. The slug
+  // check below cannot catch this: a twin lands on the English article's slug,
+  // which is free, while the keyword it picked is already somebody's.
+  const takenDutch = config.dutchTwins ? publishedKeywords(config.siteRepo, "nl") : new Set<string>();
   const dutchTerms =
     config.dutchTwins
       ? listKeywords()
-          .filter((k) => k.locale === "nl")
+          .filter((k) => k.locale === "nl" && !takenDutch.has(k.term.trim().toLowerCase()))
           .map((k) => ({ term: k.term, opportunity: k.opportunity }))
       : [];
   // The twin check consults the site too, for the same reason the brief filter does.

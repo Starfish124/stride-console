@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  buildArticle,
   buildArticlePrompt,
   filterSources,
   parseArticleJson,
@@ -116,4 +117,42 @@ test("filterSources drops every citation when no sources were offered at all", (
   const { kept, dropped } = filterSources([{ title: "Ghost", url: "https://example.com/ghost" }], []);
   assert.equal(kept.length, 0);
   assert.equal(dropped.length, 1, "an article written from no sources cannot cite one");
+});
+
+// ---------- citations ----------
+//
+// Four Dutch articles reached the live site citing nothing at all, and the
+// voice gate passed every one of them at zero errors. It reads prose; it has
+// no view on whether the prose is sourced.
+
+const CLEAN_LINT = { violations: [], errors: 0, warns: 0, ok: true };
+const PLACEMENT = {
+  inTitle: true, inH1: true, inSlug: true, inDescription: true,
+  inFirstParagraph: true, inAnyHeading: true, occurrences: 1, missing: [], ok: true,
+};
+const DRAFT = {
+  title: "What an AI consultant for small business does",
+  description: "What the job is, and what it costs.",
+  body: "## What the job is\n\nThey watch how work moves, then automate two things.",
+  sources: [],
+};
+
+test("an article that cites nothing is held for a person", () => {
+  const built = buildArticle(
+    BRIEF, DRAFT, [], CLEAN_LINT, PLACEMENT, new Date("2026-08-10T00:00:00Z"), [],
+  );
+  const uncited = built.lint.violations.find((v) => v.rule === "uncited");
+  assert.ok(uncited, "no sources has to be an error, not a silent gap");
+  assert.equal(uncited.severity, "error");
+  assert.equal(built.lint.errors, 1, "and it must count, or publish still goes ahead");
+});
+
+test("a cited article is left alone", () => {
+  const built = buildArticle(
+    BRIEF, DRAFT,
+    [{ title: "Real article", url: "https://example.com/real", publisher: "Example" }],
+    CLEAN_LINT, PLACEMENT, new Date("2026-08-10T00:00:00Z"), [],
+  );
+  assert.equal(built.lint.violations.find((v) => v.rule === "uncited"), undefined);
+  assert.equal(built.lint.errors, 0);
 });

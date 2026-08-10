@@ -139,6 +139,32 @@ export function publishedSlugs(repo: string): Set<string> {
   }
 }
 
+/**
+ * The primary keyword every live article in one locale already owns.
+ *
+ * Two pages targeting one phrase is one page's traffic split in half, and the
+ * slug check cannot see it: the Dutch twin of "ai agent pricing models" landed
+ * on a free slug while its keyword, "ai agents voor bedrijven", was already the
+ * target of the live n8n article. Slugs and keywords are different questions.
+ *
+ * Read from the checkout for the same reason `publishedSlugs` is: the markdown
+ * is the record that survives a cleared data/ directory.
+ */
+export function publishedKeywords(repo: string, locale: string): Set<string> {
+  try {
+    const dir = path.join(repo, "content", "blog");
+    const terms = fs
+      .readdirSync(dir)
+      .filter((file) => file.endsWith(`.${locale}.md`))
+      .map((file) => /^primaryKeyword: "(.*)"$/m.exec(fs.readFileSync(path.join(dir, file), "utf8")))
+      .filter((m): m is RegExpExecArray => m !== null)
+      .map((m) => m[1].trim().toLowerCase());
+    return new Set(terms);
+  } catch {
+    return new Set();
+  }
+}
+
 export interface PublishOptions {
   repo: string;
   /** Push to the remote. Off means commit locally and stop. */
