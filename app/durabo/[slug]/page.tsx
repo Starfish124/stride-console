@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Header } from "@/components/ui";
 import { DuraboInterview } from "@/components/DuraboInterview";
 import { readEmployee, readFieldCard, readLive, readNotes, readRoster } from "@/lib/durabo/io";
+import { readTranscript } from "@/lib/durabo/audio";
 
 export const dynamic = "force-dynamic";
 
@@ -67,7 +68,14 @@ export default async function DuraboPersonPage({
             {row.interviewer ? ` · ${row.interviewer}` : ""}
           </p>
         </section>
-        <DuraboInterview slug={slug} steps={steps} initialLive={live} initialNotes={notes} prepHtml={doc.html} />
+        <DuraboInterview
+          slug={slug}
+          steps={steps}
+          initialLive={live}
+          initialNotes={notes}
+          initialTranscript={readTranscript(slug)}
+          prepHtml={doc.html}
+        />
       </main>
     </div>
   );

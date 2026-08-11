@@ -124,3 +124,29 @@ test("interviewPulse windows on the roster dates", async () => {
   assert.ok(eve && eve.total > 0);
   assert.equal(interviewPulse(new Date("2026-08-14T09:00:00")), undefined);
 });
+
+test("dutch subtitle hallucinations read as silence", async () => {
+  const { cleanTranscript } = await import("../lib/speech/whisper.ts");
+  assert.equal(cleanTranscript(" Ondertitels ingediend door de Amara.org gemeenschap"), "");
+  assert.equal(cleanTranscript("Ondertiteld door de Amara.org gemeenschap."), "");
+  assert.equal(
+    cleanTranscript("Ik werk elke ochtend de orderlijst bij in Exact."),
+    "Ik werk elke ochtend de orderlijst bij in Exact.",
+  );
+});
+
+test("audio segments land under data/ per person per day, sorted", async () => {
+  const os = await import("node:os");
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  const root = process.env.DURABO_DIR ?? path.join(os.homedir(), "ai-discovery-durabo");
+  if (!fs.existsSync(root)) return;
+  const { saveSegment, audioDir } = await import("../lib/durabo/audio.ts");
+  const slug = "abel-kleefstra";
+  const a = saveSegment(slug, 3671, "audio/mp4", new Uint8Array([1]));
+  const b = saveSegment(slug, 3691, "video/webm;codecs=opus", new Uint8Array([2]));
+  assert.ok(a.endsWith("seg-03671.m4a"));
+  assert.ok(b.endsWith("seg-03691.webm"));
+  assert.ok(a < b); // zero-padded names keep phone order on disk
+  fs.rmSync(path.join(audioDir(slug), ".."), { recursive: true, force: true });
+});

@@ -45,6 +45,12 @@ const HEARD_NOTHING = new Set([
   ".",
 ]);
 
+/**
+ * What multilingual whisper invents on Dutch silence: subtitle credits.
+ * The Amara line is the canonical one; anything crediting subtitlers is noise.
+ */
+const DUTCH_NOISE = /ondertitel(s|d|ing)?[^.]*(amara|gemeenschap|ingediend|door)|amara\.org/i;
+
 /** Trim whisper's output, and report silence as silence. */
 export function cleanTranscript(raw: string): string {
   const text = raw
@@ -53,7 +59,7 @@ export function cleanTranscript(raw: string): string {
     .replace(/\s+/g, " ")
     .trim();
   const bare = text.toLowerCase().replace(/[.!?,]+$/, "").trim();
-  if (bare.length === 0 || HEARD_NOTHING.has(bare)) return "";
+  if (bare.length === 0 || HEARD_NOTHING.has(bare) || DUTCH_NOISE.test(bare)) return "";
   return text;
 }
 
@@ -85,9 +91,14 @@ function run(bin: string, args: string[], timeoutMs: number): Promise<string> {
  * Chrome records webm/opus — so ffmpeg is asked to work it out rather than
  * being told. whisper wants 16kHz mono either way.
  */
-export async function transcribe(audio: Uint8Array): Promise<string> {
+export async function transcribe(
+  audio: Uint8Array,
+  opts: { language?: string; model?: string } = {},
+): Promise<string> {
   const ready = earsReady();
   if (!ready.ok) throw new Error(ready.problem);
+  const model = opts.model ?? WHISPER_MODEL;
+  if (opts.model && !existsSync(opts.model)) throw new Error("The requested whisper model is missing.");
 
   const stem = path.join(os.tmpdir(), `stride-hear-${randomUUID()}`);
   const upload = `${stem}.upload`;
@@ -99,11 +110,11 @@ export async function transcribe(audio: Uint8Array): Promise<string> {
     const raw = await run(
       WHISPER_BIN,
       [
-        "-m", WHISPER_MODEL,
+        "-m", model,
         "-f", wav,
         "-nt", // no timestamps, just the words
         "-np", // no progress banner on stderr
-        "--language", "en",
+        "--language", opts.language ?? "en",
       ],
       60_000,
     );

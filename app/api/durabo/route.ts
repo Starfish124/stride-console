@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { FOUNDER_COOKIE } from "@/lib/auth";
 import { appendNote, readLive, readNotes, readRoster, removeNoteBlock, requireSlug, updateLive } from "@/lib/durabo/io";
+import { readTranscript } from "@/lib/durabo/audio";
 
 // Both phones poll this during the interview days, so it answers from disk
 // only — no model calls, no git.
@@ -12,6 +13,7 @@ export async function GET(request: Request) {
       return NextResponse.json({
         live: readLive().interviews[slug] ?? { checked: {} },
         notes: readNotes(slug),
+        transcript: readTranscript(slug),
       });
     } catch {
       return NextResponse.json({ error: "Not on the roster." }, { status: 404 });

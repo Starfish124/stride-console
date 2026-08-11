@@ -28,6 +28,7 @@ export function DuraboRoster({
 }) {
   const [roster, setRoster] = useState(initialRoster);
   const [live, setLive] = useState(initialLive);
+  const [rebuilding, setRebuilding] = useState(false);
 
   useEffect(() => {
     const t = setInterval(async () => {
@@ -52,9 +53,31 @@ export function DuraboRoster({
 
   return (
     <div className="space-y-8">
-      <p className="eyebrow text-slate">
-        {done} van {scheduled.length} gedaan
-      </p>
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="eyebrow text-slate">
+          {done} van {scheduled.length} gedaan
+        </p>
+        <span className="flex-1" />
+        <a
+          href="/api/durabo/map"
+          target="_blank"
+          className="pressable rounded-full border border-line bg-white px-3 py-1.5 text-xs text-ink"
+        >
+          Kaart openen
+        </a>
+        <button
+          className="pressable rounded-full border border-line bg-white px-3 py-1.5 text-xs text-slate disabled:opacity-50"
+          disabled={rebuilding}
+          onClick={async () => {
+            setRebuilding(true);
+            const res = await fetch("/api/durabo/map", { method: "POST" }).catch(() => null);
+            setRebuilding(false);
+            if (res?.ok) window.open("/api/durabo/map", "_blank");
+          }}
+        >
+          {rebuilding ? "Herbouwt…" : "Herbouw kaart"}
+        </button>
+      </div>
       {days.map((day) => (
         <section key={day}>
           <h2 className="eyebrow mb-3 text-ink">

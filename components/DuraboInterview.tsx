@@ -3,29 +3,33 @@
 import { useEffect, useState } from "react";
 import type { CardStep } from "@/lib/durabo/parse";
 import type { LiveInterview } from "@/lib/durabo/io";
+import { DuraboRecorder } from "@/components/DuraboRecorder";
 
 // One interview, live: the 40-minute field card as a tickable checklist with
 // the clock running against each step's cumulative budget, the prep brief,
 // and typed notes that land in the discovery repo. Polls every 5s so the
 // other phone sees the same state.
 
-type Tab = "kaart" | "prep" | "notities";
+type Tab = "kaart" | "prep" | "notities" | "opname";
 
 export function DuraboInterview({
   slug,
   steps,
   initialLive,
   initialNotes,
+  initialTranscript,
   prepHtml,
 }: {
   slug: string;
   steps: CardStep[];
   initialLive: LiveInterview;
   initialNotes: string;
+  initialTranscript: string;
   prepHtml: string;
 }) {
   const [live, setLive] = useState(initialLive);
   const [notes, setNotes] = useState(initialNotes);
+  const [transcript, setTranscript] = useState(initialTranscript);
   const [tab, setTab] = useState<Tab>(live.startedAt && !live.finishedAt ? "kaart" : "prep");
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -40,6 +44,10 @@ export function DuraboInterview({
         const data = await res.json();
         setLive(data.live);
         setNotes(data.notes);
+        // The recording phone has fresher text from its own uploads; never
+        // let a stale poll shrink the transcript under it.
+        if (typeof data.transcript === "string")
+          setTranscript((cur) => (data.transcript.length > cur.length ? data.transcript : cur));
       } catch {
         // next poll catches up
       }
@@ -180,6 +188,14 @@ export function DuraboInterview({
         <button className={tabBtn("notities")} onClick={() => setTab("notities")}>
           Notities
         </button>
+        <button className={tabBtn("opname")} onClick={() => setTab("opname")}>
+          Opname
+        </button>
+      </div>
+
+      {/* Mounted whatever the tab, only hidden — unmounting kills the recorder. */}
+      <div className={tab === "opname" ? "" : "hidden"}>
+        <DuraboRecorder slug={slug} transcript={transcript} onTranscript={setTranscript} />
       </div>
 
       {tab === "kaart" && (

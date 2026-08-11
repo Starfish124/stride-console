@@ -51,3 +51,30 @@ manual follow-up after the interview days.
 the real field card parses to exactly 18 steps, renderer escapes HTML.
 Verified live: start → tick → note → file lands in the repo → phone-width
 screenshots of all three screens.
+
+## Addendum, same evening: opname, live transcript, insights, kaart
+
+- **Opname tab** (`components/DuraboRecorder.tsx` + `/api/durabo/audio` +
+  `lib/durabo/audio.ts`): the phone records in ~20s standalone takes
+  (MediaRecorder restarted per take — iOS Safari cannot produce a decodable
+  mid-stream chunk), each take posts to the Mac, whisper transcribes it in
+  Dutch, the transcript grows on both phones. Segments live under
+  `data/durabo-audio/<slug>/<date>/` (0600), seq = seconds-since-midnight,
+  5-digit pad. "Stop opname" concats to `interview.m4a` via ffmpeg. Screen
+  wake lock requested; a banner says out loud that locking the phone kills
+  the mic. App transcript is the live working feed — Granola stays the
+  transcript of record in `raw-transcripts/`.
+- **Dutch whisper**: `ggml-large-v3-turbo` (1.5GB) downloaded to the JARVIS
+  models dir; measured on the M4: a 13s Dutch clip transcribed
+  **word-perfect (incl. "Exact", "HS-codes") in 2.3s** including model load.
+  `transcribe()` in lib/speech/whisper.ts gained optional
+  `{language, model}`; `cleanTranscript` now drops the Dutch
+  subtitle-credits hallucination (Amara.org).
+- **"Wat missen we?"** (`/api/durabo/insight`): on demand only, qwen3:8b via
+  the existing Ollama caller, over live transcript + unticked steps + the
+  person's MAP-DATA sharp question + notes. Verified live: its first
+  suggestion WAS the sharp question. ~12s cold, model decides attention,
+  never fact.
+- **Kaart** (`/api/durabo/map`): GET serves Jort's generated
+  `Durabo-Map.html` byte-for-byte; POST reruns `Map/build_map.py`. Roster
+  page has open + rebuild buttons.
