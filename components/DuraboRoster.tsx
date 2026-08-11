@@ -58,12 +58,18 @@ export function DuraboRoster({
           {done} van {scheduled.length} gedaan
         </p>
         <span className="flex-1" />
+        <Link
+          href="/durabo/netwerk"
+          className="pressable rounded-full border border-line bg-white px-3 py-1.5 text-xs text-ink"
+        >
+          Netwerk
+        </Link>
         <a
           href="/api/durabo/map"
           target="_blank"
           className="pressable rounded-full border border-line bg-white px-3 py-1.5 text-xs text-ink"
         >
-          Kaart openen
+          Kaart
         </a>
         <button
           className="pressable rounded-full border border-line bg-white px-3 py-1.5 text-xs text-slate disabled:opacity-50"

@@ -60,6 +60,9 @@ export function cleanTranscript(raw: string): string {
     .trim();
   const bare = text.toLowerCase().replace(/[.!?,]+$/, "").trim();
   if (bare.length === 0 || HEARD_NOTHING.has(bare) || DUTCH_NOISE.test(bare)) return "";
+  // Pure tones and hums come back as strings of asterisks or dashes — output
+  // with no letter in it was not speech.
+  if (!/\p{L}/u.test(bare)) return "";
   return text;
 }
 

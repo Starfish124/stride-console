@@ -17,13 +17,19 @@ export async function POST(request: Request) {
     const bytes = new Uint8Array(await request.arrayBuffer());
     if (bytes.length < 1000) return NextResponse.json({ error: "Empty segment." }, { status: 400 });
     saveSegment(slug, seq, request.headers.get("content-type") ?? "", bytes);
-    const text = await transcribeSegment(slug, bytes);
+    // The audio is on disk from here on. A whisper hiccup must NOT read as a
+    // failed upload — the phone would resend and duplicate the segment — so
+    // transcription failure is a 200 with empty text and the words are
+    // recoverable later from the saved file.
+    let text = "";
+    try {
+      text = await transcribeSegment(slug, bytes);
+    } catch (e) {
+      console.error("[durabo transcribe]", e instanceof Error ? e.message : e);
+    }
     return NextResponse.json({ seq, text, transcript: readTranscript(slug) });
   } catch (e) {
-    const detail = e instanceof Error ? e.message : "";
-    // The one failure a founder can act on mid-interview is "model missing";
-    // the rest logs here and reads as a skipped segment on the phone.
-    console.error("[durabo audio]", detail);
-    return NextResponse.json({ error: "Segment kon niet verwerkt worden." }, { status: 500 });
+    console.error("[durabo audio]", e instanceof Error ? e.message : e);
+    return NextResponse.json({ error: "Segment kon niet opgeslagen worden." }, { status: 500 });
   }
 }

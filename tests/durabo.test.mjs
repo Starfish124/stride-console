@@ -150,3 +150,35 @@ test("audio segments land under data/ per person per day, sorted", async () => {
   assert.ok(a < b); // zero-padded names keep phone order on disk
   fs.rmSync(path.join(audioDir(slug), ".."), { recursive: true, force: true });
 });
+
+test("network edges come from names in in_from/out_to prose", async () => {
+  const { matchEdges } = await import("../lib/durabo/network.ts");
+  const rows = [
+    { slug: "abel-kleefstra", name: "Abel Kleefstra", department: "Supply" },
+    { slug: "collette-o-kane", name: "Collette O'Kane", department: "Buying" },
+    { slug: "eric-markus", name: "Eric Markus", department: "Sales" },
+    { slug: "erik-smit", name: "Erik Smit", department: "Leadership" },
+  ];
+  const links = matchEdges(rows, {
+    "abel-kleefstra": {
+      in_from: "briefing van Collette (wekelijks), orders via mail",
+      out_to: "status naar Eric Markus",
+    },
+    "erik-smit": { in_from: "rapportage van eric" },
+  });
+  const keys = links.map((l) => `${l.from}→${l.to}`).sort();
+  assert.deepEqual(keys, [
+    "abel-kleefstra→eric-markus",
+    "collette-o-kane→abel-kleefstra",
+    "eric-markus→erik-smit",
+  ]);
+  // "eric" must not match Erik Smit, and nobody links to themselves.
+  assert.ok(!keys.some((k) => k.startsWith("erik-smit→") || k === "erik-smit→erik-smit"));
+});
+
+test("letterless whisper output (tones, hums) reads as silence", async () => {
+  const { cleanTranscript } = await import("../lib/speech/whisper.ts");
+  assert.equal(cleanTranscript("***"), "");
+  assert.equal(cleanTranscript("*** ---"), "");
+  assert.equal(cleanTranscript("Aha, ok."), "Aha, ok.");
+});

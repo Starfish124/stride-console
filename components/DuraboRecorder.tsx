@@ -33,6 +33,10 @@ export function DuraboRecorder({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const liveRef = useRef(false);
   const wakeRef = useRef<{ release: () => Promise<void> } | null>(null);
+  // Segments the Mac has not confirmed yet. A dropped request on the Funnel
+  // must never cost audio: the blob stays here and retries until a 2xx.
+  const queueRef = useRef<{ seq: number; blob: Blob }[]>([]);
+  const drainingRef = useRef(false);
 
   useEffect(() => () => stop(), []);
 
@@ -42,27 +46,41 @@ export function DuraboRecorder({
     return d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
   }
 
-  async function upload(blob: Blob) {
-    setPending((p) => p + 1);
-    try {
-      const res = await fetch(`/api/durabo/audio?slug=${encodeURIComponent(slug)}&seq=${seq()}`, {
-        method: "POST",
-        headers: { "Content-Type": blob.type || "application/octet-stream" },
-        body: blob,
-      });
-      if (res.ok) {
+  function enqueue(blob: Blob) {
+    queueRef.current.push({ seq: seq(), blob });
+    setPending(queueRef.current.length);
+    void drain();
+  }
+
+  // One segment at a time, in order; on failure wait and try the same one
+  // again. Serial on purpose — parallel retries would race whisper on the Mac
+  // and can land segments out of order in the transcript.
+  async function drain() {
+    if (drainingRef.current) return;
+    drainingRef.current = true;
+    while (queueRef.current.length > 0) {
+      const item = queueRef.current[0];
+      try {
+        const res = await fetch(`/api/durabo/audio?slug=${encodeURIComponent(slug)}&seq=${item.seq}`, {
+          method: "POST",
+          headers: { "Content-Type": item.blob.type || "application/octet-stream" },
+          body: item.blob,
+        });
+        if (!res.ok) throw new Error(String(res.status));
         const data = await res.json();
         if (typeof data.transcript === "string") onTranscript(data.transcript);
+        queueRef.current.shift();
         setSegments((n) => n + 1);
+        setPending(queueRef.current.length);
         setError("");
-      } else {
-        setError("Segment niet verwerkt — opname loopt door, transcript mist een stuk.");
+      } catch {
+        setError(
+          `Upload hapert — ${queueRef.current.length} segment(en) in de wachtrij, niets gaat verloren. Opnieuw over 8s.`,
+        );
+        await new Promise((r) => setTimeout(r, 8000));
       }
-    } catch {
-      setError("Upload haperde — opname loopt door, transcript mist een stuk.");
-    } finally {
-      setPending((p) => p - 1);
     }
+    drainingRef.current = false;
   }
 
   function take(stream: MediaStream) {
@@ -70,7 +88,7 @@ export function DuraboRecorder({
     const chunks: Blob[] = [];
     rec.ondataavailable = (e) => e.data.size > 0 && chunks.push(e.data);
     rec.onstop = () => {
-      if (chunks.length > 0) void upload(new Blob(chunks, { type: rec.mimeType }));
+      if (chunks.length > 0) enqueue(new Blob(chunks, { type: rec.mimeType }));
       if (liveRef.current) take(stream);
     };
     recRef.current = rec;
@@ -106,6 +124,12 @@ export function DuraboRecorder({
 
   async function finish() {
     stop();
+    // The last take lands in the queue via onstop; give it a beat, then wait
+    // for the queue to empty so the concat sees every segment.
+    await new Promise((r) => setTimeout(r, 300));
+    while (queueRef.current.length > 0 || drainingRef.current) {
+      await new Promise((r) => setTimeout(r, 500));
+    }
     await fetch(`/api/durabo/audio?slug=${encodeURIComponent(slug)}&action=finish`, { method: "POST" }).catch(
       () => {},
     );
@@ -150,7 +174,7 @@ export function DuraboRecorder({
         <span className="text-xs text-slate">
           {recording ? "Neemt op — scherm aan laten, tab open houden." : "Audio blijft op de Mac."}
           {segments > 0 ? ` · ${segments} segmenten` : ""}
-          {pending > 0 ? " · verwerken…" : ""}
+          {pending > 0 ? ` · ${pending} in de wachtrij` : ""}
         </span>
       </div>
       {recording && (
