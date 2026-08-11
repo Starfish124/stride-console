@@ -15,6 +15,8 @@ const TONE: Record<string, string> = {
   synthesized: "bg-violet/15 text-violet",
   scheduled: "bg-line/40 text-slate",
   excluded: "bg-line/40 text-slate/60",
+  gestopt: "bg-amber/15 text-amber",
+  "niet-verschenen": "bg-line/40 text-slate/60",
 };
 
 export function DuraboRoster({

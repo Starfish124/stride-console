@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { addEvent } from "@/lib/store";
+import { addEvent, removeEvent } from "@/lib/store";
 
 /** Create an event. The T-6-weeks checklist is generated from the date. */
 export async function POST(request: Request) {
@@ -19,4 +19,14 @@ export async function POST(request: Request) {
   }
   const event = addEvent({ title, date, venue, capacity: Math.round(capacity) });
   return NextResponse.json(event);
+}
+
+/** Remove an event. Signups live in their own store and are kept — they are
+ *  people who signed up, not a property of the card that listed them. */
+export async function DELETE(request: Request) {
+  const id = new URL(request.url).searchParams.get("id") ?? "";
+  if (!removeEvent(id)) {
+    return NextResponse.json({ error: "No such event." }, { status: 404 });
+  }
+  return NextResponse.json({ ok: true });
 }

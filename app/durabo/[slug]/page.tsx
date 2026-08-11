@@ -12,8 +12,18 @@ export default async function DuraboPersonPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const row = readRoster().find((r) => r.slug === slug);
+  const roster = readRoster();
+  const row = roster.find((r) => r.slug === slug);
   if (!row) notFound();
+
+  // Neighbours in interview order, so a day of back-to-back conversations
+  // never has to go via the roster between two people.
+  const order = roster
+    .filter((r) => r.date)
+    .sort((a, b) => `${a.date} ${a.time ?? ""}`.localeCompare(`${b.date} ${b.time ?? ""}`));
+  const at = order.findIndex((r) => r.slug === slug);
+  const prev = at > 0 ? order[at - 1] : undefined;
+  const next = at >= 0 && at < order.length - 1 ? order[at + 1] : undefined;
 
   const doc = readEmployee(slug);
   const steps = readFieldCard();
@@ -25,9 +35,31 @@ export default async function DuraboPersonPage({
       <Header />
       <main className="mx-auto max-w-3xl px-6 pb-20">
         <section className="py-8">
-          <Link href="/durabo" className="eyebrow text-slate">
-            ← Durabo · rooster
-          </Link>
+          <div className="flex items-center justify-between gap-3">
+            <Link href="/durabo" className="eyebrow text-slate">
+              ← Durabo · rooster
+            </Link>
+            <span className="flex items-center gap-2">
+              {prev && (
+                <Link
+                  href={`/durabo/${prev.slug}`}
+                  title={`${prev.time ?? ""} ${prev.name}`}
+                  className="pressable rounded-full border border-line bg-white px-3 py-1.5 text-xs text-slate hover:text-indigo"
+                >
+                  ← {prev.name.split(" ")[0]}
+                </Link>
+              )}
+              {next && (
+                <Link
+                  href={`/durabo/${next.slug}`}
+                  title={`${next.time ?? ""} ${next.name}`}
+                  className="pressable rounded-full border border-line bg-white px-3 py-1.5 text-xs text-slate hover:text-indigo"
+                >
+                  {next.name.split(" ")[0]} →
+                </Link>
+              )}
+            </span>
+          </div>
           <h1 className="title-large mt-3 text-ink">{row.name}</h1>
           <p className="mt-1 text-slate">
             {row.department}

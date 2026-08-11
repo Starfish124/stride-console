@@ -2,6 +2,7 @@ import Link from "next/link";
 import { listEvents, listSignups } from "@/lib/store";
 import { Header } from "@/components/ui";
 import { EventCreateForm } from "@/components/EventCreateForm";
+import { DeleteX } from "@/components/DeleteX";
 import { Ramp } from "@/components/Ramp";
 
 export const dynamic = "force-dynamic";
@@ -41,10 +42,10 @@ export default async function EventsPage() {
                 {events.map((e, i) => {
                   const done = e.checklist.filter((c) => c.done).length;
                   return (
-                    <li key={e.id} className={i > 0 ? "border-t border-line" : ""}>
+                    <li key={e.id} className={`flex items-center pr-3 ${i > 0 ? "border-t border-line" : ""}`}>
                       <Link
                         href={`/events/${e.id}`}
-                        className="flex items-center gap-4 px-5 py-4 hover:bg-paper"
+                        className="flex flex-1 items-center gap-4 px-5 py-4 hover:bg-paper"
                       >
                         <span className="flex-1">
                           <span className="block text-sm font-semibold text-ink">
@@ -63,6 +64,11 @@ export default async function EventsPage() {
                           {done}/{e.checklist.length}
                         </span>
                       </Link>
+                      <DeleteX
+                        url={`/api/events?id=${encodeURIComponent(e.id)}`}
+                        ask={`Delete "${e.title}"? The checklist goes with it; signups stay in the bank.`}
+                        label="Delete this event"
+                      />
                     </li>
                   );
                 })}

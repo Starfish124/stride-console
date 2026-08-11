@@ -110,6 +110,14 @@ export function addMyth(text: string, addedBy?: string): Myth {
   return myth;
 }
 
+export function removeMyth(id: string): boolean {
+  const myths = listMyths();
+  const left = myths.filter((m) => m.id !== id);
+  if (left.length === myths.length) return false;
+  saveMyths(left);
+  return true;
+}
+
 export function takeOldestUnusedMyth(): Myth | undefined {
   const myths = listMyths();
   const candidate = myths
@@ -273,6 +281,14 @@ export function addEvent(input: {
   };
   writeJson(FILES.events, [event, ...listEvents()]);
   return event;
+}
+
+export function removeEvent(id: string): boolean {
+  const events = listEvents();
+  const left = events.filter((e) => e.id !== id);
+  if (left.length === events.length) return false;
+  writeJson(FILES.events, left);
+  return true;
 }
 
 export function setChecklistItem(

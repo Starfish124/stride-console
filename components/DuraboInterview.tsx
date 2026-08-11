@@ -58,7 +58,11 @@ export function DuraboInterview({
       body: JSON.stringify({ slug, ...body }),
     });
     setBusy(false);
-    if (res.ok) setLive((await res.json()).live);
+    if (res.ok) {
+      const data = await res.json();
+      setLive(data.live);
+      if (typeof data.notes === "string") setNotes(data.notes);
+    }
     return res.ok;
   }
 
@@ -73,6 +77,13 @@ export function DuraboInterview({
 
   const tabBtn = (t: Tab) =>
     `rounded-full px-3 py-1.5 text-sm ${tab === t ? "bg-ink text-white" : "text-slate"}`;
+
+  // The notes file is a title line plus one bold-stamped block per note.
+  // Split on the stamps so each note can be shown — and removed — on its own.
+  const noteBlocks = notes
+    .split(/\n(?=\*\*)/)
+    .map((b) => b.replace(/^#[^\n]*\n?/, "").trim())
+    .filter(Boolean);
 
   return (
     <div>
@@ -103,15 +114,61 @@ export function DuraboInterview({
             {live.finishedAt ? "Hervat" : "Start interview"}
           </button>
         ) : (
-          <button
-            className="pressable rounded-full border border-line px-4 py-2 text-sm font-medium text-ink disabled:opacity-50"
-            disabled={busy}
-            onClick={() => void act({ action: "finish" })}
-          >
-            Rond af
-          </button>
+          <>
+            <button
+              className="pressable rounded-full border border-line px-3 py-2 text-sm font-medium text-amber disabled:opacity-50"
+              disabled={busy}
+              onClick={() => {
+                if (confirm("Interview stoppen? De klok bevriest en het rooster zegt 'gestopt'.")) {
+                  void act({ action: "stop" });
+                }
+              }}
+            >
+              Stop
+            </button>
+            <button
+              className="pressable rounded-full border border-line px-4 py-2 text-sm font-medium text-ink disabled:opacity-50"
+              disabled={busy}
+              onClick={() => void act({ action: "finish" })}
+            >
+              Rond af
+            </button>
+          </>
         )}
       </div>
+
+      {/* What happened, and the ways to say otherwise. Only the states that
+          make sense right now are offered: a no-show before the clock ran,
+          a redo once anything is on the record. Notes stay — opnieuw wist de
+          klok en de vinkjes, niet wat er is opgeschreven. */}
+      {!running && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          {live.status === "gestopt" && <span className="rounded-full bg-amber/15 px-2.5 py-1 text-xs text-amber">gestopt</span>}
+          {live.status === "niet-verschenen" && <span className="rounded-full bg-line/40 px-2.5 py-1 text-xs text-slate">niet verschenen</span>}
+          {!live.startedAt && live.status !== "niet-verschenen" && (
+            <button
+              className="pressable rounded-full border border-line px-3 py-1.5 text-xs text-slate disabled:opacity-50"
+              disabled={busy}
+              onClick={() => void act({ action: "status", status: "niet-verschenen" })}
+            >
+              Niet verschenen
+            </button>
+          )}
+          {(live.startedAt || live.status) && (
+            <button
+              className="pressable rounded-full border border-line px-3 py-1.5 text-xs text-slate disabled:opacity-50"
+              disabled={busy}
+              onClick={() => {
+                if (confirm("Opnieuw beginnen? Klok, vinkjes en status gaan terug naar nul. Notities blijven staan.")) {
+                  void act({ action: "reset" });
+                }
+              }}
+            >
+              Opnieuw
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="mb-5 flex gap-1">
         <button className={tabBtn("kaart")} onClick={() => setTab("kaart")}>
@@ -188,8 +245,27 @@ export function DuraboInterview({
               Bewaar
             </button>
           </form>
-          {notes ? (
-            <pre className="whitespace-pre-wrap font-sans text-sm text-ink">{notes}</pre>
+          {noteBlocks.length > 0 ? (
+            <ul className="inset-group">
+              {noteBlocks.map((block, i) => (
+                <li key={i} className="flex items-start gap-2 px-4 py-3">
+                  <pre className="min-w-0 flex-1 whitespace-pre-wrap font-sans text-sm text-ink">{block}</pre>
+                  <button
+                    type="button"
+                    title="Verwijder deze notitie"
+                    className="pressable -mr-1 shrink-0 rounded px-1.5 py-0.5 text-sm text-mute hover:text-amber disabled:opacity-50"
+                    disabled={busy}
+                    onClick={() => {
+                      if (confirm("Deze notitie verwijderen? Ook uit de repo.")) {
+                        void act({ action: "unnote", text: block });
+                      }
+                    }}
+                  >
+                    ✕
+                  </button>
+                </li>
+              ))}
+            </ul>
           ) : (
             <p className="text-sm text-slate">Nog geen notities voor vandaag.</p>
           )}

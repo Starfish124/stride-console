@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { FOUNDER_COOKIE } from "@/lib/auth";
-import { appendNote, readLive, readNotes, readRoster, requireSlug, updateLive } from "@/lib/durabo/io";
+import { appendNote, readLive, readNotes, readRoster, removeNoteBlock, requireSlug, updateLive } from "@/lib/durabo/io";
 
 // Both phones poll this during the interview days, so it answers from disk
 // only — no model calls, no git.
@@ -67,11 +67,39 @@ export async function POST(request: Request) {
         appendNote(slug, text, by);
         break;
       }
+      case "unnote": {
+        const block = typeof body.text === "string" ? body.text : "";
+        if (!removeNoteBlock(slug, block)) {
+          return NextResponse.json({ error: "No such note." }, { status: 404 });
+        }
+        break;
+      }
+      // Stopped early: the clock freezes and the roster says so. Distinct from
+      // "finish", which means the conversation ran its course.
+      case "stop":
+        updateLive(slug, (i) => {
+          i.finishedAt = new Date().toISOString();
+          i.status = "gestopt";
+        });
+        break;
+      // Redo from zero: clock, ticks and status all cleared, so the roster
+      // falls back to what the repo says about this person.
+      case "reset":
+        updateLive(slug, (i) => {
+          i.startedAt = undefined;
+          i.finishedAt = undefined;
+          i.status = undefined;
+          i.checked = {};
+        });
+        break;
       default:
         return NextResponse.json({ error: "Unknown action." }, { status: 400 });
     }
   } catch {
     return NextResponse.json({ error: "Not on the roster." }, { status: 404 });
   }
-  return NextResponse.json({ live: readLive().interviews[slug] ?? { checked: {} } });
+  return NextResponse.json({
+    live: readLive().interviews[slug] ?? { checked: {} },
+    notes: readNotes(slug),
+  });
 }

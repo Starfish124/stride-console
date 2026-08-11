@@ -104,6 +104,29 @@ export function interviewPulse(today = new Date()): { done: number; total: numbe
   return { done, total: slots.length };
 }
 
+/**
+ * Remove one note block from today's notes file, matched on its exact text.
+ * The stamp + author in each block make collisions unlikely; if two notes are
+ * character-identical anyway, one goes and the other stays, which is right.
+ */
+export function removeNoteBlock(slug: string, block: string): boolean {
+  requireSlug(slug);
+  const file = notesFile(slug);
+  const wanted = block.trim();
+  if (!wanted) return false;
+  let text: string;
+  try {
+    text = fs.readFileSync(file, "utf8");
+  } catch {
+    return false;
+  }
+  const at = text.indexOf(wanted);
+  if (at === -1) return false;
+  const cut = (text.slice(0, at) + text.slice(at + wanted.length)).replace(/\n{3,}/g, "\n\n");
+  fs.writeFileSync(file, cut, "utf8");
+  return true;
+}
+
 export function appendNote(slug: string, text: string, by?: string): void {
   const row = requireSlug(slug);
   const file = notesFile(slug);
