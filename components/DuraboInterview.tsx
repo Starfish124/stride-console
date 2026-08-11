@@ -72,7 +72,7 @@ export function DuraboInterview({
   const firstOpen = steps.find((s) => !live.checked?.[String(s.num)])?.num;
 
   const tabBtn = (t: Tab) =>
-    `rounded-full px-3 py-1.5 text-sm ${tab === t ? "bg-ink text-paper" : "text-slate"}`;
+    `rounded-full px-3 py-1.5 text-sm ${tab === t ? "bg-ink text-white" : "text-slate"}`;
 
   return (
     <div>
