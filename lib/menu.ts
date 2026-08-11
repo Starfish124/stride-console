@@ -223,6 +223,12 @@ export const MENU: MenuSection[] = [
         hint: "Every codebase and every session that worked on one, in one map.",
         icon: "IconBranch",
       },
+      {
+        href: "/durabo",
+        label: "Durabo interviews",
+        hint: "The discovery interview days, live: schedule, field card, notes.",
+        icon: "IconTime",
+      },
     ],
   },
   {
