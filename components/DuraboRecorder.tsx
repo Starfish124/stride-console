@@ -201,7 +201,15 @@ export function DuraboRecorder({
       )}
 
       {transcript ? (
-        <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-ink">{transcript}</pre>
+        <div className="space-y-3">
+          <a
+            className="pressable inline-block rounded-full border border-line bg-white px-4 py-2 text-sm font-medium text-ink hover:text-indigo"
+            href={`/api/durabo/pdf?slug=${slug}`}
+          >
+            Exporteer transcript als PDF
+          </a>
+          <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-ink">{transcript}</pre>
+        </div>
       ) : (
         <p className="text-sm text-slate">
           Nog geen transcript. Start de opname; elke ~20 seconden verschijnen de woorden hier en op de

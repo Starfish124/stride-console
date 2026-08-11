@@ -72,7 +72,7 @@ export async function transcribeSegment(slug: string, bytes: Uint8Array): Promis
   return text;
 }
 
-function run(bin: string, args: string[], timeoutMs: number): Promise<void> {
+export function run(bin: string, args: string[], timeoutMs: number): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(bin, args, { stdio: ["ignore", "ignore", "pipe"] });
     const err: Buffer[] = [];
@@ -85,7 +85,7 @@ function run(bin: string, args: string[], timeoutMs: number): Promise<void> {
     child.on("close", (code) => {
       clearTimeout(timer);
       if (code === 0) resolve();
-      else reject(new Error(Buffer.concat(err).toString("utf8").trim() || `ffmpeg exited ${code}.`));
+      else reject(new Error(Buffer.concat(err).toString("utf8").trim() || `${path.basename(bin)} exited ${code}.`));
     });
   });
 }
