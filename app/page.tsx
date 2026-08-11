@@ -13,6 +13,7 @@ import { listAudits, listKeywords } from "@/lib/seo/store";
 import { unhandledCount } from "@/lib/outreach/replies";
 import { buildCalendar, overdue, todayISO, upcoming } from "@/lib/calendar";
 import { buildQuickMenu, buildStats } from "@/lib/dashboard";
+import { interviewPulse } from "@/lib/durabo/io";
 import { Header } from "@/components/ui";
 import { Ramp } from "@/components/Ramp";
 import { RecipeCard } from "@/components/RecipeCard";
@@ -95,6 +96,7 @@ export default async function Dashboard() {
     draftsWaiting,
     seoFindings,
     toBuild: listNotes().filter((n) => n.lane === "todo").length,
+    interviews: interviewPulse(),
   });
 
   // Only pages that answered. A route that returned 404 has no on-page score

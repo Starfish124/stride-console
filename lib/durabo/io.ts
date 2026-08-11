@@ -9,7 +9,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { DATA_DIR, readJson, writeJson } from "@/lib/store";
+import { DATA_DIR, readJson, writeJson } from "../store.ts";
 import { parseEmployeeDoc, parseFieldCard, parseRoster, type CardStep, type EmployeeDoc, type RosterRow } from "./parse.ts";
 
 export function duraboRoot(): string {
@@ -78,6 +78,30 @@ export function readNotes(slug: string): string {
   } catch {
     return "";
   }
+}
+
+/**
+ * For the front-page tile: interview slots falling today or tomorrow, and how
+ * many are done. Undefined outside that window (or with the repo missing), so
+ * the tile removes itself after the engagement days.
+ */
+export function interviewPulse(today = new Date()): { done: number; total: number } | undefined {
+  let rows;
+  try {
+    rows = readRoster();
+  } catch {
+    return undefined;
+  }
+  const day = (offset: number) =>
+    new Date(today.getTime() + offset * 86_400_000).toISOString().slice(0, 10);
+  const window = [day(0), day(1)];
+  const live = readLive().interviews;
+  const slots = rows.filter((r) => r.date && window.includes(r.date));
+  if (slots.length === 0) return undefined;
+  const done = slots.filter((r) =>
+    ["interviewed", "artifacts-received", "synthesized"].includes(live[r.slug]?.status ?? r.status),
+  ).length;
+  return { done, total: slots.length };
 }
 
 export function appendNote(slug: string, text: string, by?: string): void {

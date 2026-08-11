@@ -104,6 +104,8 @@ export interface QuickMenuInput {
   draftsWaiting: number;
   seoFindings: number;
   toBuild: number;
+  /** Present only while Durabo interview slots fall today or tomorrow. */
+  interviews?: { done: number; total: number };
 }
 
 /**
@@ -115,7 +117,25 @@ export interface QuickMenuInput {
  * problem, an unanswered reply is.
  */
 export function buildQuickMenu(input: QuickMenuInput): QuickTile[] {
+  // Interview days outrank everything else on the grid while they last —
+  // the tile exists only when input.interviews does, so it removes itself.
+  const interviews: QuickTile[] = input.interviews
+    ? [
+        {
+          label: "Durabo",
+          href: "/durabo",
+          icon: "IconTime",
+          count: input.interviews.total - input.interviews.done,
+          note:
+            input.interviews.total - input.interviews.done === 0
+              ? "all interviewed"
+              : "interviews to go",
+          tone: input.interviews.total - input.interviews.done === 0 ? "good" : "warn",
+        },
+      ]
+    : [];
   return [
+    ...interviews,
     {
       label: "Replies",
       href: "/outreach",

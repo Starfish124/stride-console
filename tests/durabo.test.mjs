@@ -98,3 +98,29 @@ secret json block
 test("markdown renderer escapes html", () => {
   assert.ok(!mdToHtml("Hello <script>alert(1)</script>").includes("<script>"));
 });
+
+test("front-page tile: only while slots fall today or tomorrow", async () => {
+  const { buildQuickMenu } = await import("../lib/dashboard.ts");
+  const QUIET = { replies: 0, clients: 0, late: 0, draftsWaiting: 0, seoFindings: 0, toBuild: 0 };
+  assert.equal(buildQuickMenu(QUIET).find((t) => t.label === "Durabo"), undefined);
+  const busy = buildQuickMenu({ ...QUIET, interviews: { done: 3, total: 10 } });
+  const tile = busy.find((t) => t.label === "Durabo");
+  assert.equal(tile.count, 7);
+  assert.equal(tile.tone, "warn");
+  assert.equal(busy[0].label, "Durabo");
+  const done = buildQuickMenu({ ...QUIET, interviews: { done: 10, total: 10 } });
+  assert.equal(done.find((t) => t.label === "Durabo").tone, "good");
+});
+
+test("interviewPulse windows on the roster dates", async () => {
+  const { interviewPulse } = await import("../lib/durabo/io.ts");
+  const fs = await import("node:fs");
+  const os = await import("node:os");
+  const path = await import("node:path");
+  const root = path.join(process.env.DURABO_DIR ?? path.join(os.homedir(), "ai-discovery-durabo"));
+  if (!fs.existsSync(root)) return;
+  // 11 Aug: tomorrow has slots -> tile. 14 Aug: window empty -> gone.
+  const eve = interviewPulse(new Date("2026-08-11T20:00:00"));
+  assert.ok(eve && eve.total > 0);
+  assert.equal(interviewPulse(new Date("2026-08-14T09:00:00")), undefined);
+});
