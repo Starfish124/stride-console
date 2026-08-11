@@ -30,7 +30,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#F6F7FA",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F6F7FA" },
+    { media: "(prefers-color-scheme: dark)", color: "#0A0C14" },
+  ],
   // The chrome is translucent and content scrolls under it, so the page has
   // to own the safe areas rather than let iOS letterbox them.
   viewportFit: "cover",

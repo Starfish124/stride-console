@@ -765,3 +765,78 @@ main {
   font-family: var(--font-mono);
   font-size: 0.85em;
 }
+
+/* ——— dark ———————————————————————————————————————————————————————
+ *
+ * The console follows the system, the way a native app does: no toggle, no
+ * stored preference, no flash of the wrong theme on load. `screen and` keeps
+ * print out of it — the client one-pager prints light whatever the OS says.
+ *
+ * Only tokens flip. `white` never does (text-white lives on indigo buttons
+ * and ink blocks in both themes), so the utilities that used white as a
+ * surface are re-pointed at the card token instead.
+ */
+@media screen and (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --color-ink: #e8eaf2;
+    --color-slate: #9aa1b5;
+    --color-mute: #6e7488;
+    --color-paper: #0a0c14;
+    --color-line: #23273b;
+    --color-card: #141826;
+    --color-indigo-tint: #1a1c48;
+    /* Stride blue at #2e30f8 reads 2.7:1 against midnight — gone as text.
+       The library's violet holds ~5:1 here and ~4:1 under white button
+       text, so in the dark the brand speaks one step up its own family. */
+    --color-indigo: #6d6ffa;
+    --color-indigo-deep: #5658fa;
+  }
+
+  /* bg-white is the card surface, not the colour white — see above. */
+  .bg-white {
+    background-color: var(--color-card);
+  }
+
+  .bg-white\/80,
+  .bg-white\/85,
+  .bg-white\/90,
+  .bg-white\/95 {
+    background-color: color-mix(in srgb, var(--color-card) 88%, transparent);
+  }
+
+  /* Ink blocks stay dark plates rather than inverting to light — their
+     text-white children depend on it. */
+  .bg-ink {
+    background-color: var(--color-card);
+  }
+
+  .material {
+    background: color-mix(in srgb, var(--color-card) 88%, transparent);
+  }
+
+  /* Glass in the dark: the lit lip dims to a hairline and the shadow works
+     harder, because there is less ambient light doing the separating. */
+  .card-glass {
+    background-image: linear-gradient(180deg, #181c2e 0%, #131627 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 1px 1px rgba(0, 0, 0, 0.2),
+      0 10px 24px -16px rgba(0, 0, 0, 0.6);
+  }
+
+  .card-raised {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 1px 2px rgba(0, 0, 0, 0.25),
+      0 18px 40px -20px rgba(0, 0, 0, 0.7);
+  }
+
+  @media (hover: hover) {
+    .card-lift:hover {
+      box-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.25),
+        0 12px 28px -12px rgba(0, 0, 0, 0.6);
+    }
+  }
+}

@@ -12,18 +12,24 @@ import { BRAND } from "@/lib/brand";
  * artwork uses is a redraw by another route.
  */
 export function Wordmark({ height = 26 }: { height?: number }) {
+  // The dark variant is the same artwork with the ink recoloured to the dark
+  // theme's ink — the mark itself is untouched, so this is a reversed lockup,
+  // not a redraw. Both render and CSS picks one; a ~22KB PNG is cheaper than
+  // a flash of the wrong logo while script decides.
+  const common = {
+    alt: "StrideAI",
+    width: Math.round(height * (660 / 161)),
+    height,
+    // Next 16 deprecated `priority` for this. The lockup is above the fold on
+    // every screen, so it should never be the thing that pops in late.
+    preload: true,
+    style: { height },
+  } as const;
   return (
-    <Image
-      src="/brand/strideai.png"
-      alt="StrideAI"
-      width={Math.round(height * (660 / 161))}
-      height={height}
-      // Next 16 deprecated `priority` for this. The lockup is above the fold on
-      // every screen, so it should never be the thing that pops in late.
-      preload
-      className="w-auto"
-      style={{ height }}
-    />
+    <>
+      <Image src="/brand/strideai.png" className="w-auto dark:hidden" {...common} />
+      <Image src="/brand/strideai-dark.png" className="hidden w-auto dark:block" {...common} />
+    </>
   );
 }
 
