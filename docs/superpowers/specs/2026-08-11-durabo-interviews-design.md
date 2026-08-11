@@ -78,3 +78,21 @@ screenshots of all three screens.
 - **Kaart** (`/api/durabo/map`): GET serves Jort's generated
   `Durabo-Map.html` byte-for-byte; POST reruns `Map/build_map.py`. Roster
   page has open + rebuild buttons.
+
+## Addendum 2: netwerk map + recording hardened
+
+- **/durabo/netwerk** — the who-feeds-whom graph as a server-rendered SVG.
+  Nodes = roster in department sectors; edges = roster names spotted in each
+  dossier's MAP-DATA `in_from`/`out_to` prose (`matchEdges`,
+  lib/durabo/network.ts — "Eric" never matches "Erik Smit", pinned). Empty
+  dossiers draw as dashed open rings (the red-gap rule). Merel Bos has no
+  employee file so she is not a node; the paper network grid deliberately
+  does include her and stays the complete measurement.
+- **Recording hardening** — phone-side serial retry queue (a dropped Funnel
+  request keeps the blob and retries every 8s; nothing is lost), server
+  saves the segment BEFORE whisper so a transcription failure is 200 with
+  empty text (never resend-and-duplicate), finish drains the queue before
+  concat. E2E-proven in headless Chrome with
+  `--use-fake-device-for-media-stream`: 3 ordered segments → transcript →
+  interview.m4a. The fake mic's tone exposed whisper emitting `***`;
+  letterless output now reads as silence (pinned).
