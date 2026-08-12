@@ -229,6 +229,12 @@ export const MENU: MenuSection[] = [
         hint: "The discovery interview days, live: schedule, field card, notes.",
         icon: "IconTime",
       },
+      {
+        href: "/durabo/netwerk",
+        label: "Durabo netwerk",
+        hint: "Who feeds whom, drawn live from the interview dossiers as they fill.",
+        icon: "IconBranch",
+      },
     ],
   },
   {
