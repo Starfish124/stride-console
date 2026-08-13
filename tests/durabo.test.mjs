@@ -151,6 +151,23 @@ test("audio segments land under data/ per person per day, sorted", async () => {
   fs.rmSync(path.join(audioDir(slug), ".."), { recursive: true, force: true });
 });
 
+test("readTranscript without a date falls back to the newest transcript on disk", async () => {
+  const os = await import("node:os");
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  const root = process.env.DURABO_DIR ?? path.join(os.homedir(), "ai-discovery-durabo");
+  if (!fs.existsSync(root)) return;
+  const { audioDir, readTranscript, transcriptFile } = await import("../lib/durabo/audio.ts");
+  const slug = "abel-kleefstra";
+  for (const [date, text] of [["2020-01-01", "oud"], ["2020-01-02", "nieuw"]]) {
+    fs.mkdirSync(audioDir(slug, date), { recursive: true });
+    fs.writeFileSync(transcriptFile(slug, date), text, "utf8");
+  }
+  assert.equal(readTranscript(slug), "nieuw"); // no folder for today → newest wins
+  assert.equal(readTranscript(slug, "2020-01-01"), "oud"); // explicit date untouched
+  fs.rmSync(path.join(audioDir(slug), ".."), { recursive: true, force: true });
+});
+
 test("network edges come from names in in_from/out_to prose", async () => {
   const { matchEdges } = await import("../lib/durabo/network.ts");
   const rows = [

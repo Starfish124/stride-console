@@ -48,7 +48,22 @@ export function transcriptFile(slug: string, date = today()): string {
   return path.join(audioDir(slug, date), "transcript.md");
 }
 
-export function readTranscript(slug: string, date = today()): string {
+/** Newest date that has a transcript on disk, or undefined if none. */
+export function latestTranscriptDate(slug: string): string | undefined {
+  try {
+    return fs
+      .readdirSync(path.dirname(audioDir(slug)))
+      .sort()
+      .reverse()
+      .find((d) => fs.existsSync(transcriptFile(slug, d)));
+  } catch {
+    return undefined;
+  }
+}
+
+// No date given = the newest transcript, not today's: the day after an
+// interview, today's folder doesn't exist and the app would show nothing.
+export function readTranscript(slug: string, date = latestTranscriptDate(slug) ?? today()): string {
   try {
     return fs.readFileSync(transcriptFile(slug, date), "utf8");
   } catch {

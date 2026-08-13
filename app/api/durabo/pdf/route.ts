@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { NextResponse } from "next/server";
-import { readTranscript, run, today } from "@/lib/durabo/audio";
+import { latestTranscriptDate, readTranscript, run, today } from "@/lib/durabo/audio";
 import { readRoster } from "@/lib/durabo/io";
 
 // The live transcript as a PDF, for whoever wants the conversation on paper
@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const slug = url.searchParams.get("slug") ?? "";
   const wanted = url.searchParams.get("date") ?? "";
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(wanted) ? wanted : today();
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(wanted) ? wanted : (latestTranscriptDate(slug) ?? today());
 
   const row = readRoster().find((r) => r.slug === slug);
   const transcript = row ? readTranscript(slug, date) : "";
