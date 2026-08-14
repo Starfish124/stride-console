@@ -64,6 +64,12 @@ export function DuraboRoster({
         >
           Netwerk
         </Link>
+        <Link
+          href="/durabo/build"
+          className="pressable rounded-full border border-line bg-white px-3 py-1.5 text-xs text-ink"
+        >
+          Build
+        </Link>
         <a
           href="/api/durabo/map"
           target="_blank"

@@ -235,6 +235,12 @@ export const MENU: MenuSection[] = [
         hint: "Who feeds whom, drawn live from the interview dossiers as they fill.",
         icon: "IconBranch",
       },
+      {
+        href: "/durabo/build",
+        label: "Durabo build + insights",
+        hint: "Synthesis snapshot: cross-department themes, quick win/win/long-term draft, next steps.",
+        icon: "IconTime",
+      },
     ],
   },
   {
