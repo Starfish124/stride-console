@@ -857,18 +857,87 @@ main {
 }
 
 /* Thoughts drift, they do not bounce: a few pixels, many seconds, offsets
-   staggered per chip so the orbit never moves in lockstep. */
+   staggered per chip so the orbit never moves in lockstep. Before they
+   drift they arrive — a quick settle-in, delayed per chip, so they read as
+   found one after another rather than all present at once. */
 @keyframes hub-float {
   0%, 100% { margin-top: 0; }
   50% { margin-top: -9px; }
 }
+@keyframes hub-thought-in {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.82); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
 .hub-thought {
-  animation: hub-float 7s ease-in-out infinite;
+  opacity: 0;
+  animation:
+    hub-thought-in 520ms var(--ease-out-quint) both,
+    hub-float 7s ease-in-out infinite;
+}
+
+/* Threads: the lines pulled taut from the mark to each thought as the
+   picture assembles. Each one draws in on the chip's own delay via the
+   pathLength trick (dash length becomes a plain 0–1 fraction regardless of
+   line length), then keeps a slow breathing pulse — the brain is still
+   holding all of them, not just the one that just landed. */
+@keyframes hub-thread-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes hub-thread-pulse {
+  0%, 100% { stroke-opacity: 0.16; }
+  50% { stroke-opacity: 0.44; }
+}
+.hub-thread {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  stroke-opacity: 0.16;
+  animation:
+    hub-thread-draw 700ms var(--ease-out-quint) both,
+    hub-thread-pulse 5s ease-in-out infinite;
+}
+
+/* The rings are a radar, so they sweep — one full turn every three
+   minutes, slow enough to register as alive without ever looking busy. */
+@keyframes hub-rings-drift {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+.hub-rings {
+  transform: translate(-50%, -50%);
+  animation: hub-rings-drift 180s linear infinite;
+}
+
+/* Depth: near things move more than far things when the cursor moves.
+   BrainHub sets --tilt-x/--tilt-y on the orbit from the pointer position
+   and --hub-depth per layer; this just turns that into a small, damped
+   translate so a chip never runs from the pointer closing in on it. */
+.hub-parallax {
+  transform: translate(
+    calc(var(--tilt-x, 0) * var(--hub-depth, 8px)),
+    calc(var(--tilt-y, 0) * var(--hub-depth, 8px))
+  );
+  transition: transform 260ms var(--ease-out-quint);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .boot-pulse,
-  .hub-thought {
+  .hub-thought,
+  .hub-thread,
+  .hub-rings,
+  .hub-parallax {
     animation: none;
+    transition: none;
+  }
+  .hub-thought {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  .hub-thread {
+    stroke-dashoffset: 0;
+    stroke-opacity: 0.3;
+  }
+  .hub-parallax {
+    transform: none;
   }
 }
