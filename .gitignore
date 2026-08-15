@@ -50,3 +50,9 @@ ios/*.xcodeproj/project.xcworkspace/xcuserdata/
 # Xcode build output
 ios/build/
 /graphify-out/
+
+# pulled interview transcripts (employee recordings — never commit)
+/transcripts/
+/analysis/
+.gstack/
+__pycache__/

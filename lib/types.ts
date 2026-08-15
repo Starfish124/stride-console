@@ -317,3 +317,77 @@ export interface InboxEntry {
   at: string;
   seen: boolean;
 }
+
+// ---------- event scout (conferences and fairs worth attending) ----------
+
+export type ScoutCategory = "ai" | "retail" | "tech" | "business" | "other";
+
+export const SCOUT_CATEGORIES: ScoutCategory[] = ["ai", "retail", "tech", "business", "other"];
+
+export const SCOUT_CATEGORY_LABELS: Record<ScoutCategory, string> = {
+  ai: "AI",
+  retail: "Retail",
+  tech: "Tech",
+  business: "Business",
+  other: "Other",
+};
+
+export type ScoutStatus = "considering" | "going" | "skipped" | "attended";
+
+export const SCOUT_STATUSES: ScoutStatus[] = ["considering", "going", "skipped", "attended"];
+
+export const SCOUT_STATUS_LABELS: Record<ScoutStatus, string> = {
+  considering: "Considering",
+  going: "Going",
+  skipped: "Skipped",
+  attended: "Attended",
+};
+
+/**
+ * The fit rubric, 0–5 each. Kept to four questions a founder can answer from
+ * an event's landing page in a minute — more axes than that and nobody fills
+ * them in, and the score stops meaning anything.
+ */
+export interface ScoutCriteria {
+  /** Are Stride's target customers (SME founders, retail operators) in the room? */
+  audienceFit: number;
+  /** How many conversations there could realistically become clients? */
+  leadPotential: number;
+  /** Can we be seen — speak, demo, sponsor cheaply, or at least work the floor? */
+  visibility: number;
+  /** Ticket + travel + days out of the building. 5 = cheap and close. */
+  affordability: number;
+}
+
+/**
+ * Weighted fit score, 0–5, one decimal. Weights favour meeting buyers over
+ * being seen: the console exists to find customers, not conference badges.
+ */
+export function scoutScore(c: ScoutCriteria): number {
+  const clamp = (n: number) => Math.min(5, Math.max(0, Number.isFinite(n) ? n : 0));
+  const raw =
+    clamp(c.audienceFit) * 0.35 +
+    clamp(c.leadPotential) * 0.3 +
+    clamp(c.visibility) * 0.2 +
+    clamp(c.affordability) * 0.15;
+  return Math.round(raw * 10) / 10;
+}
+
+/** One event on the scout board. Dates are ISO yyyy-mm-dd, local. */
+export interface ScoutEvent {
+  id: string;
+  name: string;
+  url?: string;
+  date?: string;
+  endDate?: string;
+  location?: string;
+  category: ScoutCategory;
+  /** Free text: "€450 ticket + hotel", "free". */
+  cost?: string;
+  notes?: string;
+  criteria: ScoutCriteria;
+  status: ScoutStatus;
+  by?: string;
+  createdAt: string;
+  updatedAt: string;
+}

@@ -203,6 +203,12 @@ export const MENU: MenuSection[] = [
         hint: "The 1 Min AI Pitch nights, the checklist, and who signed up.",
         icon: "IconBolt",
       },
+      {
+        href: "/scout",
+        label: "Event scout",
+        hint: "Upcoming AI and retail events, scored on one rubric for best fit.",
+        icon: "IconTarget",
+      },
     ],
   },
   {

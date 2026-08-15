@@ -19,6 +19,8 @@ import type {
   PostLogEntry,
   PostStats,
   PushSubscriptionRecord,
+  ScoutCriteria,
+  ScoutEvent,
   SeenItem,
   SourceEntry,
   StrideEvent,
@@ -39,6 +41,7 @@ const FILES = {
   pushSubs: path.join(DATA_DIR, "push-subs.json"),
   clients: path.join(DATA_DIR, "clients.json"),
   notes: path.join(DATA_DIR, "notes.json"),
+  scout: path.join(DATA_DIR, "scout.json"),
 } as const;
 
 function ensureDataDir(): void {
@@ -514,6 +517,60 @@ export function removeNote(id: string): boolean {
   const left = notes.filter((n) => n.id !== id);
   if (left.length === notes.length) return false;
   writeJson(FILES.notes, left);
+  return true;
+}
+
+// ---------- event scout ----------
+
+export function listScoutEvents(): ScoutEvent[] {
+  return readJson<ScoutEvent[]>(FILES.scout, []);
+}
+
+export function addScoutEvent(
+  input: Omit<ScoutEvent, "id" | "createdAt" | "updatedAt" | "status" | "criteria"> & {
+    status?: ScoutEvent["status"];
+    criteria?: Partial<ScoutCriteria>;
+  },
+): ScoutEvent {
+  const now = new Date().toISOString();
+  const event: ScoutEvent = {
+    ...input,
+    id: newId("scout"),
+    status: input.status ?? "considering",
+    criteria: {
+      audienceFit: input.criteria?.audienceFit ?? 3,
+      leadPotential: input.criteria?.leadPotential ?? 3,
+      visibility: input.criteria?.visibility ?? 3,
+      affordability: input.criteria?.affordability ?? 3,
+    },
+    createdAt: now,
+    updatedAt: now,
+  };
+  writeJson(FILES.scout, [event, ...listScoutEvents()]);
+  return event;
+}
+
+export function updateScoutEvent(
+  id: string,
+  patch: Partial<Omit<ScoutEvent, "id" | "createdAt" | "updatedAt" | "criteria">> & {
+    criteria?: Partial<ScoutCriteria>;
+  },
+): ScoutEvent | undefined {
+  const events = listScoutEvents();
+  const event = events.find((e) => e.id === id);
+  if (!event) return undefined;
+  const { criteria, ...rest } = patch;
+  Object.assign(event, rest, { updatedAt: new Date().toISOString() });
+  if (criteria) Object.assign(event.criteria, criteria);
+  writeJson(FILES.scout, events);
+  return event;
+}
+
+export function removeScoutEvent(id: string): boolean {
+  const events = listScoutEvents();
+  const left = events.filter((e) => e.id !== id);
+  if (left.length === events.length) return false;
+  writeJson(FILES.scout, left);
   return true;
 }
 
