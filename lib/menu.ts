@@ -347,3 +347,61 @@ export function sectionFor(pathname: string): MenuArea | undefined {
   if (path === "/" || path.startsWith("/drafts")) return "content";
   return undefined;
 }
+
+// ---------- destination matching: free text -> a real page ----------
+//
+// The one place a founder's words become a URL. Voice navigation and the
+// palette's search both want "given this text, which page did they mean" —
+// this is that function, kept framework-free so nothing outside a browser
+// tab can call it wrong, and kept a single ranked scorer so the answer to
+// "which page matches 'invoic'" is the same everywhere it is asked.
+
+export interface DestinationMatch {
+  href: string;
+  label: string;
+  score: number;
+}
+
+/** Do the query's characters appear in order? "slnv" finds "Email sequencer". */
+function subsequenceMatch(haystack: string, needle: string): boolean {
+  let i = 0;
+  for (const ch of haystack) {
+    if (ch === needle[i]) i++;
+    if (i === needle.length) return true;
+  }
+  return needle.length === 0;
+}
+
+/** Every menu item, ranked against free text. Empty query, empty result. */
+export function matchDestinations(query: string, limit = 5): DestinationMatch[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const hits: DestinationMatch[] = [];
+  for (const section of MENU) {
+    const sec = section.label.toLowerCase();
+    for (const item of section.items) {
+      const label = item.label.toLowerCase();
+      const hint = item.hint.toLowerCase();
+      let score: number | null = null;
+      if (label === q) score = 120;
+      else if (label.startsWith(q)) score = 100;
+      else if (label.includes(q)) score = 80;
+      // The reverse of the line above: "open the blueprints" contains the
+      // label "blueprints" with filler words around it, which a transcribed
+      // voice command does constantly and a typed search almost never does.
+      else if (q.length > label.length && q.includes(label)) score = 75;
+      else if (subsequenceMatch(label, q)) score = 60;
+      else if (sec.startsWith(q) || sec.includes(q)) score = 50;
+      else if (hint.includes(q)) score = 40;
+      else if (subsequenceMatch(`${sec} ${hint}`, q)) score = 15;
+      if (score !== null) hits.push({ href: item.href, label: item.label, score });
+    }
+  }
+  return hits.sort((a, b) => b.score - a.score).slice(0, limit);
+}
+
+/** The single best match, or none at all below a confidence floor. */
+export function matchDestination(query: string, floor = 40): DestinationMatch | undefined {
+  const top = matchDestinations(query, 1)[0];
+  return top && top.score >= floor ? top : undefined;
+}

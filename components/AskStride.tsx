@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { IconConfidence, IconLineageDoc } from "@/components/icons";
 import { Loader } from "@/components/Loader";
 import { Mark } from "@/components/Ramp";
 import { useMic, useSpeaker } from "@/components/useSpeech";
+import { detectNavigation, type NavClient } from "@/lib/ask/navigate";
 
 /**
  * A local model that can only answer from what the console actually knows.
@@ -69,8 +71,10 @@ export function AskStride({ clientId, clientName }: { clientId?: string; clientN
   const [facts, setFacts] = useState<{ text: string; model: string } | null>(null);
   const [showFacts, setShowFacts] = useState(false);
   const [outLoud, setOutLoud] = useState(false);
+  const [clients, setClients] = useState<NavClient[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
   const speaker = useSpeaker();
+  const router = useRouter();
   // Asking by voice implies wanting the answer by voice; nobody holds a phone
   // to their mouth to then read the screen.
   const mic = useMic((text) => {
@@ -97,6 +101,25 @@ export function AskStride({ clientId, clientName }: { clientId?: string; clientN
   }, [clientId]);
 
   useEffect(() => {
+    // The client book, for voice navigation only ("open Durabo") — every
+    // other answer stays scoped to the fact sheet above, this is purely a
+    // name-to-URL lookup and never rides in a prompt.
+    let cancelled = false;
+    fetch("/api/clients")
+      .then((r) => r.json())
+      .then((data: Array<{ id: string; name: string; company?: string }>) => {
+        if (cancelled || !Array.isArray(data)) return;
+        setClients(data.map((c) => ({ id: c.id, label: c.company || c.name })));
+      })
+      .catch(() => {
+        /* voice navigation to a client just will not fire; everything else still works */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [turns]);
 
@@ -108,6 +131,22 @@ export function AskStride({ clientId, clientName }: { clientId?: string; clientN
     speaker.stop();
     setProblem(null);
     setQuestion("");
+
+    // Navigation never touches the model. "Open invoices" is a deterministic
+    // match against the console's own real pages and real clients — the
+    // model is never asked to invent a URL, and an ordinary question never
+    // matches (detectNavigation requires an imperative verb up front), so
+    // this cannot misfire on "what needs me today" just because a word in
+    // it happens to resemble a menu label.
+    const nav = detectNavigation(asked, clients);
+    if (nav) {
+      const line = `Opening ${nav.label}.`;
+      setTurns((t) => [...t, { role: "user", content: asked }, { role: "assistant", content: line }]);
+      if (speakIt) speaker.flush(line);
+      router.push(nav.href);
+      return;
+    }
+
     const history = turns.slice(-4);
     setTurns((t) => [...t, { role: "user", content: asked }, { role: "assistant", content: "" }]);
     setStreaming(true);
