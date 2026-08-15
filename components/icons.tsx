@@ -176,6 +176,48 @@ export function IconWorkflow(props: IconProps) {
 }
 
 /**
+ * The section rail's own set: one glyph per channel, drawn to the library's
+ * spec rather than picked from the general set, because a fold header names
+ * a whole department and deserves a mark of its own instead of borrowing
+ * whatever icon a random item inside it happened to use.
+ */
+
+/** Content: the pen, mid-line. */
+export function IconSectionContent(props: IconProps) {
+  return <svg {...frame(props)}><path d="M4.4 19.6l1-4.4L15.8 4.8l3.4 3.4L8.8 18.6z" /><path d="M13.6 6.4l4 4" /><path d="M4.4 19.6l4.4-1" /></svg>;
+}
+
+/** Website: the browser chrome, not the globe — this is the site, not the geography. */
+export function IconSectionWebsite(props: IconProps) {
+  return <svg {...frame(props)}><rect x="3" y="4.6" width="18" height="14.8" rx="2.4" /><path d="M3 9h18" /><circle cx="6.2" cy="6.8" r=".9" /><circle cx="9" cy="6.8" r=".9" /></svg>;
+}
+
+/** LinkedIn: a message leaving the building. No trademark, just the shape of outbound. */
+export function IconSectionLinkedIn(props: IconProps) {
+  return <svg {...frame(props)}><rect x="3" y="5.4" width="14.4" height="10.4" rx="3" /><path d="M6.6 15.8v3.4l4.2-3.4" /><path d="M20.6 3.4v4.6h-4.6M20.6 3.4l-5.4 5.4" /></svg>;
+}
+
+/** Automation: the gear, hub and eight teeth. */
+export function IconSectionAutomation(props: IconProps) {
+  return <svg {...frame(props)}><circle cx="12" cy="12" r="3.4" /><circle cx="12" cy="12" r="7.4" /><path d="M12 2.4v2.4M12 19.2v2.4M21.6 12h-2.4M4.8 12H2.4M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2 5.5 5.5" /></svg>;
+}
+
+/** Sales: the briefcase. */
+export function IconSectionSales(props: IconProps) {
+  return <svg {...frame(props)}><rect x="3" y="8.2" width="18" height="12" rx="2.2" /><path d="M8.6 8.2V6a2 2 0 0 1 2-2h2.8a2 2 0 0 1 2 2v2.2" /><path d="M3 13.4h18M10.6 13.4v1.8h2.8v-1.8" /></svg>;
+}
+
+/** Clients: the door. One per relationship, the way the rail now holds them. */
+export function IconSectionClients(props: IconProps) {
+  return <svg {...frame(props)}><rect x="5.4" y="2.6" width="12" height="18.8" rx="1.4" /><circle cx="14.4" cy="12" r=".9" /><path d="M2.6 21.4h18.8" /></svg>;
+}
+
+/** Delivery: the shipped box. */
+export function IconSectionDelivery(props: IconProps) {
+  return <svg {...frame(props)}><path d="M12 3.2l8.4 4.6v8.4L12 20.8 3.6 16.2V7.8z" /><path d="M3.6 7.8 12 12.4l8.4-4.6M12 12.4v8.4" /></svg>;
+}
+
+/**
  * Look a glyph up by name.
  *
  * lib/menu.ts is framework-free so node tests and the model's context builder
@@ -189,6 +231,8 @@ const BY_NAME: Record<string, (props: IconProps) => React.ReactElement> = {
   IconGuardrail, IconIntegration, IconKey, IconLayers, IconLineageDoc, IconLock,
   IconPipeline, IconResidency, IconReview, IconRuntime, IconSearch, IconSpark,
   IconTarget, IconTeam, IconTime, IconTrend, IconTuneLoop, IconWorkflow, IconChevron,
+  IconSectionContent, IconSectionWebsite, IconSectionLinkedIn, IconSectionAutomation,
+  IconSectionSales, IconSectionClients, IconSectionDelivery,
 };
 
 export function iconByName(name: string) {

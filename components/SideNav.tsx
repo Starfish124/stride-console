@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { MENU, sectionFor, type MenuArea } from "@/lib/menu";
+import { AREA_ICON, CLIENTS_ICON, MENU, sectionFor, type MenuArea } from "@/lib/menu";
 import { iconByName, IconChevron } from "@/components/icons";
 import { Mark } from "@/components/Ramp";
 
@@ -19,16 +19,6 @@ import { Mark } from "@/components/Ramp";
  * Phones keep the tab bar, laptops the header; this exists at xl. The menu
  * sheet (⌘K) stays for search and the tour.
  */
-
-const AREA_TONE: Record<MenuArea, string> = {
-  content: "text-indigo",
-  website: "text-signal",
-  linkedin: "text-violet",
-  automation: "text-mute",
-  sales: "text-amber",
-  delivery: "text-lime",
-  team: "text-slate",
-};
 
 /** Chromeless routes, plus print views where a rail would shift the sheet. */
 export function railHidden(pathname: string): boolean {
@@ -78,22 +68,23 @@ export function SideNav({ clients = [] }: { clients?: RailClient[] }) {
   const fold = (options: {
     id: string;
     label: string;
-    tone: string;
+    icon: string;
     active: boolean;
     children: React.ReactNode;
   }) => {
     const isOpen = open.has(options.id);
+    const SectionIcon = iconByName(options.icon);
     return (
       <div key={options.id}>
         <button
           type="button"
           onClick={() => toggle(options.id)}
           aria-expanded={isOpen}
-          className={`pressable flex w-full items-center gap-2 rounded-lg px-2 py-2 text-[13px] font-semibold ${
+          className={`pressable flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-[13px] font-semibold ${
             options.active ? "text-ink" : "text-slate hover:text-ink"
           }`}
         >
-          <span aria-hidden className={`slant-rule h-[2.5px] w-3.5 shrink-0 ${options.tone}`} />
+          <SectionIcon size={17} className={`shrink-0 ${options.active ? "text-indigo" : "text-mute"}`} />
           <span className="flex-1 text-left">{options.label}</span>
           <IconChevron
             size={13}
@@ -144,7 +135,7 @@ export function SideNav({ clients = [] }: { clients?: RailClient[] }) {
             {fold({
               id: section.id,
               label: section.label,
-              tone: AREA_TONE[section.id],
+              icon: AREA_ICON[section.id],
               active: current === section.id && !onClientPage,
               children: section.items.map((i) => itemRow(i.href, i.label, i.icon, i.hint)),
             })}
@@ -153,7 +144,7 @@ export function SideNav({ clients = [] }: { clients?: RailClient[] }) {
               fold({
                 id: "clients",
                 label: "Clients",
-                tone: "text-ink",
+                icon: CLIENTS_ICON,
                 active: onClientPage,
                 children: clients.map((c) =>
                   itemRow(`/clients/${c.id}`, c.label, "IconTeam", `Everything for ${c.label}, one page.`),

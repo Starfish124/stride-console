@@ -305,6 +305,25 @@ export const MENU: MenuSection[] = [
 export const NAV = MENU.flatMap((s) => (s.nav ? [s.nav] : []));
 
 /**
+ * One drawn glyph per section — icons.tsx's own IconSection* set — used by
+ * both the side rail and the ⌘K sheet's map view, so a department reads as
+ * the same shape wherever the console shows it. Icon *names* rather than
+ * components, since this file stays framework-free.
+ */
+export const AREA_ICON: Record<MenuArea, string> = {
+  content: "IconSectionContent",
+  website: "IconSectionWebsite",
+  linkedin: "IconSectionLinkedIn",
+  automation: "IconSectionAutomation",
+  sales: "IconSectionSales",
+  delivery: "IconSectionDelivery",
+  team: "IconTeam",
+};
+
+/** Clients folds in beside Sales rather than being a MenuArea of its own. */
+export const CLIENTS_ICON = "IconSectionClients";
+
+/**
  * Which item a path is currently on. Hashes and queries are stripped, so
  * /seo?tab=drafts and /seo both light up the Website section — the section is
  * what the menu highlights, and pretending otherwise would light up nothing.

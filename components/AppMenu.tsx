@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { MENU, sectionFor, type MenuArea, type MenuItem } from "@/lib/menu";
+import { AREA_ICON, MENU, sectionFor, type MenuArea, type MenuItem } from "@/lib/menu";
 import { iconByName } from "@/components/icons";
 import { Mark } from "@/components/Ramp";
 
@@ -29,21 +29,6 @@ import { Mark } from "@/components/Ramp";
  * copies of every route, and only one of them would ever be right.
  */
 const MenuContext = createContext<(open: boolean) => void>(() => {});
-
-/**
- * Each section's hue for the sheared tick in the map view. Wayfinding colour,
- * used nowhere else on the sheet: the eye learns "amber = Sales" and finds it
- * again without reading. All hues come from the icon library's palette.
- */
-const AREA_TONE: Record<MenuArea, string> = {
-  content: "text-indigo",
-  website: "text-signal",
-  linkedin: "text-violet",
-  automation: "text-mute",
-  sales: "text-amber",
-  delivery: "text-lime",
-  team: "text-slate",
-};
 
 // ---------- frecency: the console remembers where you actually go ----------
 
@@ -400,7 +385,7 @@ export function AppMenu({ children }: { children?: React.ReactNode }) {
                               {hit.item.hint}
                             </span>
                           </span>
-                          <span className={`eyebrow shrink-0 text-[10px] ${AREA_TONE[hit.area]}`}>
+                          <span className="eyebrow shrink-0 text-[10px] text-mute">
                             {hit.sectionLabel}
                           </span>
                           {active && (
@@ -426,7 +411,7 @@ export function AppMenu({ children }: { children?: React.ReactNode }) {
                   >
                     <p className="eyebrow mb-2.5 text-slate">Jump back in</p>
                     <nav aria-label="Recent destinations" className="flex flex-wrap gap-2">
-                      {recentItems.map(({ item, area }) => {
+                      {recentItems.map(({ item }) => {
                         const Icon = iconByName(item.icon);
                         return (
                           <Link
@@ -436,7 +421,7 @@ export function AppMenu({ children }: { children?: React.ReactNode }) {
                             title={item.hint}
                             className="pressable flex items-center gap-2 rounded-full border border-line bg-white px-3.5 py-2 text-sm font-semibold text-ink hover:border-indigo/30 hover:text-indigo"
                           >
-                            <Icon size={15} className={`shrink-0 ${AREA_TONE[area]}`} />
+                            <Icon size={15} className="shrink-0 text-slate" />
                             {item.label}
                           </Link>
                         );
@@ -457,12 +442,16 @@ export function AppMenu({ children }: { children?: React.ReactNode }) {
                       si > 0 || recentItems.length > 0 ? "border-t border-line" : ""
                     } ${open ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"}`}
                   >
-                    {/* The left rail: what the eye runs down to get the overview.
-                        The sheared tick is the brand's one shape, in the
-                        section's own hue — wayfinding, not decoration. */}
+                    {/* The left rail: what the eye runs down to get the
+                        overview. The section's own drawn glyph, not a
+                        colour — the shape is what a founder learns to spot,
+                        the same as SideNav's fold headers. */}
                     <div className="min-w-0">
                       <div className="flex items-center gap-2.5">
-                        <span aria-hidden className={`slant-rule w-5 shrink-0 ${AREA_TONE[section.id]}`} />
+                        {(() => {
+                          const SectionIcon = iconByName(AREA_ICON[section.id]);
+                          return <SectionIcon size={20} className="shrink-0 text-ink" />;
+                        })()}
                         <h3 className="display text-[19px] text-ink">{section.label}</h3>
                       </div>
                       {current === section.id && (
