@@ -47,7 +47,7 @@ function ScoreBadge({ value }: { value: number }) {
   return (
     <span
       title="Fit score, 0–5: audience ×0.35, leads ×0.30, visibility ×0.20, cost ×0.15"
-      className={`display shrink-0 rounded-full px-2.5 py-1 text-sm tabular-nums ${tone}`}
+      className={`shrink-0 rounded-full px-2.5 py-1 font-mono text-sm font-semibold tabular-nums ${tone}`}
     >
       {value.toFixed(1)}
     </span>
@@ -112,11 +112,11 @@ function AddForm({ done }: { done: () => void }) {
   const [busy, setBusy] = useState(false);
 
   const field =
-    "w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-mute focus:border-indigo/40 focus:outline-none";
+    "w-full rounded-input border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-mute focus:border-indigo/40";
 
   return (
     <form
-      className="mt-4 space-y-3 rounded-2xl border border-line bg-white p-4"
+      className="mt-4 space-y-3 rounded-card border border-line bg-white p-4"
       onSubmit={async (ev) => {
         ev.preventDefault();
         if (!name.trim() || busy) return;
@@ -143,11 +143,11 @@ function AddForm({ done }: { done: () => void }) {
       }}
     >
       <div className="grid gap-3 sm:grid-cols-2">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Event name" className={field} autoFocus />
-        <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" className={field} />
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={field} />
-        <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="City / venue" className={field} />
-        <input value={cost} onChange={(e) => setCost(e.target.value)} placeholder="Cost — €450 ticket, free, …" className={field} />
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Event name" aria-label="Event name" className={field} autoFocus />
+        <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" aria-label="Event website" className={field} />
+        <input type="date" aria-label="Event date" value={date} onChange={(e) => setDate(e.target.value)} className={field} />
+        <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="City / venue" aria-label="Location" className={field} />
+        <input value={cost} onChange={(e) => setCost(e.target.value)} placeholder="Cost — €450 ticket, free, …" aria-label="Cost" className={field} />
         <select value={cat} onChange={(e) => setCat(e.target.value as ScoutCategory)} className={field}>
           {SCOUT_CATEGORIES.map((c) => (
             <option key={c} value={c}>
@@ -187,14 +187,29 @@ function EventCard({ event }: { event: ScoutEvent }) {
   // Sliders write through on release; the score in the corner updates as they
   // move, so scoring an event feels like turning knobs, not filling a form.
   const [crit, setCrit] = useState<ScoutCriteria>(event.criteria);
+  const [saveFailed, setSaveFailed] = useState(false);
 
   async function patch(body: Record<string, unknown>) {
-    const res = await fetch("/api/scout", {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ id: event.id, ...body }),
-    });
-    if (res.ok) router.refresh();
+    let ok = false;
+    try {
+      const res = await fetch("/api/scout", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: event.id, ...body }),
+      });
+      ok = res.ok;
+    } catch {
+      ok = false;
+    }
+    if (ok) {
+      setSaveFailed(false);
+      router.refresh();
+    } else {
+      // A failed save must never masquerade as a slow one: put the sliders
+      // back where the disk has them and say what happened.
+      setCrit(event.criteria);
+      setSaveFailed(true);
+    }
   }
 
   const when = event.date
@@ -206,7 +221,7 @@ function EventCard({ event }: { event: ScoutEvent }) {
     : "Date tbd";
 
   return (
-    <li className="rounded-2xl border border-line bg-white p-4">
+    <li className="rounded-card border border-line bg-white p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -233,6 +248,11 @@ function EventCard({ event }: { event: ScoutEvent }) {
             {event.by ? ` · added by ${event.by}` : ""}
           </p>
           {event.notes && <p className="mt-1 text-sm text-slate">{event.notes}</p>}
+          {saveFailed && (
+            <p className="mt-1 text-sm font-semibold text-amber-deep">
+              That change did not save. Check the connection and try again.
+            </p>
+          )}
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           <ScoreBadge value={scoutScore(crit)} />
@@ -257,7 +277,8 @@ function EventCard({ event }: { event: ScoutEvent }) {
               key={s}
               type="button"
               onClick={() => void patch({ status: s })}
-              className={`pressable rounded-full px-2.5 py-1 text-xs font-semibold ${
+              aria-pressed={event.status === s}
+              className={`pressable min-h-[36px] rounded-full px-3 py-1.5 text-xs font-semibold ${
                 event.status === s ? "bg-ink text-white" : "bg-line/40 text-slate hover:text-ink"
               }`}
             >
@@ -296,7 +317,7 @@ export function EventScout({ events }: { events: ScoutEvent[] }) {
       {adding && <AddForm done={() => setAdding(false)} />}
 
       {live.length === 0 && !adding && (
-        <div className="mt-6 rounded-2xl border border-dashed border-line bg-white/60 p-8 text-center text-slate">
+        <div className="mt-6 rounded-card border border-dashed border-line bg-white/60 p-8 text-center text-slate">
           <p className="display text-lg text-ink">Nothing on the radar.</p>
           <p className="mt-1 text-sm">
             Add the next AI meetup, retail fair or founder event — score it in a minute, and the board
@@ -316,7 +337,7 @@ export function EventScout({ events }: { events: ScoutEvent[] }) {
           <summary className="eyebrow cursor-pointer text-slate">
             Past, attended and skipped ({rest.length})
           </summary>
-          <ul className="mt-4 space-y-3 opacity-75">
+          <ul className="mt-4 space-y-3">
             {rest.map((e) => (
               <EventCard key={e.id} event={e} />
             ))}

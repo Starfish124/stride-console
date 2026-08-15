@@ -56,12 +56,16 @@ export function Header() {
     // straight on the paper and scroll away with everything else.
     <header className="pt-[env(safe-area-inset-top)]">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-1.5 sm:px-6 sm:py-2.5">
-        <Link href="/" className="pressable -m-2 p-2" aria-label="Stride console">
+        {/* The rail already carries the mark at xl; twice in one corner is a
+            typo, not branding. The header keeps it everywhere narrower. */}
+        <Link href="/" className="pressable -m-2 p-2 xl:invisible" aria-label="Stride console">
           <Wordmark height={24} />
         </Link>
         <nav className="flex items-center gap-4 sm:gap-6">
-          {/* Phone widths navigate with the bottom tab bar instead. */}
-          <span className="hidden items-center gap-4 sm:flex sm:gap-6">
+          {/* Phone widths navigate with the bottom tab bar; xl widths with the
+              side rail — the header links only exist in between, because two
+              navigations saying the same thing at once is one too many. */}
+          <span className="hidden items-center gap-4 sm:flex sm:gap-6 xl:hidden">
             <NavLinks />
           </span>
           {/* Everything else — every width — is one button away. */}

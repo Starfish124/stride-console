@@ -33,6 +33,7 @@ function BlueprintCard({ bp, clients }: { bp: Blueprint; clients: Client[] }) {
   const [copied, setCopied] = useState(false);
   const [logging, setLogging] = useState(false);
   const [client, setClient] = useState("");
+  const [saveFailed, setSaveFailed] = useState(false);
 
   async function copyPayload() {
     await navigator.clipboard.writeText(bp.payload);
@@ -48,6 +49,7 @@ function BlueprintCard({ bp, clients }: { bp: Blueprint; clients: Client[] }) {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ action: "use", id: bp.id, client: chosen }),
     });
+    setSaveFailed(!res.ok);
     if (res.ok) {
       setLogging(false);
       setClient("");
@@ -61,6 +63,7 @@ function BlueprintCard({ bp, clients }: { bp: Blueprint; clients: Client[] }) {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ id: bp.id, status: bp.status === "proven" ? "experimental" : "proven" }),
     });
+    setSaveFailed(!res.ok);
     if (res.ok) router.refresh();
   }
 
@@ -76,8 +79,10 @@ function BlueprintCard({ bp, clients }: { bp: Blueprint; clients: Client[] }) {
             <button
               type="button"
               onClick={() => void toggleStatus()}
+              aria-pressed={bp.status === "proven"}
+              aria-label={`Status ${bp.status}. Tap to flip proven/experimental.`}
               title="Tap to flip proven/experimental"
-              className={`eyebrow pressable rounded-full px-2 py-0.5 text-[9px] ${
+              className={`eyebrow pressable rounded-full px-2.5 py-1 text-[9px] ${
                 bp.status === "proven" ? "bg-lime/20 text-ink" : "bg-line/50 text-slate"
               }`}
             >
@@ -88,6 +93,12 @@ function BlueprintCard({ bp, clients }: { bp: Blueprint; clients: Client[] }) {
         </div>
         <DeleteX url={`/api/blueprints?id=${bp.id}`} ask={`Drop "${bp.name}" from the shelf?`} label="Remove blueprint" />
       </div>
+
+      {saveFailed && (
+        <p className="mt-2 text-sm font-semibold text-amber-deep">
+          That change did not save. Check the connection and try again.
+        </p>
+      )}
 
       <div className="mt-3 grid gap-4 text-[13px] leading-relaxed sm:grid-cols-2">
         <div>
@@ -142,7 +153,7 @@ function BlueprintCard({ bp, clients }: { bp: Blueprint; clients: Client[] }) {
                 placeholder="Which client?"
                 autoFocus
                 onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), void logUse())}
-                className="w-36 rounded-input border border-line bg-white px-2 py-1.5 text-xs text-ink placeholder:text-mute focus:border-indigo/40 focus:outline-none"
+                className="w-36 rounded-input border border-line bg-white px-2 py-1.5 text-xs text-ink placeholder:text-mute focus:border-indigo/40"
               />
               <datalist id={`clients-${bp.id}`}>
                 {clients.map((c) => (
@@ -191,7 +202,7 @@ function NewBlueprintForm({ done }: { done: () => void }) {
   const [busy, setBusy] = useState(false);
 
   const field =
-    "w-full rounded-input border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-mute focus:border-indigo/40 focus:outline-none";
+    "w-full rounded-input border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-mute focus:border-indigo/40";
 
   return (
     <form
@@ -268,7 +279,8 @@ export function BlueprintShelf({ blueprints, clients }: { blueprints: Blueprint[
               key={k}
               type="button"
               onClick={() => setFilter(k)}
-              className={`pressable rounded-full px-3 py-1.5 text-xs font-semibold ${
+              aria-pressed={filter === k}
+              className={`pressable min-h-[36px] rounded-full px-3 py-1.5 text-xs font-semibold ${
                 filter === k ? "bg-ink text-white" : "border border-line bg-white text-slate hover:text-ink"
               }`}
             >
@@ -286,6 +298,17 @@ export function BlueprintShelf({ blueprints, clients }: { blueprints: Blueprint[
       </div>
 
       {adding && <NewBlueprintForm done={() => setAdding(false)} />}
+
+      {shown.length === 0 && !adding && (
+        <div className="mt-6 rounded-card border border-dashed border-line bg-white/60 p-8 text-center text-slate">
+          <p className="display text-lg text-ink">Nothing on the shelf here.</p>
+          <p className="mt-1 text-sm">
+            {filter === "all"
+              ? "Ship something for a client, then shelve it so the next client starts from it."
+              : "No blueprints of this kind yet — try another filter, or shelve one."}
+          </p>
+        </div>
+      )}
 
       <ul className="mt-4 space-y-3">
         {shown.map((bp) => (

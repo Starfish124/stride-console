@@ -24,6 +24,10 @@
   --color-signal: #2ba6ff;
   --color-lime: #76b900;
   --color-amber: #ffa92b;
+  /* Text-grade siblings: amber and lime read fine as chips on tints, but as
+     text on white they sit under 3:1. These darkened cuts are for words. */
+  --color-amber-deep: #a86a00;
+  --color-lime-deep: #4e7a00;
 
   --color-ink: #0a0c14;
   --color-slate: #5a6172;
@@ -338,7 +342,7 @@ button:active:not(:disabled) {
 .deck-tab {
   display: flex;
   align-items: center;
-  min-height: 40px;
+  min-height: 44px;
   flex-shrink: 0;
   padding-inline: 12px;
   border-radius: 9px;

@@ -77,7 +77,9 @@ function menuHrefFor(pathname: string): string | undefined {
       const base = item.href.split(/[?#]/)[0];
       if (base === "/") continue;
       if (pathname === base || pathname.startsWith(`${base}/`)) {
-        if (!best || base.length > best.length) best = item.href;
+        // >= so a duplicated href (Sources and Settings share /settings)
+        // credits the later, canonical menu entry.
+        if (!best || base.length >= best.length) best = item.href;
       }
     }
   }
@@ -358,7 +360,7 @@ export function AppMenu({ children }: { children?: React.ReactNode }) {
               aria-activedescendant={q && hits.length ? `menu-hit-${sel}` : undefined}
               role="combobox"
               aria-expanded={q.length > 0}
-              aria-controls="menu-hits"
+              aria-controls={q && hits.length ? "menu-hits" : undefined}
               className="mt-6 w-full rounded-input border border-line bg-white px-4 py-3 text-[15px] text-ink placeholder:text-mute focus:border-indigo focus:outline-none"
             />
 

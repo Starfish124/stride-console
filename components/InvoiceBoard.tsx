@@ -52,16 +52,30 @@ function InvoiceForm({ clients, done }: { clients: Client[]; done: () => void })
   const [busy, setBusy] = useState(false);
 
   const field =
-    "w-full rounded-input border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-mute focus:border-indigo/40 focus:outline-none";
+    "w-full rounded-input border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-mute focus:border-indigo/40";
 
-  const parsed = lines
-    .map((l) => ({
-      title: l.title.trim(),
-      subtitle: l.subtitle.trim() || undefined,
-      qty: Number(l.qty),
-      rate: Number(l.rate),
-    }))
-    .filter((l) => l.title && Number.isFinite(l.qty) && l.qty > 0 && Number.isFinite(l.rate));
+  // Comma decimals are the Dutch keyboard's default; a billing tool that
+  // rejects "1,5" silently would be lying about its own country.
+  const num = (v: string) => Number(v.replace(",", "."));
+  const rows = lines.map((l) => {
+    const qty = num(l.qty);
+    const rate = num(l.rate);
+    const touched = Boolean(l.title.trim() || l.qty.trim() || l.rate.trim());
+    const valid =
+      Boolean(l.title.trim()) && Number.isFinite(qty) && qty > 0 && Number.isFinite(rate) && rate >= 0;
+    return { line: l, qty, rate, touched, valid };
+  });
+  // A row someone started but that cannot be billed blocks the whole form —
+  // dropping it from the invoice silently is how a client gets a short bill.
+  const broken = rows.filter((r) => r.touched && !r.valid);
+  const parsed = rows
+    .filter((r) => r.valid)
+    .map((r) => ({
+      title: r.line.title.trim(),
+      subtitle: r.line.subtitle.trim() || undefined,
+      qty: r.qty,
+      rate: r.rate,
+    }));
   const total = invoiceTotal({ lines: parsed, vatRate: COMPANY.invoice.vatRate });
 
   function pickClient(id: string) {
@@ -110,9 +124,9 @@ function InvoiceForm({ clients, done }: { clients: Client[]; done: () => void })
             </option>
           ))}
         </select>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Billed to (company)" className={field} />
-        <input value={attn} onChange={(e) => setAttn(e.target.value)} placeholder="Attn. (person or Finance)" className={field} />
-        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="finance@client.nl" className={field} />
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Billed to (company)" aria-label="Billed to" className={field} />
+        <input value={attn} onChange={(e) => setAttn(e.target.value)} placeholder="Attn. (person or Finance)" aria-label="Attention of" className={field} />
+        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="finance@client.nl" aria-label="Billing email" className={field} />
       </div>
       <textarea
         value={address}
@@ -160,7 +174,8 @@ function InvoiceForm({ clients, done }: { clients: Client[]; done: () => void })
               placeholder="Qty"
               inputMode="decimal"
               aria-label="Quantity"
-              className={field}
+              aria-invalid={rows[i]?.touched && !rows[i].valid ? true : undefined}
+              className={`${field} ${rows[i]?.touched && !rows[i].valid ? "border-amber-deep" : ""}`}
             />
             <input
               value={line.rate}
@@ -168,7 +183,8 @@ function InvoiceForm({ clients, done }: { clients: Client[]; done: () => void })
               placeholder="Rate €"
               inputMode="decimal"
               aria-label="Rate in euro"
-              className={field}
+              aria-invalid={rows[i]?.touched && !rows[i].valid ? true : undefined}
+              className={`${field} ${rows[i]?.touched && !rows[i].valid ? "border-amber-deep" : ""}`}
             />
             <button
               type="button"
@@ -189,14 +205,20 @@ function InvoiceForm({ clients, done }: { clients: Client[]; done: () => void })
         </button>
       </div>
 
-      <div className="flex items-center justify-between border-t border-line pt-3">
+      <div className="flex items-center justify-between gap-3 border-t border-line pt-3">
         <p className="text-sm text-slate">
           Total incl. BTW {COMPANY.invoice.vatRate}%:{" "}
           <span className="font-mono font-semibold text-ink">{euro(total)}</span>
+          {broken.length > 0 && (
+            <span className="block font-semibold text-amber-deep">
+              {broken.length === 1 ? "One line" : `${broken.length} lines`} can&apos;t be billed yet —
+              every started line needs a title, a quantity and a rate.
+            </span>
+          )}
         </p>
         <button
           type="submit"
-          disabled={busy || !name.trim() || parsed.length === 0}
+          disabled={busy || !name.trim() || parsed.length === 0 || broken.length > 0}
           className="pressable rounded-full bg-indigo px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
         >
           Create and open
@@ -210,13 +232,22 @@ export function InvoiceBoard({ invoices, clients }: { invoices: Invoice[]; clien
   const router = useRouter();
   const [adding, setAdding] = useState(false);
 
+  const [saveFailed, setSaveFailed] = useState(false);
+
   async function setStatus(id: string, status: InvoiceStatus) {
-    const res = await fetch("/api/invoices", {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ id, status }),
-    });
-    if (res.ok) router.refresh();
+    let ok = false;
+    try {
+      const res = await fetch("/api/invoices", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id, status }),
+      });
+      ok = res.ok;
+    } catch {
+      ok = false;
+    }
+    setSaveFailed(!ok);
+    if (ok) router.refresh();
   }
 
   const outstanding = invoices
@@ -238,6 +269,12 @@ export function InvoiceBoard({ invoices, clients }: { invoices: Invoice[]; clien
           {adding ? "Close" : "New invoice"}
         </button>
       </div>
+
+      {saveFailed && (
+        <p className="mt-2 text-sm font-semibold text-amber-deep">
+          That change did not save. Check the connection and try again.
+        </p>
+      )}
 
       {adding && <InvoiceForm clients={clients} done={() => setAdding(false)} />}
 
@@ -270,8 +307,9 @@ export function InvoiceBoard({ invoices, clients }: { invoices: Invoice[]; clien
                   key={s}
                   type="button"
                   onClick={() => void setStatus(inv.id, s)}
-                  className={`pressable rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                    inv.status === s ? STATUS_TONE[s] : "text-mute hover:text-ink"
+                  aria-pressed={inv.status === s}
+                  className={`pressable min-h-[36px] rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                    inv.status === s ? STATUS_TONE[s] : "text-slate hover:text-ink"
                   }`}
                 >
                   {INVOICE_STATUS_LABELS[s]}

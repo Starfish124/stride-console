@@ -21,8 +21,8 @@ import { Glyph, IconChevron } from "@/components/icons";
  */
 
 const TONE: Record<NonNullable<QuickTile["tone"]>, string> = {
-  good: "text-lime",
-  warn: "text-amber",
+  good: "text-lime-deep",
+  warn: "text-amber-deep",
 };
 
 /** 44px is the smallest thing a thumb hits reliably, so it is the floor. */

@@ -32,7 +32,7 @@ export function TabBar() {
   const pathname = usePathname();
 
   // The tab bar is founder chrome. Login and the public signup page go bare.
-  if (pathname === "/login" || pathname === "/pitch") return null;
+  if (pathname === "/login" || pathname === "/pitch" || pathname.endsWith("/print")) return null;
 
   const onATab = TABS.some((t) => isActive(pathname, t.href));
 
