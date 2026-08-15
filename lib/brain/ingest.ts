@@ -18,6 +18,8 @@ import { embedTexts } from "./embed.ts";
 import { DATA_DIR, listBlueprints, listClients, listInvoices } from "../store.ts";
 import { listReplies, type Reply } from "../outreach/replies.ts";
 import { listResearch, listSends } from "../salesnav/store.ts";
+import { listInboundSince } from "../whatsapp/store.ts";
+import { founderFor } from "../whatsapp/config.ts";
 import { lessons } from "../pipeline/memory.ts";
 import { invoiceTotal, type Blueprint, type Client, type Invoice } from "../types.ts";
 import type { AccountResearch, SendRecord } from "../salesnav/types.ts";
@@ -128,6 +130,31 @@ export function rowsFromInvoices(invoices: Invoice[]): Row[] {
   }));
 }
 
+/**
+ * The same boundary the relay itself answers within, and no wider: founders
+ * only, never the family and friend traffic that shares this personal
+ * WhatsApp session. A message from a number outside STRIDE_WHATSAPP_FOUNDERS
+ * never reaches the relay and never reaches the brain — one allowlist gates
+ * both, so this file cannot quietly become a wider net than the door it
+ * copied.
+ */
+export function rowsFromWhatsApp(): Row[] {
+  const messages = listInboundSince("1970-01-01T00:00:00", 500);
+  const rows: Row[] = [];
+  for (const m of messages) {
+    const founder = m.founderNumber ? founderFor(m.founderNumber) : undefined;
+    if (!founder) continue;
+    rows.push({
+      kind: "whatsapp",
+      subject: `WhatsApp — ${founder.name}`,
+      body: trim(m.content, 1_000),
+      sourceRef: `whatsapp:${m.id}`,
+      occurredAt: m.timestamp,
+    });
+  }
+  return rows;
+}
+
 export function rowsFromLessons(lines: string[]): Row[] {
   return lines.map((l) => ({
     kind: "lesson" as const,
@@ -214,6 +241,7 @@ export function ingestAll(db: Brain = brain()): IngestReport {
     invoices: () => rowsFromInvoices(listInvoices()),
     lessons: () => rowsFromLessons(lessons()),
     transcripts: transcriptRows,
+    whatsapp: rowsFromWhatsApp,
   };
 
   const report: IngestReport = { scanned: 0, added: 0, bySource: {} };

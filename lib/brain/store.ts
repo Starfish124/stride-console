@@ -29,7 +29,8 @@ export type MemoryKind =
   | "blueprint"
   | "invoice"
   | "transcript"
-  | "lesson";
+  | "lesson"
+  | "whatsapp";
 
 export type EntityType = "client" | "project" | "blueprint" | "person";
 

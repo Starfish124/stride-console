@@ -103,19 +103,28 @@ export function listInboundSince(sinceISO: string, limit = 50): InboundMessage[]
   }
   try {
     const own = ownIdentity();
+    const sinceMs = new Date(sinceISO).getTime();
+    // Timestamps in this table are the Go driver's own text format
+    // ("2026-08-15 22:55:10+02:00"), not ISO — a lexicographic string
+    // comparison against an ISO cursor (the "T" separator sorts differently
+    // from " ") silently mismatches, and a relay built on that would miss
+    // every message after its first run without ever erroring. Pull a
+    // bounded recent window and compare real dates in JS instead of
+    // trusting SQL to order two different string shapes the same way.
+    //
     // Both directions come out of one query — self-chat rows are is_from_me
-    // = 1 — and get told apart in JS, where a Set lookup is simpler than
+    // = 1 — and get told apart below, where a Set lookup is simpler than
     // encoding "chat_jid strips to one of N values" back into SQL.
+    const candidatePool = Math.min(Math.max(limit * 40, 800), 4000);
     const rows = db
       .prepare(
         `SELECT id, chat_jid, content, timestamp, is_from_me, sender_pn FROM messages
          WHERE chat_jid NOT LIKE '%@g.us'
            AND content IS NOT NULL AND content != ''
-           AND timestamp > ?
-         ORDER BY timestamp ASC
+         ORDER BY timestamp DESC
          LIMIT ?`,
       )
-      .all(sinceISO, limit * 4) as Array<{
+      .all(candidatePool) as Array<{
       id: string;
       chat_jid: string;
       content: string;
@@ -124,8 +133,12 @@ export function listInboundSince(sinceISO: string, limit = 50): InboundMessage[]
       sender_pn: string | null;
     }>;
 
+    // Newest-first while filtering; reversed to the documented oldest-first
+    // order (and trimmed to the most recent `limit`) just before returning.
     const out: InboundMessage[] = [];
     for (const r of rows) {
+      const ts = new Date(r.timestamp).getTime();
+      if (!Number.isFinite(ts) || ts <= sinceMs) continue;
       const chatId = bareId(r.chat_jid);
       const isSelfChat = r.is_from_me === 1 && own.forms.has(chatId);
       const isGenuineInbound = r.is_from_me === 0;
@@ -139,7 +152,9 @@ export function listInboundSince(sinceISO: string, limit = 50): InboundMessage[]
       });
       if (out.length >= limit) break;
     }
-    return out;
+    // Built newest-first (to let the break above stop early); flipped here
+    // to the oldest-first order the relay actually wants to answer in.
+    return out.reverse();
   } catch {
     return [];
   } finally {
