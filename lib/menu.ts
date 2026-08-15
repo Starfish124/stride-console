@@ -236,6 +236,12 @@ export const MENU: MenuSection[] = [
         icon: "IconRuntime",
       },
       {
+        href: "/blueprints",
+        label: "Blueprints",
+        hint: "Reusable agents and workflows from past client work. Copy for the next one.",
+        icon: "IconLayers",
+      },
+      {
         href: "/lab",
         label: "The lab",
         hint: "Throwaway virtual machines for experiments. Break things in here.",

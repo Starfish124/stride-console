@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import type {
+  Blueprint,
   Client,
   ClientStage,
   ClientTouch,
@@ -44,6 +45,7 @@ const FILES = {
   notes: path.join(DATA_DIR, "notes.json"),
   scout: path.join(DATA_DIR, "scout.json"),
   invoices: path.join(DATA_DIR, "invoices.json"),
+  blueprints: path.join(DATA_DIR, "blueprints.json"),
 } as const;
 
 function ensureDataDir(): void {
@@ -670,4 +672,70 @@ export function markInboxSeen(): void {
     FILES.inbox,
     listInbox().map((e) => ({ ...e, seen: true })),
   );
+}
+
+// ---------- blueprints ----------
+
+export function listBlueprints(): Blueprint[] {
+  const existing = readJson<Blueprint[] | null>(FILES.blueprints, null);
+  if (existing) return existing;
+  // First run: the library opens holding what has already been built once,
+  // seeded from config the same way sources and the scout board are.
+  const now = new Date().toISOString();
+  const seeds = readJson<Blueprint[]>(
+    path.join(process.cwd(), "config", "blueprints.default.json"),
+    [],
+  ).map((b) => ({ ...b, createdAt: now, updatedAt: now }));
+  writeJson(FILES.blueprints, seeds);
+  return seeds;
+}
+
+export function addBlueprint(
+  input: Omit<Blueprint, "id" | "createdAt" | "updatedAt" | "uses" | "status"> & {
+    status?: Blueprint["status"];
+    uses?: Blueprint["uses"];
+  },
+): Blueprint {
+  const now = new Date().toISOString();
+  const blueprint: Blueprint = {
+    ...input,
+    id: newId("bp"),
+    status: input.status ?? "experimental",
+    uses: input.uses ?? [],
+    createdAt: now,
+    updatedAt: now,
+  };
+  writeJson(FILES.blueprints, [blueprint, ...listBlueprints()]);
+  return blueprint;
+}
+
+export function updateBlueprint(
+  id: string,
+  patch: Partial<Omit<Blueprint, "id" | "createdAt" | "updatedAt">>,
+): Blueprint | undefined {
+  const blueprints = listBlueprints();
+  const blueprint = blueprints.find((b) => b.id === id);
+  if (!blueprint) return undefined;
+  Object.assign(blueprint, patch, { updatedAt: new Date().toISOString() });
+  writeJson(FILES.blueprints, blueprints);
+  return blueprint;
+}
+
+/** Log a reuse: the moment a blueprint is copied for a client. */
+export function recordBlueprintUse(id: string, client: string): Blueprint | undefined {
+  const blueprints = listBlueprints();
+  const blueprint = blueprints.find((b) => b.id === id);
+  if (!blueprint) return undefined;
+  blueprint.uses.push({ client, at: new Date().toISOString() });
+  blueprint.updatedAt = new Date().toISOString();
+  writeJson(FILES.blueprints, blueprints);
+  return blueprint;
+}
+
+export function removeBlueprint(id: string): boolean {
+  const blueprints = listBlueprints();
+  const left = blueprints.filter((b) => b.id !== id);
+  if (left.length === blueprints.length) return false;
+  writeJson(FILES.blueprints, left);
+  return true;
 }

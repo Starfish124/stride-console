@@ -459,3 +459,52 @@ export function invoiceDueDate(inv: Pick<Invoice, "date" | "dueDays">): string {
   d.setUTCDate(d.getUTCDate() + inv.dueDays);
   return d.toISOString().slice(0, 10);
 }
+
+// ---------- blueprints (reusable client work) ----------
+
+export type BlueprintKind = "agent" | "workflow" | "prompt" | "integration";
+
+export const BLUEPRINT_KINDS: BlueprintKind[] = ["agent", "workflow", "prompt", "integration"];
+
+export const BLUEPRINT_KIND_LABELS: Record<BlueprintKind, string> = {
+  agent: "Agent",
+  workflow: "Workflow",
+  prompt: "Prompt",
+  integration: "Integration",
+};
+
+/** One recorded reuse: which client, when. The count is the resume. */
+export interface BlueprintUse {
+  client: string;
+  at: string;
+}
+
+/**
+ * A blueprint is client work made repeatable: the problem it solved, how it
+ * works, and a payload concrete enough to start the next build from — a
+ * system prompt, a workflow spec, setup steps. Build once for one client,
+ * copy for the rest; the library is the agency's real inventory.
+ */
+export interface Blueprint {
+  id: string;
+  name: string;
+  kind: BlueprintKind;
+  /** One line for the card: what it does, in plain words. */
+  oneLiner: string;
+  /** The situation that made it worth building. */
+  problem: string;
+  /** How it actually works: stages, models, checks. */
+  solution: string;
+  /** Tools and services it leans on. */
+  stack: string[];
+  /** Who it was first built for. */
+  builtFor: string;
+  /** The copyable core: markdown spec / prompt / setup steps. */
+  payload: string;
+  /** proven = shipped and worked; experimental = promising, not battle-tested. */
+  status: "proven" | "experimental";
+  uses: BlueprintUse[];
+  by?: string;
+  createdAt: string;
+  updatedAt: string;
+}

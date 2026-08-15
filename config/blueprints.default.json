@@ -1,0 +1,67 @@
+[
+  {
+    "id": "bp-seed-interview-capture",
+    "name": "Live interview capture",
+    "kind": "workflow",
+    "oneLiner": "Phone records discovery interviews; whisper transcribes live; insights on demand.",
+    "problem": "Discovery interviews at a client site produce notes nobody can type fast enough, and the knowledge walks out the door with the interviewer.",
+    "solution": "Phone records in short standalone takes (iOS-safe), each take posts to a Mac, local whisper transcribes in the client's language, the transcript grows live on every founder's phone. An on-demand local model pass ('what are we missing?') reads transcript + checklist + prep brief mid-interview. Recording hardened with a retry queue so a dropped request never loses audio.",
+    "stack": ["whisper.cpp", "MediaRecorder", "ffmpeg", "local LLM (Ollama)", "Next.js route handlers"],
+    "builtFor": "Durabo",
+    "payload": "# Live interview capture — build spec\n\n## Shape\n1. Roster page: schedule per day, status chips (scheduled → live → interviewed), driven from a repo/markdown the client-side lead edits.\n2. Interview page: sticky timer (amber at 75% of slot), tappable field-card checklist, notes tab, opname tab.\n3. Opname: MediaRecorder restarted per ~20s take (iOS Safari cannot produce decodable mid-stream chunks). POST each take → save to disk BEFORE transcription; whisper failure returns 200 + empty text (never resend-and-duplicate). 'Stop' drains queue, concats takes via ffmpeg.\n4. Live transcript file per person per day; both phones poll a GET endpoint at 5s.\n5. Insight endpoint: local model over transcript + unticked checklist steps + the person's prep questions. On demand only, never auto.\n\n## Pins\n- Whisper model: multilingual large-v3-turbo for non-English; letterless output reads as silence.\n- Segment files 0600; audio never leaves the machine.\n- Wake lock + banner: locking the phone kills the mic.\n\n## Adapt per client\n- Roster source (their scheduling truth)\n- Field card (their interview script)\n- Language for whisper",
+    "status": "proven",
+    "uses": [{ "client": "Durabo", "at": "2026-08-12T09:00:00.000Z" }]
+  },
+  {
+    "id": "bp-seed-trend-radar",
+    "name": "Trend radar",
+    "kind": "agent",
+    "oneLiner": "Reads Reddit/TikTok for a product category, ranks keyword momentum, predicts what pops next.",
+    "problem": "Buyers pick products on gut and licensor decks; by the time a trend is obvious in stores it is too late to order against it.",
+    "solution": "Fetch agents sweep category subreddits and TikTok (screenshot + vision pass), keyword extraction with category-weighted scoring, memory layer so each analysis builds on the last (no contradicting last week's data point), anomaly detection for out-of-nowhere spikes rather than steady leaders. Feeds a ranked board with per-keyword momentum.",
+    "stack": ["Reddit API", "TikTok scraping + vision model", "ML ranking models", "Hermes/local memory"],
+    "builtFor": "Durabo",
+    "payload": "# Trend radar — build spec\n\n## Stages\n1. SOURCES: per category, maintain subreddit list + TikTok hashtag/keyword list. Fetch on schedule.\n2. EXTRACT: keyword/entity extraction per post; weight by engagement and category-closeness (a toy-adjacent keyword outranks a generic one).\n3. RANK: momentum score per keyword = growth rate × volume × category weight. Keep a ranked feed.\n4. ANOMALY PASS: flag keywords whose growth breaks their own trend line — the 'out of nowhere, this thing is on fire' signal, separate from the steady top-10.\n5. MEMORY: every analysis stored; next run reads prior context so rankings stay consistent and drift is visible.\n6. PREDICT (layer 2): train per-category models on the history; report direction, not certainty.\n\n## Honest limits\n- Layer 1 is 'what is hot now'; prediction needs months of history.\n- Competitors can buy the same signal; the edge is category tuning + client's own sell-through joined in.\n\n## Adapt per client\n- Category keyword seeds and platforms\n- Join with their sales data for a 'we should reorder / drop' signal",
+    "status": "experimental",
+    "uses": [{ "client": "Durabo", "at": "2026-08-12T09:00:00.000Z" }]
+  },
+  {
+    "id": "bp-seed-voice-gated-content",
+    "name": "Voice-gated content pipeline",
+    "kind": "workflow",
+    "oneLiner": "Source → write → deterministic voice lint → on-brand render → human-approved publish.",
+    "problem": "AI-written content drifts off brand voice, and nobody trusts it enough to post without rereading everything.",
+    "solution": "Five fixed stages: sources are swept and ranked (RSS + reader, dedupe by URL and title similarity), a writer drafts in the brand voice, a deterministic linter built from the voice guide blocks violations (banned words, hook rules, length band, structure) — errors block approval, one rewrite on failure — renders produce on-brand images/PDF, and publishing is copy-open: a human presses post, always. Feedback memory joins post metrics back into the writer prompt.",
+    "stack": ["RSS + Jina Reader", "Claude", "deterministic lint (no LLM)", "satori/resvg render", "manual publish"],
+    "builtFor": "Stride (own marketing)",
+    "payload": "# Voice-gated content pipeline — build spec\n\n## Stages\n1. SOURCE: feed list in config; sweep, dedupe (URL match + >80% title trigram similarity), rank.\n2. WRITE: one recipe per content type; writer prompt carries voice guide + lessons from past post metrics.\n3. GATE: deterministic linter compiled from the client's voice guide — banned words, phantom-source check, hook-inside-N-chars, length band, paragraph/hashtag rules, at-least-one-number. Blocking errors stop approval; exactly one auto-rewrite with violations listed.\n4. DESIGN: render templates (image/carousel/PDF) from the draft, brand tokens only.\n5. PUBLISH: copy-open flow — copy text, open composer, human posts, 'mark posted' keeps the log honest. Nothing auto-posts.\n6. MEMORY: manual metrics entry per post; lessons only surface when both sides of a comparison have n≥2 and gap ≥25%.\n\n## Why it converts\nThe voice guide becomes testable rules, so trust comes from the gate, not from rereading.\n\n## Adapt per client\n- Voice guide → lint rules session with the client\n- Their channels for the publish step",
+    "status": "proven",
+    "uses": []
+  },
+  {
+    "id": "bp-seed-seo-sweep",
+    "name": "SEO sweep and article engine",
+    "kind": "workflow",
+    "oneLiner": "Scores every page, rewrites metadata for review, writes articles against a keyword map.",
+    "problem": "The website ranks for nothing, nobody knows which page is weak, and content for search never gets written.",
+    "solution": "A sweep audits every route (scores, findings by severity), proposes title/meta rewrites that a person approves before they ship, keeps a keyword map of terms worth owning, and an article engine writes drafts against unclaimed keywords — briefs that already have an article are never rewritten. Publishing pushes approved metadata to the live site.",
+    "stack": ["route auditor", "Claude", "keyword map", "GSC check"],
+    "builtFor": "Stride (stride-ai.nl)",
+    "payload": "# SEO sweep — build spec\n\n1. AUDIT: crawl own routes; score per page; findings tagged severity; only pages that answered count toward the site score.\n2. REWRITE: sweep drafts title/meta changes into a review queue; human approves; approved metadata deploys to the site.\n3. KEYWORDS: maintain a map of terms worth owning + who currently owns them; unclaimed terms feed the article queue.\n4. ARTICLES: writer takes brief → draft → same review gate; skip briefs that already produced an article.\n5. VERIFY: scheduled GSC check closes the loop on what actually moved.\n\n## Adapt per client\n- Their stack's deploy hook for metadata\n- Keyword seeds from their niche + competitors",
+    "status": "proven",
+    "uses": []
+  },
+  {
+    "id": "bp-seed-email-sequencer",
+    "name": "Outbound email sequencer",
+    "kind": "workflow",
+    "oneLiner": "Multi-step outbound that researches, drafts in voice, sends on schedule, and stops itself.",
+    "problem": "Founders start outbound sequences by hand, forget step 2, and follow-ups die.",
+    "solution": "Enrol a prospect → research pass builds context → per-step drafts written in the sender's voice and held to the voice gate → scheduled sends with a hard brake (suppression list, unsubscribe honoured, ledger that reports the truth about which day). Replies land back in the console; a reply stops the sequence.",
+    "stack": ["email provider API + webhooks", "Claude", "voice gate", "suppression ledger"],
+    "builtFor": "Stride (own sales)",
+    "payload": "# Outbound sequencer — build spec\n\n1. ENROL: prospect + sequence choice; research pass gathers site/LinkedIn context into a brief.\n2. DRAFT: every step drafted up front in sender's voice, through the same deterministic voice gate as content; human approves the sequence once.\n3. SEND: scheduler with per-day caps; suppression list checked at send time, not enrol time; unsubscribe link honoured immediately and logged.\n4. REPLY: webhook lands replies in the console; any reply halts remaining steps; founder answers personally.\n5. LEDGER: what was sent, to whom, which day — the ledger must never lie about scheduling drift.\n\n## Pins\n- A brake switch that stops everything at once.\n- Never fake a personal tone the founder cannot sustain in the reply.\n\n## Adapt per client\n- Sender voice session → gate rules\n- Their CRM as enrolment source",
+    "status": "proven",
+    "uses": []
+  }
+]
