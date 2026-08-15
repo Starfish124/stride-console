@@ -10,6 +10,7 @@ import {
   type Client,
 } from "@/lib/types";
 import { DeleteX } from "@/components/DeleteX";
+import { toast } from "sonner";
 
 /**
  * The shelf: everything built once, ready to be built again.
@@ -51,6 +52,7 @@ function BlueprintCard({ bp, clients }: { bp: Blueprint; clients: Client[] }) {
     });
     setSaveFailed(!res.ok);
     if (res.ok) {
+      toast.success(`Logged: ${bp.name} for ${chosen}`);
       setLogging(false);
       setClient("");
       router.refresh();

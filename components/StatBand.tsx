@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Stat } from "@/lib/dashboard";
+import { NumberFigure } from "@/components/NumberFigure";
 
 /**
  * The five numbers the console opens with, one per channel.
@@ -24,7 +25,7 @@ export function StatTile({ stat, className = "" }: { stat: Stat; className?: str
       className={`card-lift card-glass rounded-card border border-line bg-white px-3 py-2.5 ${className}`}
     >
       <p className="eyebrow text-[10px] text-slate">{stat.label}</p>
-      <p className="figure mt-1 text-[21px] text-ink">{stat.value}</p>
+      <p className="figure mt-1 text-[21px] text-ink"><NumberFigure value={stat.value} /></p>
       {/* Two lines is the ceiling. A tile in a grid is as tall as the wordiest
           note in its row, so one long sentence used to add height to four
           tiles that had nothing to say. */}

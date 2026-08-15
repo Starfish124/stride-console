@@ -16,6 +16,7 @@ import { SWRegister } from "@/components/SWRegister";
 import { TabBar } from "@/components/TabBar";
 import { AppMenu } from "@/components/AppMenu";
 import { RailOffset, SideNav } from "@/components/SideNav";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "Stride Console",
@@ -55,6 +56,22 @@ export default function RootLayout({
           {/* Wide screens get the persistent rail; the sheet stays for ⌘K. */}
           <SideNav />
           <RailOffset>{children}</RailOffset>
+          {/* Transient confirmations only. Anything that failed says so
+              inline where it failed; a toast is for "that worked" moments
+              that need no reply. */}
+          <Toaster
+            position="top-center"
+            toastOptions={{
+              style: {
+                background: "#ffffff",
+                color: "#0a0c14",
+                border: "1px solid #e5e8f0",
+                borderRadius: "12px",
+                fontSize: "13px",
+                fontWeight: 600,
+              },
+            }}
+          />
           <TabBar />
         </AppMenu>
       </body>

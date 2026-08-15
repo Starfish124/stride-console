@@ -678,7 +678,22 @@ export function markInboxSeen(): void {
 
 export function listBlueprints(): Blueprint[] {
   const existing = readJson<Blueprint[] | null>(FILES.blueprints, null);
-  if (existing) return existing;
+  if (existing) {
+    // Newly shipped default blueprints join an existing shelf, the same
+    // union-by-id the source list does: the founders' edits stay exactly as
+    // edited, a new seed appears once and is theirs from then on.
+    const defaults = readJson<Blueprint[]>(
+      path.join(process.cwd(), "config", "blueprints.default.json"),
+      [],
+    );
+    const have = new Set(existing.map((b) => b.id));
+    const fresh = defaults.filter((d) => !have.has(d.id));
+    if (fresh.length === 0) return existing;
+    const now = new Date().toISOString();
+    const merged = [...fresh.map((b) => ({ ...b, createdAt: now, updatedAt: now })), ...existing];
+    writeJson(FILES.blueprints, merged);
+    return merged;
+  }
   // First run: the library opens holding what has already been built once,
   // seeded from config the same way sources and the scout board are.
   const now = new Date().toISOString();

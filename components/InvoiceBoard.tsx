@@ -13,6 +13,7 @@ import {
 } from "@/lib/types";
 import { COMPANY, euro } from "@/lib/company";
 import { DeleteX } from "@/components/DeleteX";
+import { toast } from "sonner";
 
 /**
  * Invoices, in the approved template's clothes.
@@ -247,7 +248,10 @@ export function InvoiceBoard({ invoices, clients }: { invoices: Invoice[]; clien
       ok = false;
     }
     setSaveFailed(!ok);
-    if (ok) router.refresh();
+    if (ok) {
+      toast.success(`Marked ${INVOICE_STATUS_LABELS[status].toLowerCase()}`);
+      router.refresh();
+    }
   }
 
   const outstanding = invoices

@@ -10,6 +10,7 @@ import {
   type ClientStage,
 } from "@/lib/types";
 import { IconLineageDoc, IconLayers, IconTime } from "@/components/icons";
+import { PortalAccess } from "@/components/PortalAccess";
 
 /**
  * One person, everything about them.
@@ -226,6 +227,11 @@ export function ClientDetail({ client, deckUrl }: { client: Client; deckUrl?: st
               </div>
             )}
           </div>
+        </section>
+
+        <section className="mb-8">
+          <p className="eyebrow mb-3 text-slate">Client portal</p>
+          <PortalAccess clientId={client.id} />
         </section>
 
         <section>

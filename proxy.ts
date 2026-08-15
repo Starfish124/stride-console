@@ -28,6 +28,12 @@ export async function proxy(request: NextRequest) {
     // disk. Same guard: the token is in the URL, and without a live one this
     // is a bare 404 too.
     pathname === "/api/graph/connect" ||
+    // The client portal a founder hands out. The random token in the path IS
+    // the credential: the page resolves it and an unknown or revoked one is a
+    // bare 404, so there is nothing here to browse without a live link. Only
+    // the pages are public. /api/portal, where links get minted and revoked,
+    // stays behind the login like everything else a founder does.
+    pathname.startsWith("/portal/") ||
     pathname === "/favicon.ico" ||
     pathname === "/manifest.webmanifest" ||
     pathname === "/sw.js" ||

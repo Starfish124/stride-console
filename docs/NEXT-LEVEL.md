@@ -90,12 +90,16 @@ chatwoot (MIT core, client support desk).
 
 ## Order of battle
 
-1. ~~Brain v1~~ — shipped. Let the nightly runs build the corpus on the mac-mini.
-2. **Blueprint the Durabo discovery sprint** as the productized front door (the report
-   pipeline exists; write the blueprint payload, price it, put it on stride-ai.nl).
-3. **Client portal cut** of the console: one client, read-only, their agents + ROI numbers.
-   White-label the chassis. This is whitespace #2 and the retention machine.
-4. **UI polish sprint** with the adopted stack: sonner for the new failure states, motion on
-   the sheet and deck, number-flow on the stat band, harmony palette swap.
-5. **Publish one benchmark** from Durabo delivery (with consent): the proof asset nobody
-   else has.
+1. ~~Brain v1~~ — shipped 2026-08-15. Nightly runs build the corpus on the mac-mini.
+2. ~~Discovery Sprint productized~~ — shipped: blueprint on the shelf (bp-seed-discovery-sprint),
+   landing copy ready in docs/discovery-sprint-page.md. Remaining founder step: set the price,
+   put the page on stride-ai.nl.
+3. ~~Client portal~~ — shipped: per-client secret links (mint/revoke on the client page),
+   read-only white-label view of stage, projects, recent work, invoices. Known nit: unknown
+   tokens render the 404 boundary with a streamed 200 status (app-wide Next behaviour).
+4. ~~UI polish, first cut~~ — shipped: sonner toasts on the moments that deserve them,
+   number-flow odometers on the stat band. Deliberately not done: the harmony palette swap
+   (changes the whole look — founder eyes first) and motion on the sheet (the CSS transitions
+   already carry it; a dependency needs to beat them visibly before it earns the bytes).
+5. ~~Benchmark draft~~ — written (docs/benchmarks/durabo-discovery-2026-08.md), hard-gated:
+   DO NOT PUBLISH before Durabo signs off on names and numbers. Publishing is a founder call.
