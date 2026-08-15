@@ -224,6 +224,12 @@ export const MENU: MenuSection[] = [
         icon: "IconRuntime",
       },
       {
+        href: "/lab",
+        label: "The lab",
+        hint: "Throwaway virtual machines for experiments. Break things in here.",
+        icon: "IconGuardrail",
+      },
+      {
         href: "/graph",
         label: "The graph",
         hint: "Every codebase and every session that worked on one, in one map.",
