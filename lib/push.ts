@@ -41,10 +41,32 @@ export interface PushPayload {
   url?: string;
 }
 
+/** Mirror every push to the shared ntfy phone channel (the rig's one alert
+ *  channel). Best-effort and fire-and-forget: it must never break web push. */
+async function mirrorToNtfy(payload: PushPayload): Promise<void> {
+  try {
+    const topic =
+      process.env.NTFY_TOPIC ||
+      fs.readFileSync(`${process.env.HOME}/.config/ntfy-topic`, "utf8").trim();
+    if (!topic) return;
+    await fetch(`https://ntfy.sh/${topic}`, {
+      method: "POST",
+      headers: {
+        Title: `Stride: ${payload.title}`.replace(/[\r\n]+/g, " "),
+        Priority: "default",
+      },
+      body: payload.url ? `${payload.body}\n${payload.url}` : payload.body,
+    });
+  } catch {
+    /* ignore — the phone mirror is best-effort */
+  }
+}
+
 /** Send to every subscribed phone. Dead subscriptions clean themselves up. */
 export async function sendToAll(
   payload: PushPayload,
 ): Promise<{ sent: number; removed: number }> {
+  void mirrorToNtfy(payload);
   const subs = listPushSubs();
   if (subs.length === 0) return { sent: 0, removed: 0 };
   const keys = ensureVapidKeys();
