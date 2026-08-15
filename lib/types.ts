@@ -391,3 +391,71 @@ export interface ScoutEvent {
   createdAt: string;
   updatedAt: string;
 }
+
+// ---------- invoices ----------
+
+export type InvoiceStatus = "draft" | "sent" | "paid";
+
+export const INVOICE_STATUSES: InvoiceStatus[] = ["draft", "sent", "paid"];
+
+export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
+  draft: "Draft",
+  sent: "Sent",
+  paid: "Paid",
+};
+
+/** One billable line: a bold what, a grey how, and the arithmetic. */
+export interface InvoiceLine {
+  title: string;
+  subtitle?: string;
+  qty: number;
+  rate: number;
+}
+
+/**
+ * An invoice in the approved template's shape. Company details are NOT stored
+ * per invoice — they come from lib/company.ts at render time, so a corrected
+ * IBAN fixes every reprint. What the client owed and was shown is stored.
+ */
+export interface Invoice {
+  id: string;
+  /** 2026-001 — year, dash, three-digit sequence within the year. */
+  number: string;
+  clientId?: string;
+  billTo: {
+    name: string;
+    attn?: string;
+    address: string[];
+    email?: string;
+  };
+  /** ISO yyyy-mm-dd. Due date derives: date + dueDays. */
+  date: string;
+  dueDays: number;
+  reference?: string;
+  lines: InvoiceLine[];
+  /** Percent, 21 for Dutch BTW. Stored so a rate change never rewrites history. */
+  vatRate: number;
+  status: InvoiceStatus;
+  by?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function invoiceSubtotal(inv: Pick<Invoice, "lines">): number {
+  return inv.lines.reduce((s, l) => s + l.qty * l.rate, 0);
+}
+
+export function invoiceVat(inv: Pick<Invoice, "lines" | "vatRate">): number {
+  return Math.round(invoiceSubtotal(inv) * inv.vatRate) / 100;
+}
+
+export function invoiceTotal(inv: Pick<Invoice, "lines" | "vatRate">): number {
+  return invoiceSubtotal(inv) + invoiceVat(inv);
+}
+
+/** date + dueDays, ISO. */
+export function invoiceDueDate(inv: Pick<Invoice, "date" | "dueDays">): string {
+  const d = new Date(`${inv.date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + inv.dueDays);
+  return d.toISOString().slice(0, 10);
+}

@@ -1,0 +1,66 @@
+[
+  {
+    "id": "scout-seed-wwv-2027",
+    "name": "Webwinkel Vakdagen 2027",
+    "url": "https://www.webwinkelvakdagen.nl/en/",
+    "date": "2027-04-07",
+    "endDate": "2027-04-08",
+    "location": "Jaarbeurs, Utrecht",
+    "category": "retail",
+    "cost": "Visitor ticket free for retailers; check exhibitor rates",
+    "notes": "Largest digital-commerce event in the Benelux: 14,000+ visitors, 270 exhibitors, 200 talks. The rooms are full of exactly our buyer: SME retail and e-commerce operators drowning in admin.",
+    "criteria": { "audienceFit": 5, "leadPotential": 5, "visibility": 3, "affordability": 4 },
+    "status": "considering"
+  },
+  {
+    "id": "scout-seed-wsai-2026",
+    "name": "World Summit AI Amsterdam 2026",
+    "url": "https://worldsummit.ai/",
+    "date": "2026-10-07",
+    "endDate": "2026-10-08",
+    "location": "Taets Art & Event Park, Zaandam",
+    "category": "ai",
+    "cost": "Ticket several hundred euro; 20 min from home",
+    "notes": "10th anniversary edition. Enterprise-heavy crowd: more peers and vendors than SME buyers, but the best AI networking event in the country and it is on our doorstep.",
+    "criteria": { "audienceFit": 3, "leadPotential": 3, "visibility": 4, "affordability": 4 },
+    "status": "considering"
+  },
+  {
+    "id": "scout-seed-ams-ai-summit-2026",
+    "name": "The Amsterdam AI Summit 2026",
+    "url": "https://www.iamsterdam.com/en/business/calendar/events/all/the-amsterdam-ai-summit-2026",
+    "date": "2026-11-19",
+    "location": "Amsterdam (date to confirm)",
+    "category": "ai",
+    "cost": "tbd",
+    "notes": "500 business, innovation, product and tech leaders from across NL. Decision-makers rather than researchers: closer to our buyer than the big summit. Verify the exact November date before booking.",
+    "criteria": { "audienceFit": 4, "leadPotential": 4, "visibility": 3, "affordability": 4 },
+    "status": "considering"
+  },
+  {
+    "id": "scout-seed-eurocis-2027",
+    "name": "EuroCIS 2027",
+    "url": "https://www.eurocis-tradefair.com/",
+    "date": "2027-02-16",
+    "endDate": "2027-02-18",
+    "location": "Messe Düsseldorf",
+    "category": "retail",
+    "cost": "Ticket + 2 hotel nights Düsseldorf",
+    "notes": "The leading retail-technology fair in Europe. Retailers come specifically to buy technology: high intent, but bigger retailers than our sweet spot and a crowded vendor floor.",
+    "criteria": { "audienceFit": 4, "leadPotential": 4, "visibility": 2, "affordability": 3 },
+    "status": "considering"
+  },
+  {
+    "id": "scout-seed-spielwarenmesse-2027",
+    "name": "Spielwarenmesse 2027",
+    "url": "https://www.spielwarenmesse.de/en/",
+    "date": "2027-02-02",
+    "endDate": "2027-02-06",
+    "location": "Messe Nürnberg",
+    "category": "business",
+    "cost": "Ticket + travel + hotels, 5 days",
+    "notes": "The world's biggest toy fair, and Durabo's entire world walks the floor. Not a lead machine for us directly, but one Durabo-style reference client turns this into a fishing pond of lookalikes.",
+    "criteria": { "audienceFit": 4, "leadPotential": 3, "visibility": 2, "affordability": 2 },
+    "status": "considering"
+  }
+]

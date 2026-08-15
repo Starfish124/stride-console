@@ -4,6 +4,7 @@ import {
   listDrafts,
   listEvents,
   listInbox,
+  listInvoices,
   listMyths,
   listNotes,
   listPostLog,
@@ -28,6 +29,8 @@ import { PanelDeck } from "@/components/PanelDeck";
 import type { DeckSlide } from "@/components/PanelDeck";
 import { StatBand } from "@/components/StatBand";
 import { QuickMenu } from "@/components/QuickMenu";
+import { RightNow } from "@/components/RightNow";
+import { AskStride } from "@/components/AskStride";
 import {
   CampaignsQuickTile,
   CampaignsQuickTileSkeleton,
@@ -89,13 +92,14 @@ export default async function Dashboard() {
   // waiting on a machine is not 870 things waiting on a founder.
   const waiting = owed.length + repliesWaiting + draftsWaiting;
 
+  const notes = listNotes();
   const tiles = buildQuickMenu({
     replies: repliesWaiting,
     clients: clients.length,
     late: owed.length,
     draftsWaiting,
     seoFindings,
-    toBuild: listNotes().filter((n) => n.lane === "todo").length,
+    toBuild: notes.filter((n) => n.lane === "todo").length,
     interviews: interviewPulse(),
   });
 
@@ -191,6 +195,13 @@ export default async function Dashboard() {
           </Suspense>
         </StatBand>
 
+        {/* What the two of you are actually doing, before the machinery. */}
+        <RightNow
+          doing={notes.filter((n) => n.lane === "doing")}
+          clients={clients}
+          invoices={listInvoices()}
+        />
+
         {/* And the way to act on any of it. */}
         <QuickMenu
           tiles={tiles}
@@ -215,6 +226,11 @@ export default async function Dashboard() {
 
         <p className="eyebrow mb-2 mt-7 text-slate">Heard a myth</p>
         <MythQuickAdd />
+
+        {/* The model, without leaving the front page. It reads the console's
+            own state, so "what needs me" gets an answer in a sentence. */}
+        <p className="eyebrow mb-2 mt-10 text-slate">Ask Stride</p>
+        <AskStride />
       </main>
     </div>
   );

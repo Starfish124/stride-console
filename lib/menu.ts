@@ -209,6 +209,12 @@ export const MENU: MenuSection[] = [
         hint: "Upcoming AI and retail events, scored on one rubric for best fit.",
         icon: "IconTarget",
       },
+      {
+        href: "/invoices",
+        label: "Invoices",
+        hint: "Client invoices in the approved template, numbered and tracked.",
+        icon: "IconLineageDoc",
+      },
     ],
   },
   {

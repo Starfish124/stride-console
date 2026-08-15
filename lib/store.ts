@@ -12,6 +12,7 @@ import type {
   Draft,
   EventChecklistItem,
   InboxEntry,
+  Invoice,
   Myth,
   Note,
   NoteLane,
@@ -42,6 +43,7 @@ const FILES = {
   clients: path.join(DATA_DIR, "clients.json"),
   notes: path.join(DATA_DIR, "notes.json"),
   scout: path.join(DATA_DIR, "scout.json"),
+  invoices: path.join(DATA_DIR, "invoices.json"),
 } as const;
 
 function ensureDataDir(): void {
@@ -523,7 +525,18 @@ export function removeNote(id: string): boolean {
 // ---------- event scout ----------
 
 export function listScoutEvents(): ScoutEvent[] {
-  return readJson<ScoutEvent[]>(FILES.scout, []);
+  const existing = readJson<ScoutEvent[] | null>(FILES.scout, null);
+  if (existing) return existing;
+  // First run: the board opens with researched events rather than a blank
+  // page, same pattern as the source list. Seeds carry real dates and a
+  // pre-scored rubric; delete or rescore them like anything else.
+  const now = new Date().toISOString();
+  const seeds = readJson<ScoutEvent[]>(
+    path.join(process.cwd(), "config", "scout.default.json"),
+    [],
+  ).map((e) => ({ ...e, createdAt: now, updatedAt: now }));
+  writeJson(FILES.scout, seeds);
+  return seeds;
 }
 
 export function addScoutEvent(
@@ -571,6 +584,64 @@ export function removeScoutEvent(id: string): boolean {
   const left = events.filter((e) => e.id !== id);
   if (left.length === events.length) return false;
   writeJson(FILES.scout, left);
+  return true;
+}
+
+// ---------- invoices ----------
+
+export function listInvoices(): Invoice[] {
+  return readJson<Invoice[]>(FILES.invoices, []);
+}
+
+export function getInvoice(id: string): Invoice | undefined {
+  return listInvoices().find((i) => i.id === id);
+}
+
+/** 2026-001, 2026-002, ... — sequence restarts each calendar year. */
+export function nextInvoiceNumber(year = new Date().getFullYear()): string {
+  const prefix = `${year}-`;
+  const max = listInvoices()
+    .filter((i) => i.number.startsWith(prefix))
+    .reduce((m, i) => Math.max(m, Number(i.number.slice(prefix.length)) || 0), 0);
+  return `${prefix}${String(max + 1).padStart(3, "0")}`;
+}
+
+export function addInvoice(
+  input: Omit<Invoice, "id" | "number" | "createdAt" | "updatedAt" | "status"> & {
+    status?: Invoice["status"];
+  },
+): Invoice {
+  const now = new Date().toISOString();
+  const invoice: Invoice = {
+    ...input,
+    id: newId("inv"),
+    number: nextInvoiceNumber(Number(input.date.slice(0, 4)) || undefined),
+    status: input.status ?? "draft",
+    createdAt: now,
+    updatedAt: now,
+  };
+  // Invoices are money paperwork: same 0600 the signup consent records get.
+  writeJson(FILES.invoices, [invoice, ...listInvoices()], 0o600);
+  return invoice;
+}
+
+export function updateInvoice(
+  id: string,
+  patch: Partial<Omit<Invoice, "id" | "number" | "createdAt" | "updatedAt">>,
+): Invoice | undefined {
+  const invoices = listInvoices();
+  const invoice = invoices.find((i) => i.id === id);
+  if (!invoice) return undefined;
+  Object.assign(invoice, patch, { updatedAt: new Date().toISOString() });
+  writeJson(FILES.invoices, invoices, 0o600);
+  return invoice;
+}
+
+export function removeInvoice(id: string): boolean {
+  const invoices = listInvoices();
+  const left = invoices.filter((i) => i.id !== id);
+  if (left.length === invoices.length) return false;
+  writeJson(FILES.invoices, left, 0o600);
   return true;
 }
 

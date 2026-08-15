@@ -15,6 +15,7 @@ import "./globals.css";
 import { SWRegister } from "@/components/SWRegister";
 import { TabBar } from "@/components/TabBar";
 import { AppMenu } from "@/components/AppMenu";
+import { RailOffset, SideNav } from "@/components/SideNav";
 
 export const metadata: Metadata = {
   title: "Stride Console",
@@ -51,7 +52,9 @@ export default function RootLayout({
         {/* AppMenu owns the sheet and shares its open state down the tree, so
             the header pill and the tab bar's last slot drive the same one. */}
         <AppMenu>
-          {children}
+          {/* Wide screens get the persistent rail; the sheet stays for ⌘K. */}
+          <SideNav />
+          <RailOffset>{children}</RailOffset>
           <TabBar />
         </AppMenu>
       </body>
