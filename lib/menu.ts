@@ -262,6 +262,12 @@ export const MENU: MenuSection[] = [
         icon: "IconAskStride",
       },
       {
+        href: "/brain",
+        label: "Brain",
+        hint: "What the machine remembers: lessons from sessions, runs and the pipeline.",
+        icon: "IconSpark",
+      },
+      {
         href: "/notes",
         label: "Notes",
         hint: "Shared board. Ideas, what to build, what is being built.",

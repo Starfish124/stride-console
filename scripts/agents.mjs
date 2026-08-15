@@ -56,6 +56,18 @@ const JOBS = [
     days: [0, 1, 2, 3, 4, 5, 6],
     catchUpUntilHour: 23,
   },
+  {
+    // Hermes, the memory keeper: distils the day's sessions and delivery runs
+    // into durable memories and diffs the business stores into a timeline.
+    // Runs after the graph build so the newest session notes are on disk.
+    // Claude calls are capped per night inside the script.
+    name: "brain",
+    script: "scripts/brain-distill.mjs",
+    hour: 5,
+    minute: 0,
+    days: [0, 1, 2, 3, 4, 5, 6],
+    catchUpUntilHour: 23,
+  },
 ];
 
 function readState() {

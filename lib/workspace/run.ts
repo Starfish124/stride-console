@@ -8,6 +8,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { recallBlock } from "../brain/recall.ts";
 import { callClaudeCli } from "../pipeline/write.ts";
 import { newId } from "../store.ts";
 import { getProject, listNotes, listRuns, putIssue, putRun } from "./store.ts";
@@ -216,8 +217,11 @@ export function runProject(options: {
     }
   };
 
+  // What the brain remembers about this project rides ahead of the notes, so
+  // run N+1 starts where run N learned something. Empty until Hermes has run.
+  const memory = recallBlock(project.name);
   const context = contextBlock(project.id);
-  const prompt = context ? `${context}\n\n---\n\n${task}` : task;
+  const prompt = [memory, context, task].filter(Boolean).join("\n\n---\n\n");
 
   const done = (async (): Promise<RunLog> => {
     let status: RunLog["status"] = "done";
