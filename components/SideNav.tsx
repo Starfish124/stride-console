@@ -2,18 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { MENU, sectionFor, type MenuArea } from "@/lib/menu";
-import { iconByName } from "@/components/icons";
+import { iconByName, IconChevron } from "@/components/icons";
 import { Mark } from "@/components/Ramp";
 
 /**
- * The whole console down the left edge, on screens wide enough to afford it.
+ * The console down the left edge, folded.
  *
- * Phones keep the tab bar, laptops keep the header, but on a big display the
- * fastest navigation is the one that never goes away: every destination one
- * click from everywhere, current page lit, no sheet to open first. The menu
- * sheet (⌘K) stays for search and for the tour; this rail is for the two
- * people who already know the building and just want the doors visible.
+ * Eight doors, not thirty-five: the rail shows section names and opens one
+ * at a time on click, because a founder scanning for "where do invoices
+ * live" reads eight words faster than a wall. The section you are in opens
+ * itself, everything else stays shut, and Clients is a section of its own —
+ * one door per relationship, Durabo first among them.
+ *
+ * Phones keep the tab bar, laptops the header; this exists at xl. The menu
+ * sheet (⌘K) stays for search and the tour.
  */
 
 const AREA_TONE: Record<MenuArea, string> = {
@@ -40,10 +44,89 @@ export interface RailClient {
   label: string;
 }
 
+/** The Clients fold sits here in the reading order, at the founders' ask. */
+const CLIENTS_AFTER: MenuArea = "sales";
+
 export function SideNav({ clients = [] }: { clients?: RailClient[] }) {
   const pathname = usePathname();
-  if (railHidden(pathname)) return null;
   const current = sectionFor(pathname);
+  const onClientPage = /^\/clients\/[^/]+/.test(pathname);
+
+  // The fold you are in opens itself; the rest is one click away. Adjusted
+  // during render on route change (the tab bar's own pattern) so following
+  // a link into another section opens that section's fold without an effect.
+  const [open, setOpen] = useState<Set<string>>(
+    () => new Set([onClientPage ? "clients" : (current ?? "content")]),
+  );
+  const [lastPath, setLastPath] = useState(pathname);
+  if (lastPath !== pathname) {
+    setLastPath(pathname);
+    const next = new Set(open);
+    next.add(onClientPage ? "clients" : (current ?? "content"));
+    setOpen(next);
+  }
+
+  if (railHidden(pathname)) return null;
+
+  const toggle = (id: string) => {
+    const next = new Set(open);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setOpen(next);
+  };
+
+  const fold = (options: {
+    id: string;
+    label: string;
+    tone: string;
+    active: boolean;
+    children: React.ReactNode;
+  }) => {
+    const isOpen = open.has(options.id);
+    return (
+      <div key={options.id}>
+        <button
+          type="button"
+          onClick={() => toggle(options.id)}
+          aria-expanded={isOpen}
+          className={`pressable flex w-full items-center gap-2 rounded-lg px-2 py-2 text-[13px] font-semibold ${
+            options.active ? "text-ink" : "text-slate hover:text-ink"
+          }`}
+        >
+          <span aria-hidden className={`slant-rule h-[2.5px] w-3.5 shrink-0 ${options.tone}`} />
+          <span className="flex-1 text-left">{options.label}</span>
+          <IconChevron
+            size={13}
+            className={`shrink-0 text-mute transition-transform duration-200 ${isOpen ? "rotate-90" : ""}`}
+          />
+        </button>
+        {isOpen && <ul className="mb-1 mt-0.5 space-y-px pl-3">{options.children}</ul>}
+      </div>
+    );
+  };
+
+  const itemRow = (href: string, label: string, icon: string, hint?: string) => {
+    const base = href.split(/[?#]/)[0];
+    const here =
+      base === "/"
+        ? pathname === "/" || pathname.startsWith("/drafts")
+        : pathname === base || pathname.startsWith(`${base}/`);
+    const Icon = iconByName(icon);
+    return (
+      <li key={href + label}>
+        <Link
+          href={href}
+          title={hint}
+          className={`flex items-center gap-2.5 rounded-lg px-2 py-[7px] text-[13px] font-semibold ${
+            here ? "bg-indigo-tint/70 text-indigo" : "text-slate hover:bg-white hover:text-ink"
+          }`}
+        >
+          <Icon size={15} className={`shrink-0 ${here ? "text-indigo" : "text-mute"}`} />
+          <span className="truncate">{label}</span>
+        </Link>
+      </li>
+    );
+  };
 
   return (
     <aside
@@ -55,76 +138,29 @@ export function SideNav({ clients = [] }: { clients?: RailClient[] }) {
         <span className="text-[15px] font-bold tracking-tight">Stride</span>
       </Link>
 
-      <nav className="mt-6 flex flex-1 flex-col gap-5 px-3">
+      <nav className="mt-5 flex flex-1 flex-col gap-0.5 px-3">
         {MENU.map((section) => (
-          <div key={section.id}>
-            <p className="mx-2 flex items-center gap-2">
-              <span aria-hidden className={`slant-rule h-[2.5px] w-3.5 shrink-0 ${AREA_TONE[section.id]}`} />
-              <span
-                className={`eyebrow text-[9.5px] ${current === section.id ? "text-ink" : "text-mute"}`}
-              >
-                {section.label}
-              </span>
-            </p>
-            <ul className="mt-1.5 space-y-px">
-              {section.items.map((item) => {
-                const base = item.href.split(/[?#]/)[0];
-                const here =
-                  base === "/"
-                    ? pathname === "/" || pathname.startsWith("/drafts")
-                    : pathname === base || pathname.startsWith(`${base}/`);
-                const Icon = iconByName(item.icon);
-                return (
-                  <li key={item.href + item.label}>
-                    <Link
-                      href={item.href}
-                      title={item.hint}
-                      className={`flex items-center gap-2.5 rounded-lg px-2 py-[7px] text-[13px] font-semibold ${
-                        here
-                          ? "bg-indigo-tint/70 text-indigo"
-                          : "text-slate hover:bg-white hover:text-ink"
-                      }`}
-                    >
-                      <Icon size={15} className={`shrink-0 ${here ? "text-indigo" : "text-mute"}`} />
-                      <span className="truncate">{item.label}</span>
-                    </Link>
-                  </li>
-                );
+          <span key={section.id} className="contents">
+            {fold({
+              id: section.id,
+              label: section.label,
+              tone: AREA_TONE[section.id],
+              active: current === section.id && !onClientPage,
+              children: section.items.map((i) => itemRow(i.href, i.label, i.icon, i.hint)),
+            })}
+            {section.id === CLIENTS_AFTER &&
+              clients.length > 0 &&
+              fold({
+                id: "clients",
+                label: "Clients",
+                tone: "text-ink",
+                active: onClientPage,
+                children: clients.map((c) =>
+                  itemRow(`/clients/${c.id}`, c.label, "IconTeam", `Everything for ${c.label}, one page.`),
+                ),
               })}
-            </ul>
-          </div>
+          </span>
         ))}
-        {clients.length > 0 && (
-          <div>
-            <p className="mx-2 flex items-center gap-2">
-              <span aria-hidden className="slant-rule h-[2.5px] w-3.5 shrink-0 text-ink" />
-              <span className="eyebrow text-[9.5px] text-mute">Clients</span>
-            </p>
-            {/* One hub per client: the whole relationship behind one door.
-                The book itself stays under Sales; these are the live ones. */}
-            <ul className="mt-1.5 space-y-px">
-              {clients.map((c) => {
-                const base = `/clients/${c.id}`;
-                const here = pathname === base || pathname.startsWith(`${base}/`);
-                return (
-                  <li key={c.id}>
-                    <Link
-                      href={base}
-                      className={`flex items-center gap-2.5 rounded-lg px-2 py-[7px] text-[13px] font-semibold ${
-                        here
-                          ? "bg-indigo-tint/70 text-indigo"
-                          : "text-slate hover:bg-white hover:text-ink"
-                      }`}
-                    >
-                      <span aria-hidden className={`size-1.5 shrink-0 rounded-full ${here ? "bg-indigo" : "bg-line"}`} />
-                      <span className="truncate">{c.label}</span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
       </nav>
 
       <p className="eyebrow mx-5 mt-6 text-[9px] text-mute">⌘K searches everything</p>

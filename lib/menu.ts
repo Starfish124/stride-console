@@ -253,24 +253,6 @@ export const MENU: MenuSection[] = [
         hint: "Every codebase and every session that worked on one, in one map.",
         icon: "IconBranch",
       },
-      {
-        href: "/durabo",
-        label: "Durabo interviews",
-        hint: "The discovery interview days, live: schedule, field card, notes.",
-        icon: "IconTime",
-      },
-      {
-        href: "/durabo/netwerk",
-        label: "Durabo netwerk",
-        hint: "Who feeds whom, drawn live from the interview dossiers as they fill.",
-        icon: "IconBranch",
-      },
-      {
-        href: "/durabo/build",
-        label: "Durabo build + insights",
-        hint: "Synthesis snapshot: cross-department themes, quick win/win/long-term draft, next steps.",
-        icon: "IconTime",
-      },
     ],
   },
   {
