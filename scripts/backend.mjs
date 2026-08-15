@@ -63,6 +63,15 @@ start("agents", ["scripts/agents.mjs"]);
 // deliberate for now, so a half-running backend never reports itself as up.
 start("salesnav", ["scripts/salesnav-runner.mjs"]);
 
+// WhatsApp is opt-in: it needs a Go binary built and a phone that has
+// scanned a QR, neither of which every founder's checkout has yet. Gated on
+// its own env flag so `npm run backend` keeps working before either exists.
+if (process.env.STRIDE_WHATSAPP === "on") {
+  start("whatsapp-bridge", ["--env-file-if-exists=.env.local", "bridge/whatsapp-server.mjs"]);
+  start("whatsapp-relay", ["--env-file-if-exists=.env.local", "scripts/whatsapp-relay.mjs"]);
+  console.log("[backend] WhatsApp bridge and relay included (STRIDE_WHATSAPP=on)");
+}
+
 for (const signal of ["SIGINT", "SIGTERM"]) {
   process.on(signal, () => {
     console.log(`[backend] ${signal} received, shutting down`);

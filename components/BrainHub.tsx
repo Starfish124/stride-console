@@ -63,7 +63,10 @@ export function BrainHub({
     <section aria-label="What matters right now" className="relative pb-2 pt-6">
       {/* The orbit. Positioning context for the slots; rings behind it all. */}
       <div className="relative mx-auto hidden h-[400px] max-w-3xl sm:block">
-        <Radar className="absolute left-1/2 top-1/2 h-[380px] w-[380px] -translate-x-1/2 -translate-y-1/2 text-line" />
+        <Radar
+          dot={false}
+          className="absolute left-1/2 top-1/2 h-[380px] w-[380px] -translate-x-1/2 -translate-y-1/2 text-line"
+        />
 
         {/* The hub itself: what the boot animation flies into. */}
         <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center text-center">

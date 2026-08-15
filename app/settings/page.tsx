@@ -4,6 +4,7 @@ import { Header } from "@/components/ui";
 import { SourcesEditor } from "@/components/SourcesEditor";
 import { PushToggle } from "@/components/PushToggle";
 import { ChannelHealth } from "@/components/ChannelHealth";
+import { WhatsAppPanel } from "@/components/WhatsAppPanel";
 import { WebhookCard } from "@/components/WebhookCard";
 import { IconAskStride, IconTime, IconTuneLoop } from "@/components/icons";
 import { headers } from "next/headers";
@@ -58,6 +59,8 @@ export default async function SettingsPage() {
         </section>
 
         <ChannelHealth />
+
+        <WhatsAppPanel />
 
         <WebhookCard origin={origin} />
 

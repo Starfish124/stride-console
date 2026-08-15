@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { readAiDrafts, readCampaignsView, readLicenceDays } from "./linkedHelper";
+import { readAiDrafts, readCampaignsView, readLicenceDays } from "./linkedHelper.ts";
 import { listReplies } from "../outreach/replies.ts";
 import { lintMessage } from "../outreach/lint.ts";
 import { salesnavItems } from "../salesnav/attention.ts";

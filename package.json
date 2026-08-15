@@ -15,7 +15,9 @@
     "backend": "node scripts/backend.mjs",
     "seo:sweep": "node scripts/seo-sweep.mjs",
     "seo:articles": "node scripts/seo-articles.mjs",
-    "seo:gsc": "node scripts/seo-gsc-check.mjs"
+    "seo:gsc": "node scripts/seo-gsc-check.mjs",
+    "whatsapp": "node --env-file-if-exists=.env.local bridge/whatsapp-server.mjs",
+    "whatsapp:relay": "node --env-file-if-exists=.env.local scripts/whatsapp-relay.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.113.0",

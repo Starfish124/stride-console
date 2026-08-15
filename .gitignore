@@ -56,3 +56,10 @@ ios/build/
 /analysis/
 .gstack/
 __pycache__/
+
+# WhatsApp bridge: the personal session and every message live here.
+# Never committed, never leaves this Mac.
+/bridge/whatsapp/whatsapp-bridge
+/bridge/whatsapp/store/
+/data/whatsapp-*.json
+/data/whatsapp-qr.png

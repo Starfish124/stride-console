@@ -62,11 +62,24 @@ async function mirrorToNtfy(payload: PushPayload): Promise<void> {
   }
 }
 
+/** Mirror to WhatsApp, when a bridge and an allowlist both exist. Same
+ *  best-effort rule as ntfy: this must never break web push. */
+async function mirrorToWhatsApp(payload: PushPayload): Promise<void> {
+  try {
+    const { sendWhatsAppToFounders } = await import("./whatsapp/send.ts");
+    const text = payload.url ? `${payload.title}\n${payload.body}\n${payload.url}` : `${payload.title}\n${payload.body}`;
+    await sendWhatsAppToFounders(text);
+  } catch {
+    /* no bridge, no allowlist, or it is offline — the phone push still fires */
+  }
+}
+
 /** Send to every subscribed phone. Dead subscriptions clean themselves up. */
 export async function sendToAll(
   payload: PushPayload,
 ): Promise<{ sent: number; removed: number }> {
   void mirrorToNtfy(payload);
+  void mirrorToWhatsApp(payload);
   const subs = listPushSubs();
   if (subs.length === 0) return { sent: 0, removed: 0 };
   const keys = ensureVapidKeys();

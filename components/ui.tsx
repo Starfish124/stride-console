@@ -77,7 +77,16 @@ export function Header() {
 }
 
 /** Dotted concentric radar circles, the brand background device. */
-export function Radar({ className }: { className?: string }) {
+export function Radar({
+  className,
+  dot = true,
+}: {
+  className?: string;
+  /** The centre blip. Off when something real — a logo, a mark — sits on
+   *  the same centre point already; two things marking one spot is a glitch,
+   *  not an accent. */
+  dot?: boolean;
+}) {
   const rings = [46, 34, 22, 10];
   return (
     <svg
@@ -97,7 +106,7 @@ export function Radar({ className }: { className?: string }) {
           strokeDasharray="0.7 3"
         />
       ))}
-      <rect x="48.5" y="48.5" width="3" height="3" fill={BRAND.indigo} />
+      {dot && <rect x="48.5" y="48.5" width="3" height="3" fill={BRAND.indigo} />}
     </svg>
   );
 }

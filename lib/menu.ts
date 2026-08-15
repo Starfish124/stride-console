@@ -171,6 +171,12 @@ export const MENU: MenuSection[] = [
         hint: "The feeds the radar sweeps, and the machine's other settings.",
         icon: "IconData",
       },
+      {
+        href: "/settings#whatsapp",
+        label: "WhatsApp",
+        hint: "Chat with the console from a phone; draft-ready pings land there too.",
+        icon: "IconEscalate",
+      },
     ],
   },
   {
