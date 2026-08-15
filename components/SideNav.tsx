@@ -35,7 +35,12 @@ export function railHidden(pathname: string): boolean {
   );
 }
 
-export function SideNav() {
+export interface RailClient {
+  id: string;
+  label: string;
+}
+
+export function SideNav({ clients = [] }: { clients?: RailClient[] }) {
   const pathname = usePathname();
   if (railHidden(pathname)) return null;
   const current = sectionFor(pathname);
@@ -89,6 +94,37 @@ export function SideNav() {
             </ul>
           </div>
         ))}
+        {clients.length > 0 && (
+          <div>
+            <p className="mx-2 flex items-center gap-2">
+              <span aria-hidden className="slant-rule h-[2.5px] w-3.5 shrink-0 text-ink" />
+              <span className="eyebrow text-[9.5px] text-mute">Clients</span>
+            </p>
+            {/* One hub per client: the whole relationship behind one door.
+                The book itself stays under Sales; these are the live ones. */}
+            <ul className="mt-1.5 space-y-px">
+              {clients.map((c) => {
+                const base = `/clients/${c.id}`;
+                const here = pathname === base || pathname.startsWith(`${base}/`);
+                return (
+                  <li key={c.id}>
+                    <Link
+                      href={base}
+                      className={`flex items-center gap-2.5 rounded-lg px-2 py-[7px] text-[13px] font-semibold ${
+                        here
+                          ? "bg-indigo-tint/70 text-indigo"
+                          : "text-slate hover:bg-white hover:text-ink"
+                      }`}
+                    >
+                      <span aria-hidden className={`size-1.5 shrink-0 rounded-full ${here ? "bg-indigo" : "bg-line"}`} />
+                      <span className="truncate">{c.label}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
       </nav>
 
       <p className="eyebrow mx-5 mt-6 text-[9px] text-mute">⌘K searches everything</p>

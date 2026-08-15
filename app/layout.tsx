@@ -16,6 +16,7 @@ import { SWRegister } from "@/components/SWRegister";
 import { TabBar } from "@/components/TabBar";
 import { AppMenu } from "@/components/AppMenu";
 import { RailOffset, SideNav } from "@/components/SideNav";
+import { listClients } from "@/lib/store";
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
@@ -53,8 +54,15 @@ export default function RootLayout({
         {/* AppMenu owns the sheet and shares its open state down the tree, so
             the header pill and the tab bar's last slot drive the same one. */}
         <AppMenu>
-          {/* Wide screens get the persistent rail; the sheet stays for ⌘K. */}
-          <SideNav />
+          {/* Wide screens get the persistent rail; the sheet stays for ⌘K.
+              The rail also carries one door per live client, read here on the
+              server so the client list never ships to the login page. */}
+          <SideNav
+            clients={listClients()
+              .filter((c) => c.stage !== "past")
+              .slice(0, 8)
+              .map((c) => ({ id: c.id, label: c.company || c.name }))}
+          />
           <RailOffset>{children}</RailOffset>
           {/* Transient confirmations only. Anything that failed says so
               inline where it failed; a toast is for "that worked" moments

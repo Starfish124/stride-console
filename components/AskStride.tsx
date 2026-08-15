@@ -61,7 +61,7 @@ const SUGGESTIONS = [
   "What is on the board to build?",
 ];
 
-export function AskStride() {
+export function AskStride({ clientId, clientName }: { clientId?: string; clientName?: string } = {}) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [question, setQuestion] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -81,7 +81,7 @@ export function AskStride() {
   useEffect(() => {
     // Fetch-on-mount, same shape the radar and SEO views use.
     let cancelled = false;
-    fetch("/api/ask")
+    fetch(clientId ? `/api/ask?clientId=${clientId}` : "/api/ask")
       .then((r) => r.json())
       .then((data: { text: string; model: string; ok: boolean; problem?: string }) => {
         if (cancelled) return;
@@ -94,7 +94,7 @@ export function AskStride() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [clientId]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -116,7 +116,7 @@ export function AskStride() {
       const res = await fetch("/api/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: asked, history }),
+        body: JSON.stringify({ question: asked, history, clientId }),
       });
 
       if (!res.ok || !res.body) {
@@ -223,7 +223,7 @@ export function AskStride() {
         <input
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder={mic.recording ? "Listening." : "Ask anything about the console"}
+          placeholder={mic.recording ? "Listening." : clientName ? `Ask anything about ${clientName}` : "Ask anything about the console"}
           disabled={streaming || mic.recording || mic.thinking}
           className="material flex-1 rounded-input border border-line px-4 py-3 text-[15px] text-ink outline-none placeholder:text-slate/60 focus:border-indigo disabled:opacity-60"
         />

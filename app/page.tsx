@@ -16,7 +16,6 @@ import { buildCalendar, overdue, todayISO, upcoming } from "@/lib/calendar";
 import { buildQuickMenu, buildStats } from "@/lib/dashboard";
 import { interviewPulse } from "@/lib/durabo/io";
 import { Header } from "@/components/ui";
-import { Ramp } from "@/components/Ramp";
 import { RecipeCard } from "@/components/RecipeCard";
 import { MythQuickAdd } from "@/components/MythQuickAdd";
 import { InboxBanner } from "@/components/InboxBanner";
@@ -31,6 +30,10 @@ import { StatBand } from "@/components/StatBand";
 import { QuickMenu } from "@/components/QuickMenu";
 import { RightNow } from "@/components/RightNow";
 import { AskStride } from "@/components/AskStride";
+import { BrainHub, type Thought } from "@/components/BrainHub";
+import { BootIntro } from "@/components/BootIntro";
+import { euro } from "@/lib/company";
+import { invoiceTotal } from "@/lib/types";
 import {
   CampaignsQuickTile,
   CampaignsQuickTileSkeleton,
@@ -156,37 +159,48 @@ export default async function Dashboard() {
     },
   ];
 
+  // The brain's thoughts: the six most important things in orbit around the
+  // mark. Each one is real, current, and a link — never decoration.
+  const invoicesAll = listInvoices();
+  const unpaidInvoices = invoicesAll.filter((i) => i.status === "sent");
+  const doing = notes.filter((n) => n.lane === "doing");
+  const inPlay = clients
+    .filter((c) => c.stage !== "past")
+    .sort((a, b) => (a.nextStep ?? "9999").localeCompare(b.nextStep ?? "9999"));
+  const thoughts: Thought[] = [];
+  if (owed.length > 0) thoughts.push({ value: String(owed.length), label: "overdue", href: "/calendar" });
+  if (draftsWaiting > 0) thoughts.push({ value: String(draftsWaiting), label: "drafts waiting on you", href: "/" });
+  if (repliesWaiting > 0) thoughts.push({ value: String(repliesWaiting), label: "replies to answer", href: "/outreach#replies" });
+  if (inPlay[0]) thoughts.push({ value: inPlay[0].company || inPlay[0].name, label: inPlay[0].nextStepNote ?? "next step", href: `/clients/${inPlay[0].id}` });
+  if (doing[0]) thoughts.push({ label: `Building: ${doing[0].text.slice(0, 40)}`, href: "/notes" });
+  if (unpaidInvoices.length > 0) thoughts.push({ value: euro(unpaidInvoices.reduce((s, i) => s + invoiceTotal(i), 0)), label: "out the door, unpaid", href: "/invoices" });
+  const upcomingEntry = nextUp.find((e) => e.date >= today);
+  if (upcomingEntry) thoughts.push({ value: upcomingEntry.date.slice(5), label: upcomingEntry.title.slice(0, 40), href: upcomingEntry.href ?? "/calendar" });
+  if (thoughts.length === 0) thoughts.push({ label: "Quiet brain. Radar has the sources.", href: "/radar" });
+
+  const headline =
+    waiting === 0 ? "Nothing needs you." : `${waiting} ${waiting === 1 ? "thing needs" : "things need"} you.`;
+
   return (
     <div className="min-h-screen bg-paper">
+      {/* The curtain: mark, two breaths, fly to the hub. Once per session. */}
+      <BootIntro />
       <Header />
       <main className="mx-auto max-w-5xl px-4 pb-20 sm:px-6">
-        {/* This is our own app, so it opens with the date and the count of
-            what is waiting rather than a line about what the product does.
-            Nobody who has already installed it needs to be sold it. */}
-        <section className="pb-5 pt-6">
-          {/* The page's one ornament, where the library puts it. */}
-          <Ramp width={54} className="mb-3 text-indigo" />
-          <p className="eyebrow text-slate">
-            {new Date(`${today}T00:00:00Z`).toLocaleDateString("en-GB", {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-            })}
-          </p>
-          <h1 className="title-large mt-2 text-ink">
-            {waiting === 0 ? (
-              <>
-                Nothing needs <span className="accent">you</span>.
-              </>
-            ) : (
-              <>
-                <span className="accent">{waiting}</span>{" "}
-                {waiting === 1 ? "thing needs" : "things need"} you.
-              </>
-            )}
-          </h1>
-          <InboxBanner entries={inbox} />
-        </section>
+        {/* The console opens as a brain having thoughts: the mark at centre,
+            the six things that matter in orbit. Nobody who installed this
+            needs to be sold it — but everybody needs to see what is moving. */}
+        <BrainHub
+          date={new Date(`${today}T00:00:00Z`).toLocaleDateString("en-GB", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+          })}
+          headline={headline}
+          accent={waiting === 0 ? "you" : String(waiting)}
+          thoughts={thoughts}
+        />
+        <InboxBanner entries={inbox} />
 
         {/* Where everything stands, before what there is to do about it. */}
         <StatBand stats={stats}>
@@ -196,11 +210,7 @@ export default async function Dashboard() {
         </StatBand>
 
         {/* What the two of you are actually doing, before the machinery. */}
-        <RightNow
-          doing={notes.filter((n) => n.lane === "doing")}
-          clients={clients}
-          invoices={listInvoices()}
-        />
+        <RightNow doing={doing} clients={clients} invoices={invoicesAll} />
 
         {/* And the way to act on any of it. */}
         <QuickMenu

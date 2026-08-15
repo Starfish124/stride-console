@@ -276,3 +276,90 @@ export const SYSTEM_PROMPT = [
   "- Be brief. Two or three sentences unless asked for more.",
   "- Plain words. No em dashes, no marketing language, no bullet lists unless asked.",
 ].join("\n");
+
+/**
+ * The fact sheet for ONE client: everything the console knows about them, in
+ * one screen of text, so the model can walk a founder (or the client
+ * themselves, screen-shared) through the whole engagement without inventing
+ * a word. Same grounding rules as the console sheet: what is not on the
+ * sheet does not exist.
+ */
+export async function buildClientContext(
+  clientId: string,
+  question?: string,
+): Promise<AskContext | undefined> {
+  const { getClient, listInvoices, listBlueprints } = await import("../store.ts");
+  const { listProjects, listRuns } = await import("../workspace/store.ts");
+  const { invoiceTotal } = await import("../types.ts");
+  const { euro } = await import("../company.ts");
+
+  const client = getClient(clientId);
+  if (!client) return undefined;
+  const who = client.company || client.name;
+  const blocks: Block[] = [];
+
+  blocks.push({
+    heading: `Who ${who} is`,
+    lines: [
+      `${client.name}${client.role ? ` (${client.role})` : ""} at ${client.company || "—"}. Stage: ${STAGE_LABELS[client.stage]}.`,
+      client.need ? `What they need, in our words: ${client.need}` : "",
+      client.proposed ? `What we proposed: ${client.proposed}` : "",
+      client.value ? `Deal size said out loud: €${client.value}.` : "",
+      client.nextStep ? `Next step we owe them: ${client.nextStepNote ?? "next step"} on ${client.nextStep}.` : "",
+    ].filter(Boolean),
+  });
+
+  const touches = [...(client.touches ?? [])].sort((a, b) => b.at.localeCompare(a.at));
+  blocks.push({
+    heading: "The last things that happened",
+    lines: touches.slice(0, 8).map((t) => `${t.at}: ${t.note}${t.who ? ` (${t.who})` : ""}`),
+  });
+
+  const projects = listProjects(clientId);
+  blocks.push({
+    heading: "Projects on the machine",
+    lines: projects.map((p) => `${p.name}`),
+  });
+  const runs = projects
+    .flatMap((p) => listRuns(p.id).map((r) => ({ p, r })))
+    .sort((a, b) => (b.r.startedAt ?? "").localeCompare(a.r.startedAt ?? ""))
+    .slice(0, 10);
+  blocks.push({
+    heading: "Recent delivery work",
+    lines: runs.map(
+      ({ p, r }) => `${(r.startedAt ?? "").slice(0, 10)} · ${p.name}: ${r.task.slice(0, 110)} (${r.status})`,
+    ),
+  });
+
+  const invoices = listInvoices().filter((i) => i.clientId === clientId);
+  blocks.push({
+    heading: "Invoices",
+    lines: invoices.map((i) => `${i.number} · ${i.date} · ${i.status} · ${euro(invoiceTotal(i))}`),
+  });
+
+  const reused = listBlueprints().filter((b) =>
+    b.uses.some((u) => u.client.toLowerCase() === who.toLowerCase()),
+  );
+  blocks.push({
+    heading: "Blueprints deployed for them",
+    lines: reused.map((b) => `${b.name}: ${b.oneLiner}`),
+  });
+
+  // What the brain remembers about them: entity-filtered first, then a text
+  // pass carrying their name, so transcripts and replies filed under a slug
+  // rather than the client id still surface.
+  try {
+    const passages = await retrieve(question?.trim() ? `${who} ${question}` : who, { limit: 8 });
+    const remembered = renderPassages(passages, "");
+    if (remembered) {
+      blocks.push({
+        heading: "What the brain remembers about them",
+        lines: remembered.split("\n").filter((l) => l.startsWith("- ")),
+      });
+    }
+  } catch {
+    /* memory down: the sheet still covers the present */
+  }
+
+  return { text: `# Everything about ${who}\n\n${render(blocks)}`, at: new Date().toISOString() };
+}

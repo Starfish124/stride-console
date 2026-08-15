@@ -844,3 +844,31 @@ main {
     }
   }
 }
+
+/* ——— the opening, and the brain's thoughts ————————————————————— */
+
+/* Two slow breaths before the mark flies to its seat. */
+@keyframes boot-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.12); opacity: 0.75; }
+}
+.boot-pulse {
+  animation: boot-pulse 850ms var(--ease-out-quint) 2;
+}
+
+/* Thoughts drift, they do not bounce: a few pixels, many seconds, offsets
+   staggered per chip so the orbit never moves in lockstep. */
+@keyframes hub-float {
+  0%, 100% { margin-top: 0; }
+  50% { margin-top: -9px; }
+}
+.hub-thought {
+  animation: hub-float 7s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-pulse,
+  .hub-thought {
+    animation: none;
+  }
+}

@@ -1,12 +1,17 @@
 import { NextResponse } from "next/server";
-import { buildContext, SYSTEM_PROMPT } from "@/lib/ask/context";
+import { buildClientContext, buildContext, SYSTEM_PROMPT } from "@/lib/ask/context";
 import { ASK_MODEL, modelReady, streamChat, type AskMessage } from "@/lib/ask/ollama";
 
 export const dynamic = "force-dynamic";
 
 /** The fact sheet on its own, so the page can show what the model was given. */
-export async function GET() {
-  const [context, ready] = await Promise.all([buildContext(), modelReady()]);
+export async function GET(request: Request) {
+  const clientId = new URL(request.url).searchParams.get("clientId") ?? undefined;
+  const [context, ready] = await Promise.all([
+    clientId ? buildClientContext(clientId) : buildContext(),
+    modelReady(),
+  ]);
+  if (!context) return NextResponse.json({ error: "No such client." }, { status: 404 });
   return NextResponse.json({ ...context, model: ASK_MODEL, ...ready });
 }
 
@@ -14,6 +19,8 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as {
     question?: string;
     history?: AskMessage[];
+    /** Present = answer about ONE client, from that client's sheet. */
+    clientId?: string;
   };
   const question = body.question?.trim();
   if (!question) {
@@ -25,7 +32,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: ready.problem }, { status: 503 });
   }
 
-  const context = await buildContext(question);
+  const context = body.clientId
+    ? await buildClientContext(body.clientId, question)
+    : await buildContext(question);
+  if (!context) {
+    return NextResponse.json({ error: "No such client." }, { status: 404 });
+  }
 
   // The sheet rides on the last user turn rather than the system prompt: a
   // small model weights what it just read far more heavily than what it was
