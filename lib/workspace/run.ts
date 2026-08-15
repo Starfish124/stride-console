@@ -8,7 +8,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { recallBlock } from "../brain/recall.ts";
+import { retrieveBlock } from "../brain/retrieve.ts";
 import { callClaudeCli } from "../pipeline/write.ts";
 import { newId } from "../store.ts";
 import { getProject, listNotes, listRuns, putIssue, putRun } from "./store.ts";
@@ -217,15 +217,19 @@ export function runProject(options: {
     }
   };
 
-  // What the brain remembers about this project rides ahead of the notes, so
-  // run N+1 starts where run N learned something. Empty until Hermes has run.
-  const memory = recallBlock(project.name);
   const context = contextBlock(project.id);
-  const prompt = [memory, context, task].filter(Boolean).join("\n\n---\n\n");
 
   const done = (async (): Promise<RunLog> => {
     let status: RunLog["status"] = "done";
     try {
+      // What the brain remembers about this project rides ahead of the notes,
+      // so run N+1 starts where run N learned something. Retrieval reads the
+      // task text too — the founder just typed the best possible query. It
+      // awaits inside the run's own promise so runProject stays synchronous
+      // for its callers; a cold embedder degrades to keyword recall, and no
+      // brain at all is an empty block, exactly as before.
+      const memory = await retrieveBlock(`${project.name}\n${task}`);
+      const prompt = [memory, context, task].filter(Boolean).join("\n\n---\n\n");
       await callClaudeCli(prompt, {
         cwd: dir,
         permissionMode: full ? "dangerous" : "acceptEdits",

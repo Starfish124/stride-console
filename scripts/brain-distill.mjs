@@ -16,6 +16,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { Brain } from "../lib/brain/store.ts";
+import { embedMissing, ingestAll } from "../lib/brain/ingest.ts";
 import { diffSnapshots } from "../lib/brain/diff.ts";
 import { distillPrompt, parseMemories } from "../lib/brain/distill.ts";
 import { callClaudeCli, extractCliResult } from "../lib/pipeline/write.ts";
@@ -120,6 +121,16 @@ const brain = new Brain();
 const events = ingestEvents(brain);
 log(`events: ${events} new`);
 
+// The fan-in: touches, replies, sends, research, blueprints, invoices,
+// lessons, interview transcripts. Deterministic, no LLM, idempotent — so it
+// runs before the budgeted distillation and costs nothing.
+try {
+  const ing = ingestAll(brain);
+  log(`ingest: ${ing.added} new of ${ing.scanned} scanned (${Object.entries(ing.bySource).filter(([, n]) => n > 0).map(([k, n]) => `${k} ${n}`).join(", ") || "nothing new"})`);
+} catch (error) {
+  log(`ingest failed: ${error.message} — distillation continues`);
+}
+
 const pending = pendingSources(brain);
 log(`pending sources: ${pending.length}${DRY ? " (dry run, stopping)" : ""}`);
 if (!DRY) {
@@ -142,5 +153,12 @@ if (!DRY) {
       (left > 0 ? `, ${left} left for the next run` : ""),
   );
 }
-log(`brain now holds ${brain.count()} memories`);
+// Backfill embeddings for whatever has none, inside a fixed budget. A cold
+// Ollama means zero embedded tonight and a retry tomorrow; search stays
+// keyword-only meanwhile.
+if (!DRY) {
+  const embedded = await embedMissing(brain, 512);
+  log(`embeddings: ${embedded} backfilled, ${brain.count() - brain.vectorCount()} still queued`);
+}
+log(`brain now holds ${brain.count()} memories, ${brain.vectorCount()} embedded`);
 brain.close();

@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: ready.problem }, { status: 503 });
   }
 
-  const context = await buildContext();
+  const context = await buildContext(question);
 
   // The sheet rides on the last user turn rather than the system prompt: a
   // small model weights what it just read far more heavily than what it was

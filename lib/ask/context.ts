@@ -24,6 +24,7 @@ import { readPulse } from "../channels/attention.ts";
 import { addDays, buildCalendar, overdue, todayISO, upcoming } from "../calendar.ts";
 import { MENU } from "../menu.ts";
 import { STAGE_LABELS, LANE_LABELS, NOTE_LANES, CLIENT_STAGES } from "../types.ts";
+import { renderPassages, retrieve } from "../brain/retrieve.ts";
 
 /** A heading and its lines. Empty sections are dropped before rendering. */
 interface Block {
@@ -45,9 +46,30 @@ export interface AskContext {
   at: string;
 }
 
-export async function buildContext(): Promise<AskContext> {
+export async function buildContext(question?: string): Promise<AskContext> {
   const today = todayISO();
   const blocks: Block[] = [];
+
+  // ---------- what the brain remembers about this question ----------
+  //
+  // The fact sheet used to be the model's entire world: today's counts,
+  // nothing that happened before today. When a question is present, the
+  // brain's hybrid retrieval adds the past — and when the brain is empty or
+  // the embedder cold, this block simply is not there, which is the same
+  // console that shipped before it existed.
+  if (question?.trim()) {
+    try {
+      const remembered = renderPassages(await retrieve(question, { limit: 8 }), "");
+      if (remembered) {
+        blocks.push({
+          heading: "What the console remembers about this",
+          lines: remembered.split("\n").filter((l) => l.startsWith("- ")),
+        });
+      }
+    } catch {
+      /* memory down: the sheet still answers the present tense */
+    }
+  }
 
   // ---------- what this thing is ----------
   blocks.push({
