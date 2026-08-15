@@ -10,7 +10,11 @@ export function getPassword(): string {
   return process.env.STRIDE_PASSWORD || "stride";
 }
 
-/** Web Crypto so the same code runs in Node route handlers and the edge proxy. */
+/**
+ * Web Crypto so the same code runs in Node route handlers and the edge proxy.
+ * scripts/term-relay.mjs carries a node:crypto twin of this digest — change
+ * one, change both.
+ */
 export async function sessionToken(password: string): Promise<string> {
   const data = new TextEncoder().encode(`stride-console:${password}`);
   const digest = await crypto.subtle.digest("SHA-256", data);

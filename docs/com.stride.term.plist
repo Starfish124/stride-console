@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  The terminal relay: cookie-auth seam between the public /term mount and the
+  DaemonDeck PTY daemon on :8765. See scripts/term-relay.mjs.
+
+  Replace /Users/sarveshsingh/stride-console below if the repo lives elsewhere.
+
+  STRIDE_PASSWORD must match the console's (com.stride.console.plist carries
+  the live one; `stride install` copies it across). Rotating the console
+  password means updating the installed copy of THIS plist too, then:
+    launchctl kickstart -k gui/$(id -u)/com.stride.term
+
+  Install:
+    cp docs/com.stride.term.plist ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.stride.term.plist
+
+  Publish the path (once; survives reboot in tailscaled's config).
+  NB `funnel --set-path`, never `serve --set-path` — the serve form flips the
+  whole 443 config to tailnet-only and takes the app off the internet:
+    tailscale funnel --bg --set-path /term http://127.0.0.1:7457
+
+  Logs: /tmp/stride-term.log
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.stride.term</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>cd /Users/sarveshsingh/stride-console &amp;&amp; exec /opt/homebrew/bin/node scripts/term-relay.mjs</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>STRIDE_PASSWORD</key>
+    <string>REPLACE_WITH_PASSWORD</string>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/stride-term.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/stride-term.log</string>
+</dict>
+</plist>

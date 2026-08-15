@@ -43,6 +43,7 @@ ROOT="$(cd "$(dirname "$SELF")/.." && pwd)"
 cd "$ROOT"
 
 BRIDGE_PORT=7455
+TERM_PORT=7457
 CONSOLE_PORT=3000
 LH_APP="/Applications/linked-helper.app"
 LH_DEBUG_PORT=9222
@@ -54,6 +55,7 @@ PUBLIC_URL="https://mac-mini.tailc91701.ts.net"
 JOBS=(
   com.stride.console
   com.stride.bridge
+  com.stride.term
   com.stride.pregen
   com.stride.linkedhelper
   com.stride.seo
@@ -145,6 +147,11 @@ funnel_public() {
   return 1
 }
 
+# The terminal, probed over the exact path a phone takes: funnel, the /term
+# serve mount, and the relay in one request. A loopback curl would pass while
+# the mount is missing — same lesson as funnel_public above.
+term_public() { curl -sf -o /dev/null --max-time 5 "$PUBLIC_URL/term/ping"; }
+
 # What launchd actually knows about a job, as "state|runs|last exit code".
 #
 # Reporting that the plist file exists only proves somebody once installed it.
@@ -172,6 +179,8 @@ cmd_status() {
     ok "funnel" "$PUBLIC_URL"
   fi
   bridge_up  && ok "bridge"  "127.0.0.1:$BRIDGE_PORT" || bad "bridge" "down — run: stride"
+  term_public && ok "terminal" "$PUBLIC_URL/term" \
+    || bad "terminal" "unreachable — run: stride, or: tailscale funnel --bg --set-path /term http://127.0.0.1:$TERM_PORT"
 
   if lh_debug_up; then
     ok "linked helper" "open, debugger on $LH_DEBUG_PORT"
@@ -246,7 +255,7 @@ cmd_status() {
   # A dead background job counts against "everything is up". Serving the site
   # while nothing writes to it is exactly the state this command used to call
   # healthy.
-  if console_up && funnel_on && funnel_public && bridge_up && lh_debug_up && [[ $missing -eq 0 ]]; then
+  if console_up && funnel_on && funnel_public && bridge_up && term_public && lh_debug_up && [[ $missing -eq 0 ]]; then
     printf "  ${LIME}everything is up${OFF}  ${MUTE}%s${OFF}\n" "$PUBLIC_URL"
   elif console_up; then
     printf "  ${AMBER}the app is up, part of the machine is not${OFF}  ${MUTE}run: stride${OFF}\n"
@@ -295,6 +304,19 @@ cmd_up() {
     lh_debug_up && ok "linked helper" "up with the debugger" || bad "linked helper" "did not open"
   fi
 
+  if term_public; then
+    ok "terminal" "already up"
+  else
+    pkill -f "scripts/term-relay.mjs" 2>/dev/null
+    start_agent com.stride.term
+    # `funnel --set-path`, never `serve --set-path`: the serve form rewrites
+    # the whole 443 config as tailnet-only and silently takes the app off the
+    # public internet (measured 2026-08-15). funnel keeps it public.
+    tailscale funnel --bg --set-path /term "http://127.0.0.1:$TERM_PORT" >/dev/null 2>&1
+    for _ in $(seq 1 10); do term_public && break; sleep 1; done
+    term_public && ok "terminal" "up" || bad "terminal" "failed — tail /tmp/stride-term.log"
+  fi
+
   if bridge_up; then
     ok "bridge" "already up"
   else
@@ -322,9 +344,12 @@ cmd_down() {
   head_ "stopping"
   launchctl bootout "gui/$(id -u)/com.stride.console" 2>/dev/null
   launchctl bootout "gui/$(id -u)/com.stride.bridge" 2>/dev/null
+  launchctl bootout "gui/$(id -u)/com.stride.term" 2>/dev/null
   pkill -f "bridge/server.mjs" 2>/dev/null
+  pkill -f "scripts/term-relay.mjs" 2>/dev/null
   ok "console" "stopped"
   ok "bridge" "stopped"
+  ok "terminal" "stopped"
   echo "  Linked Helper and the funnel are left alone. Quit the app yourself if you want it closed."
   echo
 }
@@ -360,6 +385,14 @@ cmd_install() {
         "$HOME/Library/LaunchAgents/$job.plist" >/dev/null 2>&1
     fi
 
+    # The relay authenticates the same cookie the console mints, so it needs
+    # the same password. Its template ships a placeholder, never the value.
+    if [[ "$job" == "com.stride.term" && -n "$live_password" ]]; then
+      /usr/libexec/PlistBuddy -c \
+        "Set :EnvironmentVariables:STRIDE_PASSWORD $live_password" \
+        "$HOME/Library/LaunchAgents/$job.plist" >/dev/null 2>&1
+    fi
+
     # A stray hand-started process holds the port and the agent then fails to
     # bind, so clear those before handing the job to launchd.
     [[ "$job" == "com.stride.bridge" ]] && pkill -f "bridge/server.mjs" 2>/dev/null
@@ -387,7 +420,7 @@ cmd_install() {
 
 cmd_logs() {
   echo "Ctrl-C to stop."
-  tail -f /tmp/stride-console.log /tmp/stride-bridge.log /tmp/stride-pregen.log 2>/dev/null
+  tail -f /tmp/stride-console.log /tmp/stride-bridge.log /tmp/stride-term.log /tmp/stride-pregen.log 2>/dev/null
 }
 
 cmd_link() {

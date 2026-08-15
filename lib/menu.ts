@@ -218,6 +218,12 @@ export const MENU: MenuSection[] = [
         icon: "IconIntegration",
       },
       {
+        href: "/build",
+        label: "Build",
+        hint: "The building area: live Claude sessions, deliverables, prototypes.",
+        icon: "IconRuntime",
+      },
+      {
         href: "/graph",
         label: "The graph",
         hint: "Every codebase and every session that worked on one, in one map.",
