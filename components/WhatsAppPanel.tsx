@@ -70,8 +70,8 @@ export function WhatsAppPanel() {
         WhatsApp
       </p>
       <p className="mt-2 text-sm text-slate">
-        A bridge to one founder&apos;s own WhatsApp: draft-ready pings land there too, and
-        texting it reaches the same brain as Ask Stride.
+        A bridge to the StrideAI WhatsApp group: draft-ready pings land there, and messages
+        opening with &quot;Stride,&quot; reach the same brain as Ask Stride.
       </p>
 
       {status === null && <p className="mt-4 text-sm text-slate">Reading the bridge…</p>}

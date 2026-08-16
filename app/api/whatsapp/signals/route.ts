@@ -6,7 +6,9 @@ export const dynamic = "force-dynamic";
 
 /**
  * Stride-related WhatsApp, no date attached, for the calendar's read-only
- * side panel.
+ * side panel. Sourced entirely from the Stride group — lib/whatsapp/store.ts
+ * queries nothing else — so this is never a founder's personal chat, just
+ * whatever the group itself carries.
  *
  * A Route Handler rather than a direct import into a Server Component page:
  * lib/whatsapp/store.ts opens node:sqlite, and Turbopack's RSC render graph
@@ -16,13 +18,10 @@ export const dynamic = "force-dynamic";
  * routes already live here instead of being imported straight into a page.
  *
  * Behind the console login, like everything that is not the QR itself.
- * Self-chat is excluded — see InboundMessage.isSelfChat — because it is a
- * founder's own notes-to-self and the relay's command channel, not content
- * meant for whoever else opens the calendar.
  */
 export async function GET() {
   const signals = listInboundSince("1970-01-01T00:00:00", 300)
-    .filter((m) => !m.isSelfChat && founderFor(m.founderNumber ?? ""))
+    .filter((m) => founderFor(m.founderNumber ?? ""))
     .slice(-6)
     .reverse()
     .map((m) => ({

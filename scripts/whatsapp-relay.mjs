@@ -2,10 +2,20 @@
 //
 // bridge/whatsapp-server.mjs owns the connection and lets the console send.
 // This script is the listener: poll the bridge's own database for new
-// inbound messages from an authorised founder, hand the text to the same
-// model that answers on /ask, and send the reply back over WhatsApp. No new
-// channel of truth — this is Ask Stride's brain, reached from a different
-// door.
+// messages in the Stride group from an authorised founder, hand the text to
+// the same model that answers on /ask, and send the reply back into the
+// group. No new channel of truth — this is Ask Stride's brain, reached from
+// a different door.
+//
+// The group is shared with a human on the other end, which self-chat never
+// was — every message used to be implicitly addressed to the console
+// because there was nobody else in that chat to address. Answering every
+// line of a group conversation between two founders would drown it in AI
+// replies, so a message only counts here if it opens with the wake word
+// (WAKE_WORD below): "Stride, what needs me today?", "hey stride open
+// invoices". Anything else in the group passes through unanswered — the
+// brain and the calendar's signals panel still see it (lib/brain/ingest.ts,
+// app/api/whatsapp/signals), just this reply loop does not.
 //
 // A message mentioning a client's name gets that client's own sheet instead
 // of the console-wide one, the same routing the /clients/[id] hub already
@@ -26,6 +36,10 @@ import { listClients } from "../lib/store.ts";
 
 const POLL_MS = 4_000;
 const STATE_FILE = path.join(process.cwd(), "data", "whatsapp-relay-state.json");
+// Same shape as the typed nav wake word in lib/ask/navigate.ts, kept
+// separate rather than shared: that one gates a client-side effect, this
+// one gates whether the console speaks into a human conversation at all.
+const WAKE_WORD = /^\s*(?:hey[, ]+)?stride[,:]?\s+/i;
 
 function log(message) {
   console.log(`[whatsapp-relay] ${message}`);
@@ -91,11 +105,15 @@ async function tick(state) {
       log(`ignored: unauthorised or unresolved sender (${msg.founderNumber ?? "unknown"})`);
       continue;
     }
-    log(`${founder.name}: ${msg.content.slice(0, 80)}`);
+    const wake = msg.content.match(WAKE_WORD);
+    if (!wake) continue; // ordinary group conversation — not addressed to the console
+    const question = msg.content.slice(wake[0].length).trim();
+    if (!question) continue; // just "stride" or "hey stride" with nothing after it
+    log(`${founder.name}: ${question.slice(0, 80)}`);
     try {
       const ready = await modelReady();
       const reply = ready.ok
-        ? await answer(msg.content)
+        ? await answer(question)
         : `The model is not ready right now (${ready.problem}). Try again in a moment.`;
       const sent = await sendWhatsApp(msg.replyTo, reply);
       if (!sent.ok) log(`send failed: ${sent.problem}`);

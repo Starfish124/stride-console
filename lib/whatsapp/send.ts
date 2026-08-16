@@ -39,10 +39,16 @@ export async function sendWhatsApp(recipient: string, message: string): Promise<
   }
 }
 
-/** One message, every authorised founder. Used for proactive pings. */
+/**
+ * One message, into the Stride group — every founder sees it there, which
+ * is the whole point of consolidating onto one chat. Used for proactive
+ * pings (draft-ready, etc). A no-op, not an error, when the group is not
+ * configured: a ping nobody can receive is not worth surfacing a failure
+ * for.
+ */
 export async function sendWhatsAppToFounders(message: string): Promise<void> {
-  const { founderContacts } = await import("./config.ts");
-  for (const founder of founderContacts()) {
-    await sendWhatsApp(founder.number, message);
-  }
+  const { strideGroupJid } = await import("./config.ts");
+  const group = strideGroupJid();
+  if (!group) return;
+  await sendWhatsApp(group, message);
 }

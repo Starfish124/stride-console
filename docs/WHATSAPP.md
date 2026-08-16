@@ -6,16 +6,29 @@ WhatsApp session (lharries/whatsapp-mcp's `whatsapp-bridge`, MIT, under
 comes in and answers with the same brain `/ask` uses. Nothing new gets built
 to understand a question; WhatsApp is just another door into Ask Stride.
 
+Everything runs through one chat: the **StrideAI** WhatsApp group, every
+founder a member. Not a founder's personal number, not "Message yourself" —
+those used to work too, and the result was Stride content and a founder's
+own private messages told apart only by a phone-number allowlist, with no
+chat-level boundary either founder could point at. `lib/whatsapp/store.ts`
+now queries nothing but the configured group (`STRIDE_WHATSAPP_GROUP`); a
+message anywhere else on that WhatsApp account is invisible to the console.
+
 What it does:
 
-- **Console → phone.** Every push notification (draft-ready pings, from
-  `lib/push.ts`) now also lands as a WhatsApp message to every founder in the
-  allowlist. Best-effort — a WhatsApp failure never breaks the web push.
-- **Phone → console.** Message the paired number (or, for the founder who
-  owns the pairing, WhatsApp's own "Message yourself" chat) and the relay
-  answers from the console-wide sheet — the same one `/ask` builds — or,
-  if the message names a live client, that client's own sheet, the same
-  routing the client hub's chat box already does.
+- **Console → group.** Every push notification (draft-ready pings, from
+  `lib/push.ts`) also lands as one WhatsApp message in the group. Best-effort
+  — a WhatsApp failure never breaks the web push.
+- **Group → console.** The group is shared with a human on the other end,
+  which "Message yourself" never was, so the relay only answers a message
+  that opens with the wake word: `Stride, what needs me today?`,
+  `hey stride open invoices`. Everything else in the group passes through
+  unanswered — an ordinary line between founders never becomes an AI reply
+  — though it still reaches the brain and the calendar's signals panel
+  (`lib/brain/ingest.ts`, `app/api/whatsapp/signals`), just not this reply
+  loop. A wake-worded question gets the console-wide sheet — the same one
+  `/ask` builds — or, if it names a live client, that client's own sheet,
+  the same routing the client hub's chat box already does.
 
 ## Setup
 
@@ -41,15 +54,22 @@ pairing QR as an image).
    show on `/settings#whatsapp`. Re-authentication is needed roughly every
    20 days, per upstream.
 
-3. Set who it answers, in `.env.local`:
+3. Set the group and who it answers, in `.env.local`:
 
    ```
+   STRIDE_WHATSAPP_GROUP=120363412406725019@g.us
    STRIDE_WHATSAPP_FOUNDERS=31612345678:Jort,31698765432:Sarvesh
    ```
 
-   E.164 without the `+`, name after the colon, comma-separated. A message
-   from any other number is read and silently ignored — no bounce, since
-   confirming the bridge exists to a stranger is worse than saying nothing.
+   The group JID is easiest to find by creating the group, sending one
+   message, then reading it straight from the bridge's own database:
+   `sqlite3 bridge/whatsapp/store/messages.db "SELECT jid, name FROM chats
+   WHERE jid LIKE '%@g.us' ORDER BY last_message_time DESC LIMIT 5;"`.
+   Founders are E.164 without the `+`, name after the colon,
+   comma-separated — a message from anyone else in the group, or from
+   anywhere that is not the configured group at all, is read and silently
+   ignored. No bounce: confirming the bridge exists to a stranger is worse
+   than saying nothing.
 
 4. Start the relay (the inbound half):
 
@@ -119,10 +139,12 @@ answer:
   `messages.db`, the same posture `bridge/db.mjs` holds for Linked Helper's
   database: never write someone else's store.
 - `lib/whatsapp/send.ts` — one POST to the bridge's `/api/send`.
-- `lib/whatsapp/config.ts` — the founder allowlist.
-- `scripts/whatsapp-relay.mjs` — polls for new inbound, answers, replies.
-- `app/api/whatsapp/{status,qr}` and `components/WhatsAppPanel.tsx` — the
-  settings-page view of all of the above.
+- `lib/whatsapp/config.ts` — the group JID and the founder allowlist.
+- `scripts/whatsapp-relay.mjs` — polls for new inbound, answers wake-worded
+  questions, replies.
+- `app/api/whatsapp/{status,qr,signals}` and `components/WhatsAppPanel.tsx`
+  — the settings-page view of the bridge, and the calendar's read-only
+  "From WhatsApp" panel.
 
 ## Privacy
 

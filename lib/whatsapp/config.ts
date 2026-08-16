@@ -16,6 +16,19 @@ export interface FounderContact {
 const RAW = process.env.STRIDE_WHATSAPP_FOUNDERS ?? "";
 
 /**
+ * The one WhatsApp chat the console treats as its channel: brain ingestion,
+ * the calendar's signals panel, and the relay's listen/reply loop all read
+ * this chat and nothing else. Consolidated on purpose — a founder's other
+ * 1:1s and self-chat used to count too, which meant Stride content mixed
+ * with personal chat with no way to tell the two apart from a phone number
+ * alone. One named group, shared by every founder who should see it, is a
+ * boundary a person can actually reason about.
+ */
+export function strideGroupJid(): string | undefined {
+  return process.env.STRIDE_WHATSAPP_GROUP || undefined;
+}
+
+/**
  * "31634114311:Jort,31612345678:Sarvesh" — set once in .env.local. Empty
  * until configured, which means the relay answers nobody rather than
  * guessing who a founder is.
