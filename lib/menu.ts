@@ -305,23 +305,26 @@ export const MENU: MenuSection[] = [
 export const NAV = MENU.flatMap((s) => (s.nav ? [s.nav] : []));
 
 /**
- * One drawn glyph per section — icons.tsx's own IconSection* set — used by
- * both the side rail and the ⌘K sheet's map view, so a department reads as
- * the same shape wherever the console shows it. Icon *names* rather than
- * components, since this file stays framework-free.
+ * One glyph per section, used by both the side rail and the ⌘K sheet's map
+ * view, so a department reads as the same shape wherever the console shows
+ * it. Every name here is one of icons.tsx's library-traced set — the icon
+ * library has no bespoke "department" glyphs of its own, so each section
+ * borrows the library icon nearest its meaning rather than inventing a
+ * shape the library never drew. Icon *names* rather than components, since
+ * this file stays framework-free.
  */
 export const AREA_ICON: Record<MenuArea, string> = {
-  content: "IconSectionContent",
-  website: "IconSectionWebsite",
-  linkedin: "IconSectionLinkedIn",
-  automation: "IconSectionAutomation",
-  sales: "IconSectionSales",
-  delivery: "IconSectionDelivery",
+  content: "IconLayers",
+  website: "IconTrend",
+  linkedin: "IconPipeline",
+  automation: "IconRuntime",
+  sales: "IconTarget",
+  delivery: "IconDeploy",
   team: "IconTeam",
 };
 
 /** Clients folds in beside Sales rather than being a MenuArea of its own. */
-export const CLIENTS_ICON = "IconSectionClients";
+export const CLIENTS_ICON = "IconApproved";
 
 /**
  * Which item a path is currently on. Hashes and queries are stripped, so

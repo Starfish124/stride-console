@@ -875,26 +875,64 @@ main {
     hub-float 7s ease-in-out infinite;
 }
 
-/* Threads: the lines pulled taut from the mark to each thought as the
-   picture assembles. Each one draws in on the chip's own delay via the
-   pathLength trick (dash length becomes a plain 0–1 fraction regardless of
-   line length), then keeps a slow breathing pulse — the brain is still
-   holding all of them, not just the one that just landed. */
-@keyframes hub-thread-draw {
-  from { stroke-dashoffset: 1; }
-  to { stroke-dashoffset: 0; }
+/* The mark itself never stops being alive — a slower, gentler version of
+   the two boot breaths, looping forever instead of firing twice. This is
+   the one thing on the whole screen with no delay and no "once": the
+   thinking never pauses, everything else is what it is thinking about. */
+@keyframes hub-mark-alive {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.045); opacity: 0.92; }
 }
-@keyframes hub-thread-pulse {
-  0%, 100% { stroke-opacity: 0.16; }
-  50% { stroke-opacity: 0.44; }
+.hub-mark-alive {
+  display: inline-flex;
+  animation: hub-mark-alive 4.2s var(--ease-out-quint) infinite;
 }
-.hub-thread {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  stroke-opacity: 0.16;
+
+/* The halo: a thin trace that sweeps once around a bubble's own rounded
+   border, then goes quiet for a while before it does it again. A
+   conic-gradient ring, masked down to just the border itself (the
+   composite:exclude trick — a solid box minus its own content-box leaves
+   only the frame), spinning constantly underneath but only visible for a
+   couple of seconds per cycle. Cheap enough to run all six at once because
+   the spin never stops, or starts: only opacity has a resting state. */
+@property --halo-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes hub-halo-spin {
+  to { --halo-angle: 360deg; }
+}
+@keyframes hub-halo-pulse {
+  0%, 78%, 100% { opacity: 0; }
+  86%, 94% { opacity: 1; }
+}
+.hub-halo {
+  position: relative;
+}
+.hub-halo::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 9999px;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--halo-angle, 0deg),
+    transparent 0deg,
+    transparent 300deg,
+    var(--color-indigo) 336deg,
+    transparent 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
   animation:
-    hub-thread-draw 700ms var(--ease-out-quint) both,
-    hub-thread-pulse 5s ease-in-out infinite;
+    hub-halo-spin 7s linear infinite,
+    hub-halo-pulse 9s ease-in-out infinite;
+  animation-delay: var(--halo-delay, 0s);
 }
 
 /* The rings are a radar, so they sweep — one full turn every three
@@ -923,7 +961,7 @@ main {
 @media (prefers-reduced-motion: reduce) {
   .boot-pulse,
   .hub-thought,
-  .hub-thread,
+  .hub-mark-alive,
   .hub-rings,
   .hub-parallax {
     animation: none;
@@ -933,11 +971,11 @@ main {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1);
   }
-  .hub-thread {
-    stroke-dashoffset: 0;
-    stroke-opacity: 0.3;
-  }
   .hub-parallax {
     transform: none;
+  }
+  .hub-halo::before {
+    animation: none;
+    opacity: 0;
   }
 }

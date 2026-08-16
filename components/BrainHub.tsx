@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { Mark } from "@/components/Ramp";
 import { Radar } from "@/components/ui";
-import { BRAND } from "@/lib/brand";
 
 /**
  * The console opens as a brain having thoughts.
@@ -15,13 +14,17 @@ import { BRAND } from "@/lib/brand";
  * built, what is unpaid. Each thought is a link; the orbit is the overview
  * and the navigation at once.
  *
- * It is meant to look like it is working, not like it is decoration: each
- * thought settles into its slot on its own delay rather than all appearing
- * at once, a thread draws taut from the mark to it as it lands and keeps a
- * slow pulse afterward, and the rings turn like a radar actually sweeping.
- * Depth comes from parallax — near layers (the mark) move more than far
- * ones (the rings) as the pointer moves — which is a CSS custom property
- * per layer, not a new rendering engine.
+ * No lines drawn between them — a wire diagram is not what a brain looks
+ * like, and a straight line to every chip reads as a diagram, not a mind.
+ * What reads as alive instead: the mark itself breathes, continuously, not
+ * just during the boot sequence; each thought settles into its slot on its
+ * own delay rather than all appearing at once and drifts gently forever
+ * after; and — the one motion that IS a line — a thin indigo trace
+ * occasionally sweeps once around a bubble's own border, on its own
+ * unhurried interval, staggered per chip so the orbit is never all lit at
+ * once. Depth comes from pointer parallax — near layers (the mark) move
+ * more than far ones (the rings) — a CSS custom property per layer, not a
+ * new rendering engine.
  *
  * Phones do not get an orbit, and they do not get the pointer parallax
  * either — six chips circling a logo in 360px of width is a collision, not
@@ -109,6 +112,19 @@ export function BrainHub({
     </Link>
   );
 
+  // The border-trace wrapper: an inline-block just big enough to hug the
+  // pill inside it, so the halo sits exactly on the chip's own rounded-full
+  // outline no matter how long its label runs.
+  const haloed = (t: Thought, delaySeconds: number) => (
+    <div
+      key={t.href + t.label}
+      className="hub-halo pointer-events-none inline-block rounded-full"
+      style={{ "--halo-delay": `${delaySeconds}s` } as React.CSSProperties}
+    >
+      {chip(t)}
+    </div>
+  );
+
   return (
     <section aria-label="What matters right now" className="relative pb-2 pt-6">
       {/* The orbit. Positioning context for the slots; rings behind it all. */}
@@ -118,39 +134,16 @@ export function BrainHub({
           className="hub-rings absolute left-1/2 top-1/2 h-[380px] w-[380px] text-line"
         />
 
-        {/* The threads: each one drawn taut from the mark to a thought as
-            it lands, on that chip's own delay. */}
-        <svg
-          className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
-          viewBox="0 0 100 100"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-        >
-          {shown.map((t, i) => (
-            <line
-              key={t.href + t.label}
-              className="hub-thread"
-              x1="50"
-              y1="50"
-              x2={SLOTS[i].x}
-              y2={SLOTS[i].y}
-              stroke={BRAND.indigo}
-              strokeWidth="0.4"
-              strokeLinecap="round"
-              pathLength="1"
-              style={{ animationDelay: `${i * 130}ms, ${700 + i * 130}ms` }}
-            />
-          ))}
-        </svg>
-
-        {/* The hub itself: what the boot animation flies into. Nearest
-            layer, so it carries the most of the pointer parallax. */}
+        {/* The hub itself: what the boot animation flies into, and what
+            keeps breathing after it lands — the one thing on this screen
+            that never stops being alive. Nearest layer, so it also carries
+            the most of the pointer parallax. */}
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
           <div
             className="hub-parallax flex flex-col items-center text-center"
             style={{ "--hub-depth": "11px" } as React.CSSProperties}
           >
-            <span id="hub-logo" className="text-indigo">
+            <span id="hub-logo" className="hub-mark-alive text-indigo">
               <Mark size={64} />
             </span>
             <p className="eyebrow mt-4 text-slate">{date}</p>
@@ -173,7 +166,7 @@ export function BrainHub({
             }}
           >
             <div className="hub-parallax" style={{ "--hub-depth": `${7 - i * 0.5}px` } as React.CSSProperties}>
-              {chip(t)}
+              {haloed(t, i * 2.6)}
             </div>
           </div>
         ))}
@@ -182,7 +175,7 @@ export function BrainHub({
       {/* The same brain, flattened for a phone. */}
       <div className="sm:hidden">
         <div className="flex flex-col items-center pt-4 text-center">
-          <span className="text-indigo">
+          <span className="hub-mark-alive text-indigo">
             <Mark size={48} />
           </span>
           <p className="eyebrow mt-3 text-slate">{date}</p>
