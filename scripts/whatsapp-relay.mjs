@@ -99,7 +99,18 @@ async function tick(state) {
 
   let newest = state.since;
   for (const msg of inbound) {
-    newest = msg.timestamp > newest ? msg.timestamp : newest;
+    // msg.timestamp is the Go driver's own text format ("2026-08-16
+    // 09:15:32+02:00"), not ISO. Comparing it against the ISO cursor with
+    // plain string `>` is the exact bug lib/whatsapp/store.ts's own
+    // comments already warn about: the space where ISO has "T" sorts
+    // *before* "T", so a Go-format timestamp always loses the comparison
+    // no matter how recent it actually is. `newest` — and therefore
+    // state.since — then never advances, `inbound` returns the same
+    // messages every tick forever, and every wake-worded one gets
+    // answered again on a 4-second loop. Compare real dates instead, and
+    // normalize what gets stored so next tick's comparison is ISO-to-ISO.
+    const iso = new Date(msg.timestamp).toISOString();
+    if (iso > newest) newest = iso;
     const founder = msg.founderNumber ? founderFor(msg.founderNumber) : undefined;
     if (!founder) {
       log(`ignored: unauthorised or unresolved sender (${msg.founderNumber ?? "unknown"})`);
