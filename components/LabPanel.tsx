@@ -124,7 +124,16 @@ export function LabPanel() {
               </div>
               <p className="mt-0.5 text-[12px] text-mute">
                 {s.image}
-                {s.port ? ` · localhost:${s.port}` : ""} · {s.createdAt.slice(0, 10)}
+                {/* Loopback-only publish, so the link works from this Mac — not over the tailnet. */}
+                {s.port && (
+                  <>
+                    {" · "}
+                    <a href={`http://localhost:${s.port}`} className="underline">
+                      localhost:{s.port}
+                    </a>
+                  </>
+                )}{" "}
+                · {s.createdAt.slice(0, 10)}
               </p>
               <p className="tabular mt-1 break-all text-[12px] text-mute">{s.dir}</p>
               <div className="mt-2 flex items-center gap-3">
