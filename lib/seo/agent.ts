@@ -28,7 +28,12 @@ import {
   saveKeywords,
   usedSlugs,
 } from "./store.ts";
-import { DISCOVERY_MARKETS, expandKeywords, isGeoTargeted } from "./expand.ts";
+import {
+  DISCOVERY_MARKETS,
+  expandKeywords,
+  isGeoTargeted,
+  isTargetableTerm,
+} from "./expand.ts";
 import { decideCap } from "./governor.ts";
 import {
   answerQuestions,
@@ -39,7 +44,13 @@ import {
   writeFaqFile,
 } from "./faq.ts";
 import { buildKeywordSet, clusterKeywords, scoreKeyword } from "./cluster.ts";
-import { assignKeywords, buildBriefs, findCannibalisation } from "./organiser.ts";
+import {
+  assignKeywords,
+  buildBriefs,
+  buyerFirst,
+  findCannibalisation,
+  topUpBriefs,
+} from "./organiser.ts";
 import { auditUrl } from "./audit.ts";
 import {
   applyChanges,
@@ -312,14 +323,35 @@ export async function dailySweep(options: SweepOptions = {}): Promise<SweepResul
   // ---- 8. queue the gaps ----
 
   try {
+    const onSite = publishedSlugs(config.siteRepo);
     const fresh = addBriefs(
       buildBriefs(clusters, keywords, assignments, routes, {
         limit: 10,
         now,
-        publishedSlugs: publishedSlugs(config.siteRepo),
+        publishedSlugs: onSite,
       }),
     );
     briefsCreated = fresh.length;
+
+    // Keep the queue stocked. One article publishes every day now, so a queue
+    // that only grows when a whole cluster goes unserved empties faster than
+    // the sweep refills it — and an empty queue is what makes the floor reach
+    // for whatever is left, which is how the leftovers get published. The
+    // top-up mints spokes from single keywords instead, buyer vocabulary
+    // first, so the best thing in the store is what the floor finds tomorrow.
+    const stocked = listBriefs().filter(
+      (b) => !onSite.has(`${b.suggestedSlug}:${b.locale}`),
+    );
+    if (stocked.length < BRIEF_QUEUE_FLOOR) {
+      briefsCreated += addBriefs(
+        topUpBriefs(keywords, listBriefs(), {
+          limit: BRIEF_QUEUE_FLOOR - stocked.length,
+          now,
+          publishedSlugs: onSite,
+          isTargetable: (term) => isTargetableTerm(term, now) && !isGeoTargeted(term),
+        }),
+      ).length;
+    }
   } catch (error) {
     failures.push(`briefs: ${msg(error)}`);
   }
@@ -425,6 +457,12 @@ export interface ArticleRunResult {
   drafted: number;
   failed: number;
   published: number;
+  /**
+   * Whether the run published its daily minimum. The caller exits non-zero when
+   * it did not, so the supervisor treats a day with no article as a failed job
+   * and comes back to it, rather than recording it as done and moving on.
+   */
+  metFloor: boolean;
   articles: {
     slug: string;
     locale: Locale;
@@ -545,6 +583,59 @@ export function withDemand(
  * appearing intact is weak evidence of the same subject; an overlapping bag of
  * words is no evidence at all.
  */
+/**
+ * How many briefs the floor may burn a writer run on before it gives up.
+ *
+ * Each attempt is a long-form Claude call with a twelve-minute budget, so an
+ * uncapped "keep trying until something publishes" is a way to spend an evening
+ * of tokens on a queue where nothing was ever going to pass. Three is enough to
+ * ride out one bad draft and one writer timeout; a day that loses all three has
+ * something wrong with it that another attempt will not fix.
+ */
+const MAX_FLOOR_ATTEMPTS = 3;
+
+/**
+ * How many unwritten briefs the sweep keeps in the queue.
+ *
+ * A fortnight of daily articles, twins included. Below this the sweep tops up
+ * from single keywords, because the alternative — a queue with three leftovers
+ * in it and an article due in the morning — is what publishes the leftovers.
+ */
+const BRIEF_QUEUE_FLOOR = 20;
+
+/**
+ * The briefs the floor is allowed to fall back on, best first.
+ *
+ * These are the briefs the demand gate held: nobody has been measured searching
+ * them. That is a reason to write them LAST, not a reason to leave the day
+ * empty — which is the whole difference between this and loosening the gate.
+ *
+ * Two kinds never make the list, because reaching for them spends the day's
+ * attempt on something that cannot land:
+ *   - place-targeted, which the geo hold refuses to auto-publish however clean
+ *     it reads. The article would be written, held for a person, and the day
+ *     would still have nothing on it.
+ *   - a keyword the discovery filter would reject today. Briefs outlive the
+ *     filters that let them in — "ai speakers bureau" and "ai consultant at ey"
+ *     are sitting in the queue right now from before OFF_BRAND grew — and the
+ *     floor is exactly the mechanism that would publish them unattended.
+ */
+export function floorCandidates(
+  held: { brief: ArticleBrief; why: string }[],
+  now = new Date(),
+): ArticleBrief[] {
+  return held
+    .map((h) => h.brief)
+    .filter(
+      (b) => !isGeoTargeted(b.primaryKeyword) && isTargetableTerm(b.primaryKeyword, now),
+    )
+    // Buyer vocabulary first. With no measured demand to go on, the opportunity
+    // score is a guess that favours big clusters, and the big clusters are the
+    // autocomplete dumps — so the ranking alone would hand the day to "ai
+    // consultant prompt" over "enterprise ai chatbot development cost".
+    .sort(buyerFirst);
+}
+
 export function dutchTwinBrief(
   brief: ArticleBrief,
   dutchTerms: { term: string; opportunity: number }[],
@@ -597,6 +688,14 @@ export function dutchTwinBrief(
  * the voice gate flags stays on /seo for a person. The daily cadence is why
  * the brief queue matters more than it used to: at one a day, a bad brief
  * reaches the live site within a day of being queued.
+ *
+ * The run has a FLOOR (`minPublishedPerRun`): it may not finish having
+ * published nothing. Measured demand still picks what gets written first and
+ * the gate is unchanged — the floor only takes over when the gate leaves the
+ * day empty, and then it draws one brief at a time from what the gate held,
+ * skipping anything place-targeted or off-brand, until one publishes. When
+ * even that fails the run reports it and exits non-zero, so the supervisor
+ * comes back rather than booking the day as done.
  */
 export async function draftArticles(
   options: { limit?: number; now?: Date; ignoreDemand?: boolean; only?: string[] } = {},
@@ -636,7 +735,14 @@ export async function draftArticles(
 
   const briefs = gate.writable.slice(0, limit);
 
-  if (briefs.length === 0) {
+  // The floor. Measured demand chose the briefs above; this chooses the ones
+  // the day falls back on when those publish nothing — one at a time, best
+  // first, and only until one actually lands. A queue with no measured demand
+  // therefore costs one article a day rather than `limit` of them.
+  const floor = Math.max(0, config.minPublishedPerRun ?? 0);
+  const reserve = floor > 0 ? floorCandidates(gate.held, now).slice(0, MAX_FLOOR_ATTEMPTS) : [];
+
+  if (briefs.length === 0 && reserve.length === 0) {
     const message =
       queued.length === 0
         ? "No briefs queued. Nothing to write."
@@ -646,10 +752,17 @@ export async function draftArticles(
             ? `No open brief matches ${only.map((k) => `"${k}"`).join(", ")}. Open: ${open
                 .map((b) => `"${b.primaryKeyword}"`)
                 .join(", ")}`
-            : `${chosen.length} briefs queued, none with measured demand yet — ${
-                gate.held[0]?.why ?? "nothing measured"
-              }. Nothing written, which costs nothing while Search Console fills in.`;
-    return { drafted: 0, failed: 0, published: 0, articles: [], message };
+            : floor > 0
+              ? // The floor is on and could not be met, which is a supply
+                // problem and has to read like one. Every open brief is either
+                // place-targeted or names something that is not ours, so there
+                // is nothing honest left to publish today and the sweep needs
+                // to find new subjects before tomorrow.
+                `${chosen.length} briefs queued and not one is publishable — every open brief is place-targeted or off-brand. The floor of ${floor} could not be met: the brief queue is out of subjects, which the sweep has to fix.`
+              : `${chosen.length} briefs queued, none with measured demand yet — ${
+                  gate.held[0]?.why ?? "nothing measured"
+                }. Nothing written, which costs nothing while Search Console fills in.`;
+    return { drafted: 0, failed: 0, published: 0, metFloor: floor === 0, articles: [], message };
   }
 
   const written: ArticleRunResult["articles"] = [];
@@ -726,12 +839,28 @@ export async function draftArticles(
     }
   }
 
+  // Nothing above published — either there was nothing with measured demand to
+  // write, or what was written got held by the voice gate. Either way the day
+  // is still empty, so the floor draws one unmeasured brief at a time until one
+  // lands. No Dutch twin here: the floor is about the day having an article,
+  // and a twin is a second writer run on top of the one that just worked.
+  for (const brief of reserve) {
+    if (publishedCount >= floor) break;
+    try {
+      if (!(await writeOne(brief))) failed++;
+    } catch {
+      failed++;
+    }
+  }
+
   const clean = written.filter((w) => w.errors === 0).length;
   const held = clean - publishedCount;
+  const short = floor > 0 && publishedCount < floor;
   return {
     drafted: written.length,
     failed,
     published: publishedCount,
+    metFloor: !short,
     articles: written,
     message:
       written.length === 0
@@ -740,7 +869,11 @@ export async function draftArticles(
             held > 0 ? `, ${held} clean but not sent` : ""
           }${written.length - clean > 0 ? `, ${written.length - clean} held by the voice gate` : ""}${
             failed > 0 ? `, ${failed} failed` : ""
-          }.`,
+          }.${
+            short
+              ? ` FLOOR MISSED: ${floor} article${floor === 1 ? "" : "s"} a day is the standing rule and today published ${publishedCount}.`
+              : ""
+          }`,
   };
 }
 

@@ -254,6 +254,20 @@ export interface SeoConfig {
    * Console has data.
    */
   requireMeasuredDemand: boolean;
+  /**
+   * The floor: how many articles a run must actually PUBLISH before it is
+   * allowed to finish. The run is daily, so this is the daily minimum.
+   *
+   * It sits UNDER the demand gate rather than replacing it — measured demand
+   * still decides what gets written first, and on a day where nothing is
+   * measured the floor decides that something gets written at all. Every other
+   * guard survives it: the geo hold, the voice gate and the discovery filters
+   * all still apply, so what the floor reaches for is the best brief that
+   * passes them, never simply the next one in the queue.
+   *
+   * 0 turns it off and restores "an empty run is a correct run".
+   */
+  minPublishedPerRun: number;
 }
 
 export const DEFAULT_SEEDS: Record<Locale, string[]> = {

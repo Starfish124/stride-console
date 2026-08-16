@@ -251,5 +251,139 @@ export function buildBriefs(
     });
   }
 
-  return briefs.sort((a, b) => b.opportunity - a.opportunity).slice(0, limit);
+  return briefs.sort(buyerFirst).slice(0, limit);
+}
+
+/**
+ * The words somebody uses when they are sizing up a purchase.
+ *
+ * Opportunity is guessed from the SHAPE of a phrase until Search Console has
+ * data, and the guess has a bias nobody noticed until the queue ran dry: a
+ * brief's score gets a bonus for how many keywords its cluster holds, and the
+ * biggest clusters are the alphabet-soup dumps. So "ai consultant prompt" — a
+ * cluster of thirty autocomplete tails that happen to start the same way —
+ * outscores "enterprise ai chatbot development cost", which is one term and an
+ * actual buyer typing an actual budget question.
+ *
+ * This is the tie-break, not a new score: a term carrying a buying word goes
+ * first, and everything else keeps the ranking it had. It is deliberately
+ * about vocabulary rather than cleverness, because the thing it has to beat is
+ * debris, not a close second.
+ */
+const BUYING_SIGNAL = new RegExp(
+  [
+    // Money, in both languages. These are already exempt from the wrong-audience
+    // filter for the same reason: a buyer sizing a budget searches them.
+    "\\bcosts?\\b", "\\bpricing\\b", "\\bprices?\\b", "\\bquotes?\\b",
+    "\\brates?\\b", "\\bbudget\\b", "\\bkosten\\b", "\\bprijs\\b", "\\bprijzen\\b",
+    "\\btarief\\b", "\\buurtarief\\b", "\\boffertes?\\b", "how much",
+    // Somebody looking to have it done rather than to understand it.
+    "\\bhire\\b", "for hire", "laten maken", "uitbesteden", "inhuren",
+    "\\bagency\\b", "\\bbureau\\b", "\\bservices?\\b", "\\bdiensten\\b",
+    // A named industry is a real question with a real reader behind it.
+    "for business", "voor bedrijven", "for small business", "voor mkb",
+    "healthcare", "\\bzorg\\b", "\\blegal\\b", "juridisch", "\\bretail\\b",
+    "logistic", "logistiek", "manufacturing", "productie", "\\bfinance\\b",
+    "financi", "real estate", "vastgoed", "\\beducation\\b", "onderwijs",
+    "\\baccountanc", "\\bhr\\b", "recruitment agency",
+    // The comparison and how-to shapes a buyer reads before deciding.
+    "\\bvs\\b", "versus", "vergelijk", "alternatives?", "alternatieven",
+    "\\bimplement", "\\bintegrat", "\\bmigrat",
+  ].join("|"),
+  "i",
+);
+
+export function hasBuyingSignal(term: string): boolean {
+  return BUYING_SIGNAL.test(term);
+}
+
+/** Buyer vocabulary first, then the existing opportunity ranking. */
+export function buyerFirst(
+  a: { primaryKeyword: string; opportunity: number },
+  b: { primaryKeyword: string; opportunity: number },
+): number {
+  const byIntent = Number(hasBuyingSignal(b.primaryKeyword)) - Number(hasBuyingSignal(a.primaryKeyword));
+  return byIntent !== 0 ? byIntent : b.opportunity - a.opportunity;
+}
+
+/**
+ * Briefs minted from single keywords, for when the cluster queue runs dry.
+ *
+ * `buildBriefs` produces at most one brief per uncovered cluster, so the
+ * queue's size is the cluster count and not the store's. That was fine while
+ * the good clusters were unwritten. Once they are — 2026-08-16, twelve open
+ * briefs against 1,284 keywords, and the twelve are the leftovers — the engine
+ * has plenty of real subjects and no way to reach them: "enterprise ai chatbot
+ * development cost" and "ai consultant for healthcare" sit in the store as
+ * ordinary cluster members that will never be anybody's primary keyword.
+ *
+ * A single keyword earns a spoke, never a pillar. One term is one question, and
+ * claiming otherwise is how a 2,500-word target gets padded.
+ */
+export function topUpBriefs(
+  keywords: Keyword[],
+  existing: ArticleBrief[],
+  options: {
+    limit?: number;
+    now?: Date;
+    publishedSlugs?: Set<string>;
+    isTargetable?: (term: string) => boolean;
+  } = {},
+): ArticleBrief[] {
+  const { limit = 10, now = new Date(), publishedSlugs = new Set<string>(), isTargetable } = options;
+
+  const taken = new Set(existing.map((b) => `${b.suggestedSlug}:${b.locale}`));
+  const briefed = new Set(existing.map((b) => b.primaryKeyword.trim().toLowerCase()));
+
+  const candidates = keywords
+    .filter((k) => !briefed.has(k.term.trim().toLowerCase()))
+    .filter((k) => (isTargetable ? isTargetable(k.term) : true))
+    // A single-word keyword is a category, not an article. "ai" and "chatbot"
+    // are already what the marketing pages are for.
+    .filter((k) => k.term.trim().includes(" "))
+    // And a very long tail is usually not a subject at all. "ai pricing agent
+    // heterogeneity and collusion" is a paper title and "ai agent quote to
+    // purchase requisition assistant" is nobody's sentence — both carry a money
+    // word, so the buyer tie-break promotes them, and both came out top of the
+    // first top-up run against the real store.
+    // ponytail: word count is a proxy for "is this a real question", and it
+    // will eventually cost a good long query. Replace it the day measured
+    // demand can answer that question directly, which is what it is for.
+    .filter((k) => k.term.trim().split(/\s+/).length <= 5)
+    .sort((a, b) => buyerFirst(
+      { primaryKeyword: a.term, opportunity: a.opportunity },
+      { primaryKeyword: b.term, opportunity: b.opportunity },
+    ));
+
+  const out: ArticleBrief[] = [];
+  for (const k of candidates) {
+    if (out.length >= limit) break;
+    const slug = slugify(k.term);
+    const key = `${slug}:${k.locale}`;
+    if (taken.has(key) || publishedSlugs.has(key)) continue;
+    taken.add(key);
+
+    out.push({
+      id: `br_kw_${k.id}`,
+      // No cluster: this brief is one term, not a group of them. Borrowing the
+      // keyword's cluster id would make it collide with the brief that cluster
+      // already produced, which is the whole reason these are being minted.
+      clusterId: "",
+      locale: k.locale,
+      primaryKeyword: k.term,
+      secondaryKeywords: [],
+      intent: k.intent,
+      template: pickTemplate(k.term, k.intent),
+      role: "spoke",
+      wordCountTarget: 1200,
+      internalLinks: [
+        { href: "/services", anchor: k.locale === "nl" ? "onze AI diensten" : "our AI services" },
+      ],
+      suggestedSlug: slug,
+      opportunity: k.opportunity,
+      createdAt: now.toISOString(),
+    });
+  }
+
+  return out;
 }

@@ -8,6 +8,7 @@ import {
   buildBriefs,
   findCannibalisation,
   slugify,
+  topUpBriefs,
 } from "../lib/seo/organiser.ts";
 
 // ---------- normalisation ----------
@@ -436,4 +437,120 @@ test("vendor names are dropped, our own stack is not", () => {
   ]) {
     assert.equal(isTargetableTerm(term), true, `should keep "${term}"`);
   }
+});
+
+// ---------- keeping the queue stocked ----------
+
+function kw(term, locale, opportunity, extra = {}) {
+  return {
+    id: `kw_${locale}_${term.replace(/\s+/g, "-")}`,
+    term,
+    locale,
+    intent: "commercial",
+    discoveredVia: "autocomplete",
+    discoveredAt: "2026-08-01T00:00:00.000Z",
+    opportunity,
+    ...extra,
+  };
+}
+
+// The shortage this fixes: buildBriefs makes at most one brief per uncovered
+// cluster, so the queue's size is the CLUSTER count, not the store's. On
+// 2026-08-16 that was twelve open briefs against 1,284 keywords — and the
+// twelve were the leftovers, while "enterprise ai chatbot development cost" sat
+// in the store as an ordinary cluster member that would never be anybody's
+// primary keyword. With an article publishing every day, an empty queue is what
+// makes the engine reach for the leftovers.
+test("the top-up mints briefs from single keywords when the cluster queue is dry", () => {
+  const out = topUpBriefs([kw("enterprise ai chatbot development cost", "en", 42)], [], {
+    now: new Date("2026-08-16T00:00:00.000Z"),
+  });
+
+  assert.equal(out.length, 1);
+  assert.equal(out[0].role, "spoke", "one term is one question, never a pillar");
+  assert.equal(out[0].suggestedSlug, "enterprise-ai-chatbot-development-cost");
+});
+
+test("the top-up never proposes work that already exists", () => {
+  const keywords = [kw("ai agent pricing models", "en", 42), kw("ai consultant kosten", "nl", 40)];
+  const existing = [
+    {
+      id: "br_1",
+      clusterId: "cl_1",
+      locale: "en",
+      primaryKeyword: "ai agent pricing models",
+      secondaryKeywords: [],
+      intent: "commercial",
+      template: "explainer",
+      role: "spoke",
+      wordCountTarget: 1200,
+      internalLinks: [],
+      suggestedSlug: "ai-agent-pricing-models",
+      opportunity: 42,
+      createdAt: "2026-08-01T00:00:00.000Z",
+    },
+  ];
+
+  const out = topUpBriefs(keywords, existing, {
+    publishedSlugs: new Set(["ai-consultant-kosten:nl"]),
+  });
+  assert.deepEqual(out, [], "one is already briefed, the other is already on the site");
+});
+
+test("the top-up honours the discovery filter it is given", () => {
+  const out = topUpBriefs([kw("ai consultant barcelona", "nl", 51)], [], {
+    isTargetable: (term) => !isGeoTargeted(term),
+  });
+  assert.deepEqual(out, []);
+});
+
+test("a buyer's question outranks a bigger cluster's guessed score", () => {
+  const out = topUpBriefs(
+    [kw("ai consultant prompt", "nl", 51), kw("ai chatbot development price", "en", 42)],
+    [],
+  );
+  assert.equal(out[0].primaryKeyword, "ai chatbot development price");
+});
+
+// ---------- filters that only mattered once publishing became unattended ----------
+
+test("other people's names stay out of the queue", () => {
+  // Each of these was a real open brief on 2026-08-16, one floor run away from
+  // publishing itself: a speakers agency, a database vendor, and a Big Four
+  // firm somebody was researching a job at.
+  assert.equal(isTargetableTerm("ai speakers bureau"), false);
+  assert.equal(isTargetableTerm("ai consultant oracle"), false);
+  assert.equal(isTargetableTerm("ai consultant at ey"), false);
+  assert.equal(isTargetableTerm("ai agent pricing reddit"), false);
+  // The rule is the vendor versus the work, and it has not moved: the tools we
+  // build with are still ours to write about.
+  assert.equal(isTargetableTerm("ai agent tools n8n"), true);
+});
+
+test("a question asked in a language we do not sell in is not our page", () => {
+  assert.equal(isTargetableTerm("ai consultant kya hota hai"), false);
+  assert.equal(isTargetableTerm("ai consultant là gì"), false);
+  assert.equal(isTargetableTerm("ai consultant kaise bane"), false);
+});
+
+test("the geo hold knows the cities the seeds never visit", () => {
+  // EU_GEO is what the sweep goes and ASKS about; this is what it must
+  // recognise in an answer. Perth and Qatar were in the store with nothing to
+  // catch them.
+  assert.equal(isGeoTargeted("ai consultant perth"), true);
+  assert.equal(isGeoTargeted("ai consultant qatar"), true);
+  assert.equal(isGeoTargeted("ai bureau amsterdam"), true);
+  assert.equal(isGeoTargeted("ai consultant kosten"), false);
+});
+
+test("keyword briefs carry no cluster, because one term is not a group", () => {
+  // Not cosmetic: the queue dedupes on cluster and locale, so borrowing the
+  // keyword's cluster id made every minted brief collide with the brief that
+  // cluster had already produced — and a keyword with no cluster keyed as
+  // ":en" and swallowed all but the first. They vanished silently.
+  const out = topUpBriefs(
+    [kw("ai chatbot development price", "en", 42, { clusterId: "cl_en_ai-chatbot" })],
+    [],
+  );
+  assert.equal(out[0].clusterId, "");
 });

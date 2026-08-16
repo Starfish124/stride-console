@@ -6,9 +6,12 @@
 // stays on /seo for a person to read and fix. Set autoPublishArticles to
 // false in the config to make every article wait for the button again.
 //
-// Nothing is written for a keyword nobody has been measured searching. That is
-// the demand gate, and it is why an empty run is a correct run on a property
-// whose Search Console data has not arrived yet.
+// Measured demand decides what gets written FIRST — that is the demand gate.
+// What it no longer decides is whether anything gets written at all: an article
+// a day is a standing rule, so when the gate holds everything, the floor
+// (minPublishedPerRun) falls back to the best brief that still passes the geo
+// hold, the discovery filters and the voice gate. A day that publishes nothing
+// exits non-zero and the supervisor tries again.
 //
 // Run: npm run seo:articles
 //      npm run seo:articles -- --limit=1
@@ -70,4 +73,8 @@ if (result.drafted > 0) {
   }
 }
 
-process.exit(result.drafted === 0 && result.failed > 0 ? 1 : 0);
+// A day that published nothing is a failed run, not a quiet one. The exit code
+// is what the supervisor reads, and it is the only thing that makes it come
+// back and try again before the day is out — so the floor is enforced here, not
+// merely reported.
+process.exit(result.metFloor && !(result.drafted === 0 && result.failed > 0) ? 0 : 1);

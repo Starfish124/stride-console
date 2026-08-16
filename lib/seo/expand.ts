@@ -80,6 +80,12 @@ const OFF_AUDIENCE = new RegExp(
     // and it is the practitioner audience this whole list exists to keep out.
     "how to be (an? )?", "how to start (an? )?.*(agency|consultanc)",
     "how to (build|run|grow) (an? )?(ai )?(agency|consultanc)",
+    // Autocomplete drops the "how to" as often as it keeps it, and "start your
+    // ai agency cost" is the same reader as "how to start an ai agency" with a
+    // budget question attached. The money word is why it survived every other
+    // filter and came out top of the first top-up.
+    "start (your|my|a|an) .*(agency|consultanc)",
+    "\\bqualifications?\\b",
     "hoe begin je", "zelf .*(bouwen|maken) zonder",
     // Dutch puts the verb last, so "how to become an AI consultant" surfaces
     // as "ai consultant worden". The English patterns above never matched it,
@@ -149,7 +155,10 @@ const OFF_MARKET = new RegExp(
  */
 const OFF_BRAND = new RegExp(
   [
-    "census bureau", "\\bveritas\\b", "bureau of ",
+    // "bureau" is in ON_TOPIC for the Dutch "AI-bureau", so every organisation
+    // in the world with the word in its name comes through it. A credit bureau
+    // is the same false friend as the census one.
+    "census bureau", "\\bveritas\\b", "bureau of ", "credit bureau",
     "\\bghl\\b", "gohighlevel", "go high level",
     "\\bclickfunnels\\b", "\\bhubspot\\b", "\\bsalesforce\\b",
     "\\bairtable\\b", "monday\\.com", "\\bdatadog\\b",
@@ -161,9 +170,81 @@ const OFF_BRAND = new RegExp(
     // at the top of the queue, one forced run away from a 2,500-word article
     // about somebody else's speaker agency.
     "\\baisb\\b",
+    // And the unabbreviated form, which sat at the top of the queue on
+    // 2026-08-16 with nothing to stop it. A speakers bureau books people to
+    // talk at events; the word "bureau" is the only thing it shares with us.
+    "speakers bureau",
+    // Consultancies and system integrators. "ai consultant at ey" and "ai
+    // consultant at deloitte" are somebody researching that firm or a job in
+    // it, and a page of ours that ranks for it collects a reader who was never
+    // going to hire us. Now that a floor publishes unmeasured briefs
+    // unattended, these are the names it would have reached for first.
+    "\\bdeloitte\\b", "\\bkpmg\\b", "\\bpwc\\b", "\\bey\\b", "\\baccenture\\b",
+    "\\bcapgemini\\b", "\\bmckinsey\\b", "\\binfosys\\b", "\\bcognizant\\b",
+    "\\bwipro\\b", "\\bsopra\\b",
+    // Platforms whose own documentation is what the searcher wants.
+    "\\boracle\\b", "\\bsap\\b", "\\bnotion\\b", "\\bmistral\\b",
+    "\\bzendesk\\b", "\\bintercom\\b", "\\bfreshdesk\\b",
+    // Marketplaces. "ai consultant upwork" wants a profile listing, not an
+    // article, and we are not competing with the marketplace for that click.
+    "\\bupwork\\b", "\\bfiverr\\b", "\\bmalt\\b",
+    // A destination, not a subject. "ai agent pricing reddit" is a reader who
+    // has decided they want a forum thread; we cannot be the answer to it.
+    "\\breddit\\b", "\\bquora\\b", "\\blinkedin\\b", "\\byoutube\\b",
   ].join("|"),
   "i",
 );
+
+/**
+ * Somebody searching in a language we do not sell in.
+ *
+ * These arrive through the English seeds and look on-topic because they are —
+ * "ai consultant kya hota hai" is "what is an AI consultant" in Hindi, and it
+ * passed every filter into the keyword store. The market gate cannot catch it:
+ * no place is named. A Dutch consultancy writing that page ranks in a country
+ * it cannot invoice.
+ *
+ * Question words only, kept short on purpose. A borrowed noun is not evidence
+ * of anything — half of Dutch tech vocabulary is English.
+ */
+const OFF_LANGUAGE = new RegExp(
+  [
+    "kya hota hai", "kya hai", "kaise", "\\bkarna\\b",
+    "l[àa] g[ìi]", "\\bnedir\\b", "qu[eé] es", "\\bco to\\b",
+    "\\bcos'?[eè]\\b", "\\bwas ist\\b", "\\bqu'est-ce\\b",
+  ].join("|"),
+  "i",
+);
+
+/**
+ * Places the geo hold has to know about but the seeds never visit.
+ *
+ * EU_GEO is a list of places worth ASKING about, and OFF_MARKET_PLACES a list
+ * of markets worth blocking. Neither is the same question as "does this term
+ * name a place", and the gap between them is where a doorway page gets in:
+ * "ai consultant perth" and "ai consultant qatar" are both in the store right
+ * now, and neither list contains them. Adding them to EU_GEO would make the
+ * sweep go ask Google about Perth, which is not the point — this list only
+ * ever answers, never asks.
+ */
+const MORE_PLACES = [
+  // A region is a place. "ai bureau eu" reads like a subject and is a map with
+  // no city on it — the same doorway shape, one zoom level out, and it was the
+  // first thing the floor reached for until this line existed.
+  "eu", "europe", "european", "europa", "benelux", "dach",
+  "nordics", "scandinavia", "uk", "united kingdom",
+  "hong kong", "qatar", "quebec", "perth", "essex", "vietnam", "malaysia",
+  "thailand", "mexico", "argentina", "colombia", "egypt", "ghana",
+  "south africa", "new zealand", "korea", "taiwan", "turkey", "israel",
+  // European, so a person may well want the page — but they decide, not the
+  // machine, which is exactly what the geo hold is for.
+  "edinburgh", "barcelona", "madrid", "milan", "rome", "dublin", "lisbon",
+  "vienna", "zurich", "geneva", "fribourg", "martigny", "copenhagen",
+  "stockholm", "oslo", "helsinki", "warsaw", "prague", "athens", "budapest",
+  "london", "manchester", "birmingham", "glasgow",
+  "amsterdam", "rotterdam", "utrecht", "eindhoven", "den haag", "groningen",
+  "tilburg", "breda", "nijmegen", "arnhem", "maastricht",
+];
 
 /**
  * A year that has already gone by.
@@ -215,7 +296,7 @@ export function isGeoTargeted(term: string): boolean {
   // are exactly what must never publish itself.
   // ponytail: a list, so a city on no list still slips through to the voice
   // gate. Swap in a gazetteer or an NER pass if that ever actually happens.
-  return [...EU_GEO.en, ...EU_GEO.nl, ...OFF_MARKET_PLACES].some((g) =>
+  return [...EU_GEO.en, ...EU_GEO.nl, ...OFF_MARKET_PLACES, ...MORE_PLACES].some((g) =>
     new RegExp(`\\b${g}\\b`, "i").test(t),
   );
 }
@@ -224,6 +305,7 @@ export function isTargetableTerm(term: string, now = new Date()): boolean {
   if (OFF_AUDIENCE.test(term)) return false;
   if (OFF_MARKET.test(term)) return false;
   if (OFF_BRAND.test(term)) return false;
+  if (OFF_LANGUAGE.test(term)) return false;
   if (namesAPastYear(term, now)) return false;
   return ON_TOPIC.test(term);
 }

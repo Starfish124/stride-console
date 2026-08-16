@@ -1,7 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { dutchTwinBrief, pendingBriefs, withDemand } from "../lib/seo/agent.ts";
+import {
+  dutchTwinBrief,
+  floorCandidates,
+  pendingBriefs,
+  withDemand,
+} from "../lib/seo/agent.ts";
 
 function brief(suggestedSlug, locale, opportunity) {
   return {
@@ -205,4 +210,47 @@ test("evidence is per locale, because a Dutch measurement is not an English one"
     stats: { clicks: 5, impressions: 500, ctr: 0.01, position: 8, measuredAt: "2026-08-05T00:00:00.000Z" },
   });
   assert.equal(withDemand([en], [nlKeyword]).writable.length, 0);
+});
+
+// ---------- the daily floor ----------
+
+// The failure this guards is a quiet one: the run exits 0, the log says
+// "nothing written, which costs nothing", and the blog has a gap in it. That
+// was correct while Search Console had no data. It is not correct now that an
+// article a day is the standing rule, and the floor is what makes the
+// difference — it only ever picks from what the demand gate HELD, so a day
+// with real measured demand behaves exactly as it did before.
+test("the floor falls back to held briefs when nothing has measured demand", () => {
+  const held = [
+    { brief: brief("enterprise-ai-chatbot-development-cost", "en", 42), why: "never measured" },
+  ];
+  const out = floorCandidates(held);
+  assert.equal(out.length, 1, "a day with no measured demand still has something to publish");
+});
+
+test("the floor never reaches for a place-targeted brief", () => {
+  // The geo hold refuses to auto-publish these however clean they read, so
+  // spending the day's attempt on one leaves the day empty anyway — the
+  // article gets written, held for a person, and nothing goes live.
+  const held = [{ brief: brief("ai-consultant-barcelona", "nl", 51), why: "never measured" }];
+  assert.deepEqual(floorCandidates(held), []);
+});
+
+test("the floor never reaches for a brief the discovery filter would reject today", () => {
+  // Briefs outlive the filters that let them in. "ai speakers bureau" was
+  // queued before OFF_BRAND knew the phrase, and the floor is precisely the
+  // mechanism that would publish somebody else's speaker agency unattended.
+  const held = [{ brief: brief("ai-speakers-bureau", "nl", 51), why: "never measured" }];
+  assert.deepEqual(floorCandidates(held), []);
+});
+
+test("the floor prefers a buyer's question to a bigger cluster's score", () => {
+  // Opportunity is guessed until Search Console has data, and the guess pays a
+  // bonus for cluster size — so the alphabet-soup dumps outscore the real
+  // questions. Without the tie-break the day goes to "ai consultant prompt".
+  const held = [
+    { brief: brief("ai-consultant-prompt", "nl", 51), why: "never measured" },
+    { brief: brief("enterprise-ai-chatbot-development-cost", "en", 42), why: "never measured" },
+  ];
+  assert.equal(floorCandidates(held)[0].primaryKeyword, "enterprise ai chatbot development cost");
 });

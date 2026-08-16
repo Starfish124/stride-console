@@ -12,9 +12,14 @@
 //
 // Schedule, local time:
 //   03:15 daily    sweep     discovery, audit, metadata fixes
-//   07:40 daily    articles  draft the top gap, then notify the phones
+//   07:40 daily    articles  publish the day's article, then notify the phones
 //
 // Both runs are idempotent, so a catch-up after a long sleep is safe.
+//
+// The articles job carries a daily obligation the others do not: it is done
+// when it has published, not when it has run. It says which with its exit code,
+// and a run that published nothing is retried (job.retries) before the day's
+// catch-up window closes.
 
 import { spawn } from "node:child_process";
 import fs from "node:fs";
@@ -43,7 +48,18 @@ const JOBS = [
     hour: 7,
     minute: 40,
     days: [0, 1, 2, 3, 4, 5, 6],
-    catchUpUntilHour: 20,
+    // Later than the others close, and for the opposite reason to theirs. A
+    // sweep nobody will see before the next one is pointless; an article at
+    // 21:00 still counts for the day. This is the window the retries live in
+    // too — three attempts at roughly a quarter-hour each need room after a
+    // Mac that woke up late.
+    catchUpUntilHour: 22,
+    // An article a day is a standing rule, so a run that publishes nothing is a
+    // failure and gets tried again rather than recorded as done. The script
+    // exits non-zero for exactly that case. Two retries: enough to ride out a
+    // writer timeout or a draft the voice gate refuses, and few enough that a
+    // fault a retry cannot fix stops costing money by mid-morning.
+    retries: 2,
   },
   {
     // The knowledge graph. Costs nothing but a few seconds of CPU — the code
@@ -112,7 +128,16 @@ export function isDue(job, now, state) {
   // sweep nobody will see, right before the next one is due anyway.
   if (now.getHours() >= job.catchUpUntilHour) return false;
 
-  return state[job.name]?.lastRunDay !== localDay(now);
+  const last = state[job.name];
+  if (last?.lastRunDay !== localDay(now)) return true;
+
+  // Already run today. For most jobs that is the end of it — but a job with a
+  // standing daily obligation is not done just because it ran, it is done when
+  // it succeeded, and the exit code is how it says which. Without this a
+  // crashed writer, or a day where every draft was held, quietly books itself
+  // as complete and the day has no article.
+  if (!job.retries || last.lastExitCode === 0) return false;
+  return (last.attempts ?? 1) < job.retries + 1;
 }
 
 function run(job) {
@@ -154,10 +179,13 @@ async function tick() {
     running = true;
     try {
       const code = await run(job);
+      const sameDay = state[job.name]?.lastRunDay === localDay(now);
       state[job.name] = {
         lastRunDay: localDay(now),
         lastRunAt: now.toISOString(),
         lastExitCode: code,
+        // Counted per day, and it is what caps the retries above.
+        attempts: sameDay ? (state[job.name].attempts ?? 1) + 1 : 1,
       };
       writeState(state);
     } finally {
@@ -168,6 +196,10 @@ async function tick() {
   }
 }
 
+// Everything below starts the supervisor, so it only runs when this file is
+// the program. A test importing isDue must not boot a scheduler that spawns
+// Claude calls against the live store.
+if (import.meta.main) {
 // Manual trigger: `npm run agents -- --now=sweep` runs a job immediately and
 // exits, which is how you test the wiring without waiting for 03:15.
 const nowArg = process.argv.slice(2).find((a) => a.startsWith("--now="));
@@ -202,4 +234,6 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
     log(`${signal} received, stopping`);
     process.exit(0);
   });
+}
+
 }

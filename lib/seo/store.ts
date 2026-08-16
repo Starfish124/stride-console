@@ -72,6 +72,11 @@ export const DEFAULT_CONFIG: SeoConfig = {
   // Evidence before work. The guesses run out, and what is left at the top of
   // the queue scores well and means nothing.
   requireMeasuredDemand: true,
+  // One article a day, published, whatever the queue looks like. A founder's
+  // call and not a negotiable one: a blog that skips days reads as abandoned to
+  // a reader and as a dead section to a crawler, and the compounding this
+  // engine exists for only starts once the rhythm is unbroken.
+  minPublishedPerRun: 1,
 };
 
 export function getConfig(): SeoConfig {
@@ -178,10 +183,31 @@ export function saveBriefs(briefs: ArticleBrief[]): void {
 
 export function addBriefs(briefs: ArticleBrief[]): ArticleBrief[] {
   const existing = listBriefs();
-  // A brief for a cluster and locale already in the queue is not a new
-  // opportunity, it is the same one seen again.
-  const keys = new Set(existing.map((b) => `${b.clusterId}:${b.locale}`));
-  const fresh = briefs.filter((b) => !keys.has(`${b.clusterId}:${b.locale}`));
+  // Two ways a brief is already in the queue.
+  //
+  // The cluster key is the original one: a brief for a cluster and locale
+  // already queued is not a new opportunity, it is the same one seen again.
+  //
+  // The slug key is what a brief minted from a SINGLE keyword needs. Those
+  // carry no cluster of their own — they are one term, not a group — and
+  // keying them on an empty cluster id would have made every keyword brief in
+  // a locale collide with the first one and vanish without a word. The slug is
+  // their real identity, and it catches the same duplicate twice over: within
+  // one call, and against everything already queued.
+  const clusters = new Set(
+    existing.filter((b) => b.clusterId).map((b) => `${b.clusterId}:${b.locale}`),
+  );
+  const slugs = new Set(existing.map((b) => `${b.suggestedSlug}:${b.locale}`));
+
+  const fresh = briefs.filter((b) => {
+    const slugKey = `${b.suggestedSlug}:${b.locale}`;
+    if (slugs.has(slugKey)) return false;
+    if (b.clusterId && clusters.has(`${b.clusterId}:${b.locale}`)) return false;
+    slugs.add(slugKey);
+    if (b.clusterId) clusters.add(`${b.clusterId}:${b.locale}`);
+    return true;
+  });
+
   saveBriefs([...existing, ...fresh]);
   return fresh;
 }
