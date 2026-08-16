@@ -50,6 +50,18 @@ export interface InboundMessage {
   content: string;
   /** ISO-ish. whatsmeow's own TIMESTAMP text, kept as the database wrote it. */
   timestamp: string;
+  /**
+   * True when this is the paired founder talking to their own self-chat —
+   * the only way that founder reaches the console at all, so the relay
+   * treats it as a command channel same as a real inbound message. Nothing
+   * else should: self-chat is where a founder's own notes-to-self live, and
+   * a caller surfacing "Stride-related" content (the brain, the calendar's
+   * WhatsApp panel, anything a person other than that founder might read)
+   * must filter this out rather than trust founderNumber alone — matching
+   * founderNumber only proves the account belongs to an allowlisted
+   * founder, not that the message was ever meant to be about Stride.
+   */
+  isSelfChat: boolean;
 }
 
 function open(): DatabaseSync {
@@ -146,9 +158,15 @@ export function listInboundSince(sinceISO: string, limit = 50): InboundMessage[]
       out.push({
         id: r.id,
         replyTo: r.chat_jid,
-        founderNumber: isSelfChat ? own.number : (r.sender_pn ?? undefined),
+        // `|| undefined`, not `?? undefined`: the Go bridge writes an
+        // unresolved sender_pn as "" rather than NULL, and an empty string
+        // must collapse to undefined the same as a missing one — founderFor
+        // now rejects "" too, but a caller comparing founderNumber directly
+        // (=== a real number) should never see a falsy non-undefined value.
+        founderNumber: isSelfChat ? own.number : (r.sender_pn || undefined),
         content: r.content,
         timestamp: r.timestamp,
+        isSelfChat,
       });
       if (out.length >= limit) break;
     }

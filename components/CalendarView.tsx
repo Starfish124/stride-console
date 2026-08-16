@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   byDay,
   monthGrid,
@@ -31,6 +31,28 @@ const KIND_TONE: Record<CalendarKind, string> = {
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+/** Stride-related, no date attached — a founder's own WhatsApp, read-only. */
+export interface Signal {
+  id: string;
+  from: string;
+  snippet: string;
+  /** whatsmeow's own timestamp text, kept as the database wrote it. */
+  timestamp: string;
+}
+
+/** "3h ago", not a timestamp — this is a glance, not a log. */
+function relativeTime(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return "just now";
+  const mins = Math.floor(ms / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
 export function CalendarView({
   entries,
   today,
@@ -42,6 +64,26 @@ export function CalendarView({
   const [year, setYear] = useState(now.getUTCFullYear());
   const [month, setMonth] = useState(now.getUTCMonth());
   const [picked, setPicked] = useState<string | null>(null);
+  const [signals, setSignals] = useState<Signal[]>([]);
+
+  useEffect(() => {
+    // Client-side, not a prop from the page: lib/whatsapp/store.ts opens
+    // node:sqlite, which Turbopack cannot bundle into the server-component
+    // render graph (see app/api/whatsapp/signals/route.ts for the error and
+    // why that route exists instead of a direct import here).
+    let cancelled = false;
+    fetch("/api/whatsapp/signals")
+      .then((r) => r.json())
+      .then((data: Signal[]) => {
+        if (!cancelled && Array.isArray(data)) setSignals(data);
+      })
+      .catch(() => {
+        /* the WhatsApp panel just stays empty; nothing else depends on it */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const days = byDay(entries);
   const squares = monthGrid(year, month);
@@ -216,6 +258,33 @@ export function CalendarView({
                 <EntryList entries={ahead} today={today} />
               )}
             </section>
+            {signals.length > 0 && (
+              <section className="mt-8">
+                <h2 className="display text-[22px] text-ink">From WhatsApp.</h2>
+                <div className="slant-rule mb-4 mt-2 w-8 text-lime" />
+                <p className="mb-3 text-[13px] text-slate">
+                  Stride-related, nothing dated yet. Read only —{" "}
+                  <Link href="/settings#whatsapp" className="text-indigo hover:underline">
+                    full history in Settings
+                  </Link>
+                  .
+                </p>
+                <ul className="flex flex-col gap-2.5">
+                  {signals.map((s) => (
+                    <li
+                      key={s.id}
+                      className="rounded-card border border-line bg-white px-4 py-3.5"
+                    >
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="text-[13px] font-semibold text-ink">{s.from}</span>
+                        <span className="eyebrow shrink-0 text-mute">{relativeTime(s.timestamp)}</span>
+                      </div>
+                      <p className="mt-1 text-[14px] leading-snug text-slate">{s.snippet}</p>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
           </>
         )}
       </div>

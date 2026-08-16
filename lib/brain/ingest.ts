@@ -142,6 +142,12 @@ export function rowsFromWhatsApp(): Row[] {
   const messages = listInboundSince("1970-01-01T00:00:00", 500);
   const rows: Row[] = [];
   for (const m of messages) {
+    // Self-chat is a founder's own notes-to-self and the relay's command
+    // channel — not Stride content. Excluding it here is the same rule
+    // documented on InboundMessage.isSelfChat: matching founderNumber only
+    // proves the account is an allowlisted founder, never that the message
+    // was about Stride, and self-chat is where that gap is widest.
+    if (m.isSelfChat) continue;
     const founder = m.founderNumber ? founderFor(m.founderNumber) : undefined;
     if (!founder) continue;
     rows.push({

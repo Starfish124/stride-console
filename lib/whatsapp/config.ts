@@ -33,6 +33,11 @@ export function founderContacts(): FounderContact[] {
 
 export function founderFor(jidOrNumber: string): FounderContact | undefined {
   const digits = jidOrNumber.replace(/\D/g, "");
+  // Empty input must never match. c.number.endsWith("") is true for any
+  // string — an unresolved sender (empty jidOrNumber, or a JID that strips
+  // to no digits at all) would otherwise silently match the first
+  // configured founder and be treated as authorised.
+  if (!digits) return undefined;
   return founderContacts().find((c) => digits.endsWith(c.number) || c.number.endsWith(digits));
 }
 
