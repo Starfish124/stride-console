@@ -2,6 +2,8 @@ import { listClients, overdueClients, pipelineValue } from "@/lib/store";
 import { Header } from "@/components/ui";
 import { Ramp } from "@/components/Ramp";
 import { ClientsBoard } from "@/components/ClientsBoard";
+import { FunnelDiagram } from "@/components/diagrams";
+import { STAGE_LABELS } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +14,14 @@ export default async function ClientsPage() {
   // Money still in play: what has been won is revenue, not pipeline, and what
   // is past is neither.
   const open = totals.lead + totals.talking + totals.proposal;
+
+  // The funnel is the same book, drawn once as a shape instead of five
+  // times as a number — "past" sits out since it never counted as pipeline
+  // to begin with. Widths are real counts, not evenly spaced for looks.
+  const funnel = (["lead", "talking", "proposal", "client"] as const).map((stage) => ({
+    label: STAGE_LABELS[stage],
+    count: clients.filter((c) => c.stage === stage).length,
+  }));
 
   return (
     <div className="min-h-screen bg-paper">
@@ -53,6 +63,19 @@ export default async function ClientsPage() {
             </span>
           </div>
         </section>
+
+        {clients.length > 0 && (
+          <section className="mb-10 rounded-card border border-line bg-white p-6">
+            <p className="eyebrow mb-1 text-slate">The funnel</p>
+            <p className="mb-4 text-[13px] text-slate">
+              Everyone in the book, by stage. Width is the real count — nobody rounds up here.
+            </p>
+            <FunnelDiagram
+              layers={funnel}
+              className="mx-auto block h-auto w-full max-w-xl"
+            />
+          </section>
+        )}
 
         <ClientsBoard clients={clients} />
       </main>

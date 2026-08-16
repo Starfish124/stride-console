@@ -6,6 +6,7 @@ import { getClient, listInvoices } from "@/lib/store";
 import { INVOICE_STATUS_LABELS, STAGE_LABELS, invoiceTotal } from "@/lib/types";
 import { listProjects, listRuns } from "@/lib/workspace/store";
 import type { RunLog, RunStatus } from "@/lib/workspace/types";
+import { TimelineDiagram, type TimelineEvent } from "@/components/diagrams";
 
 /**
  * The client-facing portal: one client's engagement, read-only, behind a
@@ -89,6 +90,23 @@ export default async function PortalPage({
     .slice(0, 10);
   const invoices = listInvoices().filter((i) => i.clientId === client.id);
 
+  // Every dated thing that is actually on file for this client — nothing
+  // synthesized. Touches are logged by a founder as they happen; invoices
+  // carry their own date. Capped and sorted oldest-first so the timeline
+  // reads left to right the way the engagement actually unfolded.
+  const timeline: TimelineEvent[] = [
+    { date: client.createdAt, label: "Added to the book", sublabel: client.source },
+    ...client.touches.map((t) => ({ date: t.at, label: t.note.slice(0, 28) })),
+    ...invoices.map((inv) => ({
+      date: inv.date,
+      label: inv.number,
+      sublabel: euro(invoiceTotal(inv)),
+      focal: true,
+    })),
+  ]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-8);
+
   return (
     <div className="min-h-screen bg-paper">
       <main className="mx-auto max-w-2xl px-6 pb-16 pt-[calc(env(safe-area-inset-top)+3rem)]">
@@ -102,6 +120,12 @@ export default async function PortalPage({
             Your engagement with {COMPANY.name}, as it stands today.
           </p>
         </header>
+
+        {timeline.length > 1 && (
+          <Section title="The engagement so far">
+            <TimelineDiagram events={timeline} className="h-auto w-full" />
+          </Section>
+        )}
 
         <Section title="Where the engagement stands">
           <p className="text-[15px] font-semibold text-ink">

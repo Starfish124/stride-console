@@ -4,6 +4,7 @@ import { VOICE_GUIDE, RECIPE_FORMULAS } from "@/lib/voice/guide";
 import { RECIPE_LABELS } from "@/lib/types";
 import type { RecipeId } from "@/lib/types";
 import { Ramp } from "@/components/Ramp";
+import { LoopDiagram } from "@/components/diagrams";
 
 export const dynamic = "force-dynamic";
 
@@ -204,6 +205,27 @@ export default async function PlaybookPage() {
                 </p>
               </div>
             </div>
+          </div>
+        </section>
+
+        <section className="mt-12">
+          <h2 className="eyebrow text-slate">The loop</h2>
+          <p className="mt-1 max-w-lg text-sm text-slate">
+            The same six steps below, drawn as what they actually are: a
+            cycle that keeps writing back to one shared record, not a list
+            that ends. What a post does on LinkedIn is what the next one
+            gets written from.
+          </p>
+          <div className="mt-4 rounded-card border border-line bg-white p-5">
+            <LoopDiagram
+              hub={{ name: "The archive", sublabel: "every post, every result" }}
+              stations={WORKFLOW.map((w, i) => ({
+                name: w.step.replace(/\.$/, ""),
+                sublabel: i === 3 ? "nothing auto-posts" : undefined,
+                focal: i === 3,
+              }))}
+              className="mx-auto block h-auto w-full max-w-xl"
+            />
           </div>
         </section>
 
