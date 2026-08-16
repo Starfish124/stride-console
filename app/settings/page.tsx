@@ -6,6 +6,7 @@ import { PushToggle } from "@/components/PushToggle";
 import { ChannelHealth } from "@/components/ChannelHealth";
 import { WhatsAppPanel } from "@/components/WhatsAppPanel";
 import { WebhookCard } from "@/components/WebhookCard";
+import { VoiceWakeToggle } from "@/components/VoiceWakeToggle";
 import { IconAskStride, IconTime, IconTuneLoop } from "@/components/icons";
 import { headers } from "next/headers";
 import { Ramp } from "@/components/Ramp";
@@ -61,6 +62,11 @@ export default async function SettingsPage() {
         <ChannelHealth />
 
         <WhatsAppPanel />
+
+        <section className="mb-10 card-glass rounded-card border border-line bg-white p-6">
+          <p className="eyebrow flex items-center gap-2 text-slate"><IconAskStride size={15} className="text-indigo" />Always listening</p>
+          <VoiceWakeToggle />
+        </section>
 
         <WebhookCard origin={origin} />
 

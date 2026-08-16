@@ -16,6 +16,7 @@ import { SWRegister } from "@/components/SWRegister";
 import { TabBar } from "@/components/TabBar";
 import { AppMenu } from "@/components/AppMenu";
 import { RailOffset, SideNav } from "@/components/SideNav";
+import { VoiceAmbient } from "@/components/VoiceAmbient";
 import { listClients } from "@/lib/store";
 import { Toaster } from "sonner";
 
@@ -81,6 +82,9 @@ export default function RootLayout({
             }}
           />
           <TabBar />
+          {/* Off by default (lib/ask/wakePref.ts); decides for itself which
+              routes it must never listen on (client portals, login, print). */}
+          <VoiceAmbient />
         </AppMenu>
       </body>
     </html>
