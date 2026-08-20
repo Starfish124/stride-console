@@ -60,7 +60,7 @@ cp docs/com.stride.seo.plist ~/Library/LaunchAgents/
 # edit it and replace REPLACE_WITH_REPO_PATH with /Users/<you>/stride-console
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.stride.seo.plist
 launchctl kickstart -k gui/$(id -u)/com.stride.seo
-tail -f /tmp/stride-seo.log
+tail -f ~/Library/Logs/stride-seo.log
 ```
 
 ---

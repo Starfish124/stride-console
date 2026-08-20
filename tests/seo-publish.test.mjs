@@ -359,3 +359,17 @@ test("publishedKeywords finds the terms a locale already owns", () => {
   assert.equal(publishedKeywords(dir, "fr").size, 0);
   assert.equal(publishedKeywords(path.join(dir, "nope"), "nl").size, 0);
 });
+
+test("submitSitemap never throws and says why when Search Console is not configured", async () => {
+  const { submitSitemap } = await import("../lib/seo/searchConsole.ts");
+  const prev = process.env.GSC_SERVICE_ACCOUNT_KEY;
+  process.env.GSC_SERVICE_ACCOUNT_KEY = "/nonexistent/gsc-key.json";
+  try {
+    const r = await submitSitemap();
+    assert.equal(r.ok, false);
+    assert.ok(r.reason && r.reason.length > 0);
+  } finally {
+    if (prev === undefined) delete process.env.GSC_SERVICE_ACCOUNT_KEY;
+    else process.env.GSC_SERVICE_ACCOUNT_KEY = prev;
+  }
+});

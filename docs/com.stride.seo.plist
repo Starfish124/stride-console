@@ -43,8 +43,8 @@
   </dict>
 
   <key>StandardOutPath</key>
-  <string>/tmp/stride-seo.log</string>
+  <string>~/Library/Logs/stride-seo.log</string>
   <key>StandardErrorPath</key>
-  <string>/tmp/stride-seo.log</string>
+  <string>~/Library/Logs/stride-seo.log</string>
 </dict>
 </plist>

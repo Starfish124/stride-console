@@ -23,6 +23,7 @@
 // is how somebody chooses three without changing what the 07:40 run does.
 
 import { draftArticles } from "../lib/seo/agent.ts";
+import { submitSitemap } from "../lib/seo/searchConsole.ts";
 import { listPushSubs } from "../lib/store.ts";
 
 const limitArg = process.argv.slice(2).find((a) => a.startsWith("--limit="));
@@ -71,6 +72,16 @@ if (result.drafted > 0) {
   } catch (error) {
     console.log(`[seo-articles] push notification skipped: ${error instanceof Error ? error.message : error}`);
   }
+}
+
+// Publishing is only half of it — Google has to be told the sitemap grew.
+if (result.published > 0) {
+  const ping = await submitSitemap();
+  console.log(
+    ping.ok
+      ? "[seo-articles] sitemap re-submitted to Search Console"
+      : `[seo-articles] sitemap NOT submitted: ${ping.reason}`,
+  );
 }
 
 // A day that published nothing is a failed run, not a quiet one. The exit code

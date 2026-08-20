@@ -21,7 +21,9 @@ import type { Locale } from "./types.ts";
 
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const API = "https://searchconsole.googleapis.com/webmasters/v3";
-const SCOPE = "https://www.googleapis.com/auth/webmasters.readonly";
+// Full (not readonly) so the engine can re-submit the sitemap after it publishes.
+// Reads work with either; writes need the service account as a Full user in GSC.
+const SCOPE = "https://www.googleapis.com/auth/webmasters";
 
 export interface ServiceAccount {
   client_email: string;
@@ -335,5 +337,36 @@ export function localeOfPage(page: string): Locale {
     return new URL(page).pathname.startsWith("/nl/") ? "nl" : "en";
   } catch {
     return "en";
+  }
+}
+
+/**
+ * Tell Google the sitemap changed. Publishing an article is not the same as
+ * Google knowing about it: on 2026-08-20 every blog URL was "unknown to Google"
+ * three weeks after the first one shipped, because the sitemap had never been
+ * submitted. Re-PUTting an already-submitted sitemap is harmless and asks for
+ * a re-fetch, so this runs after every publish. Never throws — a 403 here
+ * means the service account is a Restricted user in Search Console, and the
+ * article is live either way.
+ */
+export async function submitSitemap(
+  sitemap = "https://stride-ai.nl/sitemap.xml",
+): Promise<{ ok: boolean; reason?: string }> {
+  const check = status();
+  if (!check.configured) return { ok: false, reason: check.reason ?? "not configured" };
+  try {
+    const token = await accessToken();
+    const res = await fetch(
+      `${API}/sites/${encodeURIComponent(siteUrl())}/sitemaps/${encodeURIComponent(sitemap)}`,
+      { method: "PUT", headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (res.ok) return { ok: true };
+    const reason =
+      res.status === 403
+        ? "403 — the service account must be a Full user (not Restricted) in Search Console to submit sitemaps"
+        : `${res.status}: ${(await res.text()).slice(0, 200)}`;
+    return { ok: false, reason };
+  } catch (error) {
+    return { ok: false, reason: error instanceof Error ? error.message : String(error) };
   }
 }
