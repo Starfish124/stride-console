@@ -10,9 +10,13 @@
 // keeps the schedule, the catch-up logic and the logging in one file that can
 // be read top to bottom.
 //
-// Schedule, local time:
-//   03:15 daily    sweep     discovery, audit, metadata fixes
-//   07:40 daily    articles  publish the day's article, then notify the phones
+// Schedule, local time. Daytime on purpose: this Mac is not always awake
+// overnight, and a job that only ever runs as a catch-up runs at an hour
+// nobody chose.
+//   12:00 daily    sweep     discovery, audit, metadata fixes
+//   12:30 daily    graph     knowledge-graph build
+//   15:00 daily    brain     distil the day into memories
+//   15:15 daily    articles  publish the day's article, then notify the phones
 //
 // Both runs are idempotent, so a catch-up after a long sleep is safe.
 //
@@ -32,12 +36,16 @@ const JOBS = [
   {
     name: "sweep",
     script: "scripts/seo-sweep.mjs",
-    hour: 3,
-    minute: 15,
+    hour: 12,
+    minute: 0,
     // Every day.
     days: [0, 1, 2, 3, 4, 5, 6],
-    // If the Mac was asleep at 03:15, still run it any time up to this hour.
-    catchUpUntilHour: 12,
+    // If the Mac was asleep at 12:00, still run it any time up to this hour.
+    // Roughly the same window it had when it started at 03:15. On a normal day
+    // it lands before the articles run, which is the order that matters — the
+    // sweep refills the brief queue articles publishes from — but a Mac that
+    // wakes mid-afternoon can run them the other way round, as it always could.
+    catchUpUntilHour: 22,
   },
   {
     // One article a day, not three on a Monday. Google reads a steady
@@ -45,29 +53,27 @@ const JOBS = [
     // after the sweep so the brief queue is already fresh.
     name: "articles",
     script: "scripts/seo-articles.mjs",
-    hour: 7,
-    minute: 40,
+    hour: 15,
+    minute: 15,
     days: [0, 1, 2, 3, 4, 5, 6],
-    // Later than the others close, and for the opposite reason to theirs. A
-    // sweep nobody will see before the next one is pointless; an article at
-    // 21:00 still counts for the day. This is the window the retries live in
-    // too — three attempts at roughly a quarter-hour each need room after a
-    // Mac that woke up late.
+    // An article at 21:00 still counts for the day, so the window runs to the
+    // evening. This is the window the retries live in too — three attempts at
+    // roughly a quarter-hour each need room after a Mac that woke up late.
     catchUpUntilHour: 22,
     // An article a day is a standing rule, so a run that publishes nothing is a
     // failure and gets tried again rather than recorded as done. The script
     // exits non-zero for exactly that case. Two retries: enough to ride out a
     // writer timeout or a draft the voice gate refuses, and few enough that a
-    // fault a retry cannot fix stops costing money by mid-morning.
+    // fault a retry cannot fix stops costing money the same afternoon.
     retries: 2,
   },
   {
     // The knowledge graph. Costs nothing but a few seconds of CPU — the code
     // extraction is tree-sitter and calls no API — so it can simply run every
-    // night and pick up the day's sessions and commits.
+    // day and pick up the sessions and commits since the last build.
     name: "graph",
     script: "scripts/graph-build.mjs",
-    hour: 4,
+    hour: 12,
     minute: 30,
     days: [0, 1, 2, 3, 4, 5, 6],
     catchUpUntilHour: 23,
@@ -76,10 +82,10 @@ const JOBS = [
     // Hermes, the memory keeper: distils the day's sessions and delivery runs
     // into durable memories and diffs the business stores into a timeline.
     // Runs after the graph build so the newest session notes are on disk.
-    // Claude calls are capped per night inside the script.
+    // Claude calls are capped per run inside the script.
     name: "brain",
     script: "scripts/brain-distill.mjs",
-    hour: 5,
+    hour: 15,
     minute: 0,
     days: [0, 1, 2, 3, 4, 5, 6],
     catchUpUntilHour: 23,
@@ -102,7 +108,7 @@ function writeState(state) {
 }
 
 function localDay(date) {
-  // Local calendar day, not UTC. A 03:15 job must key off the day it is
+  // Local calendar day, not UTC. A job must key off the day it is
   // locally, or every run between midnight and 02:00 CEST records itself
   // against yesterday and fires twice.
   const y = date.getFullYear();
@@ -201,7 +207,7 @@ async function tick() {
 // Claude calls against the live store.
 if (import.meta.main) {
 // Manual trigger: `npm run agents -- --now=sweep` runs a job immediately and
-// exits, which is how you test the wiring without waiting for 03:15.
+// exits, which is how you test the wiring without waiting for noon.
 const nowArg = process.argv.slice(2).find((a) => a.startsWith("--now="));
 if (nowArg) {
   const name = nowArg.split("=")[1];
