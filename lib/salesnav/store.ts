@@ -12,13 +12,22 @@
 import crypto from "node:crypto";
 import path from "node:path";
 import { DATA_DIR, readJson, writeJson } from "../store.ts";
-import type { Enrolment, HardStop, AccountResearch, RunnerState, SendRecord, Suppression } from "./types.ts";
+import type {
+  Enrolment,
+  HardStop,
+  AccountResearch,
+  ManualStep,
+  RunnerState,
+  SendRecord,
+  Suppression,
+} from "./types.ts";
 
 const MODE = 0o600;
 
 const FILES = {
   enrolments: path.join(DATA_DIR, "salesnav-enrolments.json"),
   sends: path.join(DATA_DIR, "salesnav-sends.json"),
+  manual: path.join(DATA_DIR, "salesnav-manual.json"),
   suppress: path.join(DATA_DIR, "salesnav-suppress.json"),
   stop: path.join(DATA_DIR, "salesnav-stop.json"),
   research: path.join(DATA_DIR, "salesnav-research.json"),
@@ -81,6 +90,22 @@ export function findSend(key: string): SendRecord | undefined {
 export function putSend(record: SendRecord): void {
   const all = listSends().filter((s) => s.key !== record.key);
   writeJson(FILES.sends, [record, ...all].slice(0, MAX_SENDS), MODE);
+}
+
+// ---------- the LinkedIn steps a founder sends by hand ----------
+
+export function listManualSteps(): ManualStep[] {
+  return readJson<ManualStep[]>(FILES.manual, []);
+}
+
+export function findManualStep(key: string): ManualStep | undefined {
+  return listManualSteps().find((m) => m.key === key);
+}
+
+/** Newest first, capped. Upserts on the idempotency key, like the ledger. */
+export function putManualStep(record: ManualStep): void {
+  const all = listManualSteps().filter((m) => m.key !== record.key);
+  writeJson(FILES.manual, [record, ...all].slice(0, MAX_SENDS), MODE);
 }
 
 // ---------- suppressions ----------

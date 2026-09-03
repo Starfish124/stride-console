@@ -27,6 +27,20 @@ import type { Enrolment, LawfulBasis } from "./types.ts";
  */
 const MIN_REASON = 20;
 
+/**
+ * Which channels a sequence actually uses.
+ *
+ * Everything downstream — what a client must have before enrolling, and which
+ * checks the sweep may apply — follows from this rather than from an
+ * assumption that every sequence is email.
+ */
+export function channelsOf(steps: Array<{ kind: string }>): { email: boolean; linkedin: boolean } {
+  return {
+    email: steps.some((s) => s.kind === "email"),
+    linkedin: steps.some((s) => s.kind === "connect" || s.kind === "message" || s.kind === "inmail"),
+  };
+}
+
 export function validateBasis(basis: Partial<LawfulBasis> | undefined): string | undefined {
   if (!basis) return "basis";
   if (basis.kind !== "legitimate-interest" && basis.kind !== "consent") return "basis.kind";
@@ -68,21 +82,27 @@ export function enrol(input: {
   const client = getClient(input.clientId);
   if (!client) return { ok: false, field: "clientId", problem: "No such client." };
 
-  const email = normaliseAddress(client.email ?? "");
-  if (!email) return { ok: false, field: "clientId", problem: `${client.name} has no email address.` };
-
-  const blocked = isSuppressed(email);
-  if (blocked) {
-    return { ok: false, field: "clientId", problem: `${email} is on the suppression list (${blocked.reason}).` };
-  }
-
   const sequence = getSequence(input.sequenceId);
   if (!sequence) return { ok: false, field: "sequenceId", problem: "No such sequence." };
   if (!sequence.steps.length) {
     return { ok: false, field: "sequenceId", problem: "That sequence has no steps." };
   }
-  if (!sequence.steps.some((s) => s.kind === "email")) {
-    return { ok: false, field: "sequenceId", problem: "That sequence has no email steps, so nothing would be sent." };
+
+  // A sequence needs whatever its own steps need, and nothing more. Demanding
+  // an email address for a LinkedIn-only sequence blocked work that never
+  // touches email; demanding neither would enrol somebody unreachable.
+  const channels = channelsOf(sequence.steps);
+  const email = normaliseAddress(client.email ?? "");
+  if (channels.email && !email) {
+    return { ok: false, field: "clientId", problem: `${client.name} has no email address.` };
+  }
+  if (channels.linkedin && !client.linkedin?.trim()) {
+    return { ok: false, field: "clientId", problem: `${client.name} has no LinkedIn profile.` };
+  }
+
+  const blocked = email ? isSuppressed(email) : undefined;
+  if (blocked) {
+    return { ok: false, field: "clientId", problem: `${email} is on the suppression list (${blocked.reason}).` };
   }
 
   const live = listEnrolments().find(
@@ -141,6 +161,9 @@ function hasReplied(client: Client, email: string): boolean {
   const name = client.name?.trim().toLowerCase();
   return listReplies().some((reply) => {
     if (reply.name && name && reply.name.trim().toLowerCase() === name) return true;
+    // Guarded: "".includes("") is true, so an address-less LinkedIn-only
+    // enrolment would read every reply in the inbox as its own and stop.
+    if (!email) return false;
     const raw = typeof reply.raw === "string" ? reply.raw : JSON.stringify(reply.raw ?? "");
     return raw.toLowerCase().includes(email);
   });
@@ -173,22 +196,30 @@ export function sweep(): SweepResult {
       stop("The client record is gone.");
       continue;
     }
-    if (!getSequence(enrolment.sequenceId)) {
+    const sequence = getSequence(enrolment.sequenceId);
+    if (!sequence) {
       stop("The sequence was deleted.");
       continue;
     }
 
+    const channels = channelsOf(sequence.steps);
     const email = normaliseAddress(client.email ?? "");
-    if (!email) {
-      stop("The client record no longer has an email address.");
-      continue;
+    if (channels.email) {
+      if (!email) {
+        stop("The client record no longer has an email address.");
+        continue;
+      }
+      if (email !== enrolment.email) {
+        stop(`The address changed from ${enrolment.email} to ${email}. Enrol again to confirm.`);
+        continue;
+      }
+      if (isSuppressed(email)) {
+        stop("That address is on the suppression list.");
+        continue;
+      }
     }
-    if (email !== enrolment.email) {
-      stop(`The address changed from ${enrolment.email} to ${email}. Enrol again to confirm.`);
-      continue;
-    }
-    if (isSuppressed(email)) {
-      stop("That address is on the suppression list.");
+    if (channels.linkedin && !client.linkedin?.trim()) {
+      stop("The client record no longer has a LinkedIn profile.");
       continue;
     }
     if (stageRank(client.stage) > stageRank(enrolment.stageAtEnrolment)) {

@@ -135,3 +135,43 @@ export interface RunnerState {
   lastTickAt?: string;
   lastTickDay?: string;
 }
+
+/**
+ * A LinkedIn step waiting on a person.
+ *
+ * Nothing in this repo clicks Connect. LinkedIn's User Agreement forbids
+ * automated access, and a restriction lands on the founder's own account and
+ * takes the Sales Navigator seat with it. So a LinkedIn step becomes a queued
+ * piece of work with the exact words already merged: a founder copies, sends
+ * it by hand, and marks it done. The ledger, the caps, the suppression list
+ * and the reply sweep are the same ones the email steps answer to.
+ *
+ * The body is copied at the moment it was queued, not rendered on the way out,
+ * for the same reason SendRecord copies its own: what a founder actually sent
+ * has to stay answerable after the sequence is edited.
+ */
+export type ManualStepState = "waiting" | "done" | "skipped";
+
+export interface ManualStep {
+  /** `${enrolmentId}:${stepId}`. The idempotency key, and the primary key. */
+  key: string;
+  id: string;
+  enrolmentId: string;
+  clientId: string;
+  sequenceId: string;
+  stepId: string;
+  kind: "connect" | "message" | "inmail";
+  /** Their profile, as it stood when the step came due. */
+  profileUrl?: string;
+  /** The exact words to send, merge fields already resolved. */
+  body: string;
+  state: ManualStepState;
+  /** Why it was skipped. */
+  problem?: string;
+  /** Copied, not referenced. */
+  basis: LawfulBasis;
+  dueAt: string;
+  createdAt: string;
+  finishedAt?: string;
+  finishedBy?: string;
+}

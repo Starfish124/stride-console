@@ -17,6 +17,7 @@ import { getClient } from "../store.ts";
 import { getSequence } from "../outreach/sequence.ts";
 import { isTooLate, localDay, perTick, salesnavMode, sendWindow, withinWindow } from "./config.ts";
 import { sweep } from "./enrol.ts";
+import { expireManual, queueManual } from "./manual.ts";
 import { advance, attemptSend } from "./send.ts";
 import { findSend, hardStop, listEnrolments, putSend, runnerState, setRunnerState } from "./store.ts";
 import { newId } from "../store.ts";
@@ -54,6 +55,8 @@ export interface TickResult {
   due: number;
   sent: number;
   refused: number;
+  /** LinkedIn steps sitting in the queue, waiting on a person. */
+  waiting: number;
   stopped: number;
   lines: string[];
   at: string;
@@ -62,7 +65,7 @@ export interface TickResult {
 export async function tick(now: Date = new Date()): Promise<TickResult> {
   const at = now.toISOString();
   const mode = salesnavMode();
-  const base: TickResult = { ran: false, mode, due: 0, sent: 0, refused: 0, stopped: 0, lines: [], at };
+  const base: TickResult = { ran: false, mode, due: 0, sent: 0, refused: 0, waiting: 0, stopped: 0, lines: [], at };
 
   if (ticking) return { ...base, skipped: "A tick is already running." };
 
@@ -88,6 +91,7 @@ export async function tick(now: Date = new Date()): Promise<TickResult> {
     const lines: string[] = swept.stopped.map((s) => `stopped ${s.id}: ${s.reason}`);
     let sent = 0;
     let refused = 0;
+    let waiting = 0;
 
     for (const enrolment of due.slice(0, perTick())) {
       const sequence = getSequence(enrolment.sequenceId);
@@ -117,6 +121,10 @@ export async function tick(now: Date = new Date()): Promise<TickResult> {
           continue;
         }
 
+        // A queued LinkedIn step nobody got to is settled with the same
+        // verdict, or it sits in the queue for good.
+        expireManual(key, "too late to be relevant", now);
+
         putSend({
           key,
           id: already?.id ?? newId("snd"),
@@ -143,10 +151,18 @@ export async function tick(now: Date = new Date()): Promise<TickResult> {
       }
 
       if (step.kind !== "email") {
-        // Linked Helper owns the LinkedIn steps. Nothing to do here, so move on
-        // rather than stalling the email steps behind it.
-        advance(enrolment, sequence.steps, now);
-        lines.push(`${enrolment.id}: step is a ${step.kind}, Linked Helper's job`);
+        // A LinkedIn step is sent by a person, so it HOLDS here. Advancing past
+        // it — which this did while Linked Helper owned those steps — runs a
+        // mixed sequence to completion having sent nothing on LinkedIn and
+        // reports it finished. The enrolment stays put until somebody works it
+        // off the queue on /salesnav.
+        const queued = queueManual(enrolment, step, client, now);
+        waiting += 1;
+        lines.push(
+          queued.state === "waiting"
+            ? `${enrolment.id}: ${step.kind} waiting for a founder to send`
+            : `${enrolment.id}: ${step.kind} held, ${queued.problem}`,
+        );
         continue;
       }
 
@@ -157,7 +173,7 @@ export async function tick(now: Date = new Date()): Promise<TickResult> {
     }
 
     setRunnerState({ lastTickAt: at, lastTickDay: localDay(now) });
-    return { ran: true, mode, due: due.length, sent, refused, stopped: swept.stopped.length, lines, at };
+    return { ran: true, mode, due: due.length, sent, refused, waiting, stopped: swept.stopped.length, lines, at };
   } finally {
     ticking = false;
   }
