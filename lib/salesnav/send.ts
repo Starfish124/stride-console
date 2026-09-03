@@ -14,7 +14,7 @@
 import { addTouch, newId } from "../store.ts";
 import type { Client } from "../types.ts";
 import type { OutreachStep } from "../outreach/sequence.ts";
-import { consoleUrl, nextDueAt, publicUrl, replyTo, salesnavMode } from "./config.ts";
+import { consoleUrl, publicUrl, replyTo, salesnavMode } from "./config.ts";
 import { guardSend } from "./guard.ts";
 import { resolveMerge } from "./merge.ts";
 import { envelope, provider } from "./provider.ts";
@@ -117,22 +117,14 @@ function refuse(
   return record;
 }
 
-/**
- * Move the enrolment on, or finish it. Called after a send and after a skip:
- * a step that will never go out must not block the one behind it forever.
- */
-export function advance(enrolment: Enrolment, steps: OutreachStep[], now: Date): void {
-  const nextIndex = enrolment.stepIndex + 1;
-  const next = steps[nextIndex];
-  if (!next) {
-    updateEnrolment(enrolment.id, { state: "done", stepIndex: nextIndex });
-    return;
-  }
-  updateEnrolment(enrolment.id, {
-    stepIndex: nextIndex,
-    dueAt: nextDueAt(now, next.waitDays),
-  });
-}
+// advance() moved to enrol.ts, which owns the rest of the enrolment lifecycle,
+// once the LinkedIn touch queue needed it too. Imported rather than re-exported
+// straight through, because attemptSend below calls it and `export ... from`
+// creates no local binding — it exports the name and leaves the call site
+// pointing at nothing. Re-exported all the same, since this is where the
+// runner has always imported it from.
+import { advance } from "./enrol.ts";
+export { advance };
 
 export async function attemptSend(
   enrolment: Enrolment,

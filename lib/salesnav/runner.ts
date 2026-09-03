@@ -15,10 +15,12 @@
 
 import { getClient } from "../store.ts";
 import { getSequence } from "../outreach/sequence.ts";
+import { isTouchKind } from "../outreach/touch.ts";
+import { expireStaleTouches, queueTouch } from "../outreach/queue.ts";
 import { isTooLate, localDay, perTick, salesnavMode, sendWindow, withinWindow } from "./config.ts";
 import { sweep } from "./enrol.ts";
 import { advance, attemptSend } from "./send.ts";
-import { findSend, hardStop, listEnrolments, putSend, runnerState, setRunnerState } from "./store.ts";
+import { findSend, getEnrolment, hardStop, listEnrolments, putSend, runnerState, setRunnerState } from "./store.ts";
 import { newId } from "../store.ts";
 import type { Enrolment } from "./types.ts";
 
@@ -39,6 +41,19 @@ export function isTicking(): boolean {
   return ticking;
 }
 
+/**
+ * The enrolment and its sequence, for the expiry sweep.
+ *
+ * Expiring a touch has to move the sequence past it, or an enrolment sits on a
+ * dead step forever waiting for a message nobody will ever send.
+ */
+function lookupEnrolment(enrolmentId: string) {
+  const enrolment = getEnrolment(enrolmentId);
+  if (!enrolment) return undefined;
+  const sequence = getSequence(enrolment.sequenceId);
+  return sequence ? { enrolment, sequence } : undefined;
+}
+
 /** Due now, oldest first, so a backlog drains in the order it built up. */
 export function dueEnrolments(now: Date, all: Enrolment[] = listEnrolments()): Enrolment[] {
   return all
@@ -55,6 +70,12 @@ export interface TickResult {
   sent: number;
   refused: number;
   stopped: number;
+  /** LinkedIn steps put in front of a founder this tick. */
+  queued: number;
+  /** LinkedIn steps already in the queue, still unsent. */
+  waiting: number;
+  /** Queued touches nobody got to in time. */
+  expired: number;
   lines: string[];
   at: string;
 }
@@ -62,7 +83,19 @@ export interface TickResult {
 export async function tick(now: Date = new Date()): Promise<TickResult> {
   const at = now.toISOString();
   const mode = salesnavMode();
-  const base: TickResult = { ran: false, mode, due: 0, sent: 0, refused: 0, stopped: 0, lines: [], at };
+  const base: TickResult = {
+    ran: false,
+    mode,
+    due: 0,
+    sent: 0,
+    refused: 0,
+    stopped: 0,
+    queued: 0,
+    waiting: 0,
+    expired: 0,
+    lines: [],
+    at,
+  };
 
   if (ticking) return { ...base, skipped: "A tick is already running." };
 
@@ -74,20 +107,36 @@ export async function tick(now: Date = new Date()): Promise<TickResult> {
   ticking = true;
   try {
     const swept = sweep();
+
+    // Expiry runs before the window check, because a note that has gone stale
+    // is stale on a Sunday too, and a founder opening the queue on Monday
+    // should not be handed last week's words to send.
+    const expired = expireStaleTouches(now, lookupEnrolment);
+
     const window = sendWindow();
     if (!withinWindow(now, window)) {
       return {
         ...base,
         ran: true,
         stopped: swept.stopped.length,
+        expired: expired.length,
+        lines: expired.map((t) => `expired ${t.id}: ${t.name}, ${t.problem}`),
+        // The window gates when the queue is FED, not when a founder may send
+        // from it. Nothing here can stop somebody sending a message by hand at
+        // midnight, and the queue does not pretend otherwise.
         skipped: `Outside the sending window (${window.label}, local).`,
       };
     }
 
     const due = dueEnrolments(now);
-    const lines: string[] = swept.stopped.map((s) => `stopped ${s.id}: ${s.reason}`);
+    const lines: string[] = [
+      ...swept.stopped.map((s) => `stopped ${s.id}: ${s.reason}`),
+      ...expired.map((t) => `expired ${t.id}: ${t.name}, ${t.problem}`),
+    ];
     let sent = 0;
     let refused = 0;
+    let queued = 0;
+    let waiting = 0;
 
     for (const enrolment of due.slice(0, perTick())) {
       const sequence = getSequence(enrolment.sequenceId);
@@ -95,6 +144,28 @@ export async function tick(now: Date = new Date()): Promise<TickResult> {
       const client = getClient(enrolment.clientId);
       if (!sequence || !step || !client) {
         lines.push(`${enrolment.id}: the sequence or the client is gone`);
+        continue;
+      }
+
+      // LinkedIn steps go to a founder's thumb, not down a wire.
+      //
+      // This used to advance straight past them with "Linked Helper's job",
+      // which was true while LH2 held the licence and false the moment it did
+      // not: a sequence with connect and message steps ran to completion,
+      // logged nothing amiss, and sent not one thing. Queueing is the honest
+      // version, and it has to happen before the too-late branch below, which
+      // is email-shaped and would file a connection note as a skipped send.
+      if (isTouchKind(step.kind)) {
+        const attempt = queueTouch(enrolment, step, client, now);
+        if (attempt.outcome === "queued") queued += 1;
+        else if (attempt.outcome === "refused") refused += 1;
+        // "settled" means a founder already dealt with it and the enrolment
+        // has not caught up. "waiting" means it is in the queue and unsent, so
+        // the enrolment deliberately stays where it is — the clock does not
+        // move a sequence past a message nobody has sent yet.
+        else if (attempt.outcome === "settled") advance(enrolment, sequence.steps, now);
+        else waiting += 1;
+        lines.push(`${enrolment.id}: ${attempt.outcome}, ${attempt.detail}`);
         continue;
       }
 
@@ -142,14 +213,6 @@ export async function tick(now: Date = new Date()): Promise<TickResult> {
         continue;
       }
 
-      if (step.kind !== "email") {
-        // Linked Helper owns the LinkedIn steps. Nothing to do here, so move on
-        // rather than stalling the email steps behind it.
-        advance(enrolment, sequence.steps, now);
-        lines.push(`${enrolment.id}: step is a ${step.kind}, Linked Helper's job`);
-        continue;
-      }
-
       const attempt = await attemptSend(enrolment, step, client, sequence.steps, now);
       if (attempt.outcome === "sent") sent += 1;
       else if (attempt.outcome !== "already-sent") refused += 1;
@@ -157,7 +220,19 @@ export async function tick(now: Date = new Date()): Promise<TickResult> {
     }
 
     setRunnerState({ lastTickAt: at, lastTickDay: localDay(now) });
-    return { ran: true, mode, due: due.length, sent, refused, stopped: swept.stopped.length, lines, at };
+    return {
+      ran: true,
+      mode,
+      due: due.length,
+      sent,
+      refused,
+      stopped: swept.stopped.length,
+      queued,
+      waiting,
+      expired: expired.length,
+      lines,
+      at,
+    };
   } finally {
     ticking = false;
   }

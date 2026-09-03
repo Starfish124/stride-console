@@ -62,6 +62,30 @@ Every posted draft carries a small form for the LinkedIn numbers: impressions, r
 
 The Events tab creates an event (date, venue, capacity) and generates the T-6-weeks checklist: venue, invites, speakers, investors, catering, photographer, each with a due date counted back from the night. The public signup page at `/pitch` needs no login: name, startup, one-line idea, into `data/signups.json`, rate-limited by IP. Four event recipes run through the same pipeline and voice gate as everything else: announcement, lineup, week-before reminder, day-after recap. Event posts are the promo slice, about 1 in 10 — the runner warns when an event post would be the third post of a week. Myths heard at the event go straight into the myth bank from the event page.
 
+## The LinkedIn queue
+
+Linked Helper 2 used to run the LinkedIn half: connection requests, follow-ups,
+messaging. Without a licence the console owns the words, the clock, the caps and
+the ledger, and a founder owns the click.
+
+A sequence step of kind `connect`, `message` or `inmail` comes due, passes the
+guard (`lib/outreach/queue.ts`: hard stop, profile, suppression on both
+channels, merge fields, LinkedIn's 300-character note ceiling, daily and rolling
+weekly invitation caps, voice gate) and lands on `/outreach#queue`. Copy, open
+the profile, paste, send, press "Sent." — about ten seconds. The sequence does
+not move past a message nobody has sent.
+
+This is not automated on purpose. A script driving linkedin.com breaks
+LinkedIn's user agreement and risks the founders' own accounts, and the Sales
+Navigator seat attached to them, to save those ten seconds. It is the same
+copy-open flow the console already uses for posting: nothing sends itself.
+
+Caps default to 15 invitations a day and 80 in a rolling week, under LinkedIn's
+own unpublished limit. They govern how fast the queue is fed; the number that
+actually matters — invitations marked sent in the last seven days — is on the
+queue and in the attention list. Full detail in
+[docs/LINKEDIN-QUEUE.md](docs/LINKEDIN-QUEUE.md).
+
 ## LinkedIn API groundwork
 
 `lib/publish/linkedin.ts` has the OAuth, image-upload and create-post flow typed out and documented, behind `STRIDE_LINKEDIN=on` plus credentials. It is inactive: nothing calls it, and every function throws until the flag and keys exist. Publishing stays copy-open until then, and approval stays with the founders either way.
@@ -94,7 +118,7 @@ is in the guide.
 
 ## Data
 
-Everything is JSON under `data/` (gitignored, auto-created): `drafts.json`, `seen.json` (dedupe cache: URL match + >80% title similarity), `myths.json`, `sources.json` (seeded from `config/sources.default.json` on first run), `postlog.json` (now including manually entered stats), `inbox.json`, `events.json`, `signups.json`. Renders land in `data/renders/<draftId>/`.
+Everything is JSON under `data/` (gitignored, auto-created): `drafts.json`, `seen.json` (dedupe cache: URL match + >80% title similarity), `myths.json`, `sources.json` (seeded from `config/sources.default.json` on first run), `postlog.json` (now including manually entered stats), `inbox.json`, `events.json`, `signups.json`, `outreach-touches.json` (the LinkedIn queue, mode 0600). Renders land in `data/renders/<draftId>/`.
 
 ## Tests and the no-network demo
 

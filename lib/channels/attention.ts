@@ -3,6 +3,7 @@ import { readAiDrafts, readCampaignsView, readLicenceDays } from "./linkedHelper
 import { listReplies } from "../outreach/replies.ts";
 import { lintMessage } from "../outreach/lint.ts";
 import { salesnavItems } from "../salesnav/attention.ts";
+import { touchItems } from "../outreach/attention.ts";
 
 /**
  * What Linked Helper needs from a founder right now.
@@ -162,9 +163,11 @@ async function uncachedReadPulse(): Promise<LhPulse> {
     });
   }
 
-  // The email sequencer folds into the same list rather than owning a second
-  // one. "What needs a person right now" has to be one surface or it is none.
+  // The email sequencer and the LinkedIn queue fold into the same list rather
+  // than owning their own. "What needs a person right now" has to be one
+  // surface or it is none.
   items.push(...salesnavItems());
+  items.push(...touchItems());
 
   items.sort((a, b) => RANK[a.urgency] - RANK[b.urgency]);
 

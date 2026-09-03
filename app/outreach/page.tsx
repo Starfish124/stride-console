@@ -3,7 +3,10 @@ import { SequenceEditor } from "@/components/SequenceEditor";
 import { listSequences } from "@/lib/outreach/sequence";
 import { listReplies } from "@/lib/outreach/replies";
 import { AiDraftQueue } from "@/components/AiDraftQueue";
+import { TouchQueue } from "@/components/TouchQueue";
 import { Ramp } from "@/components/Ramp";
+import { pendingTouches } from "@/lib/outreach/touch";
+import { queueCounts } from "@/lib/outreach/queue";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +17,9 @@ export default async function OutreachPage() {
   const existing = listSequences().find((s) => !s.steps.some((step) => step.kind === "email"));
   const replies = listReplies();
   const unhandled = replies.filter((r) => !r.handled);
+  const now = new Date();
+  const touches = pendingTouches();
+  const counts = queueCounts(now);
 
   return (
     <div className="min-h-screen bg-paper">
@@ -25,9 +31,12 @@ export default async function OutreachPage() {
           <h1 className="display mt-3 text-3xl text-ink">The words you send.</h1>
           <p className="mt-3 text-[15px] text-slate">
             The console keeps the copy, so what goes out in a message answers
-            to the same voice guide as what goes out in a post. Linked Helper
-            sends the LinkedIn steps. Email steps are sent by the console
-            itself, and the stop switch for those is on the sequencer page.
+            to the same voice guide as what goes out in a post. It also keeps
+            the clock, the caps and the ledger. What it does not do is press
+            send on LinkedIn: those steps queue up below for one of you, the
+            same way a post is copied out rather than published by a robot.
+            Email steps the console sends itself, and the stop switch for all
+            of it is on the sequencer page.
           </p>
         </section>
 
@@ -58,6 +67,8 @@ export default async function OutreachPage() {
             </ul>
           </section>
         )}
+
+        <TouchQueue touches={touches} counts={counts} now={now.toISOString()} />
 
         <AiDraftQueue />
 

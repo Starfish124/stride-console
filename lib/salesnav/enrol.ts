@@ -11,10 +11,12 @@ import { CLIENT_STAGES } from "../types.ts";
 import type { Client, ClientStage } from "../types.ts";
 import { getClient, listClients, newId } from "../store.ts";
 import { getSequence } from "../outreach/sequence.ts";
+import type { OutreachStep } from "../outreach/sequence.ts";
 import { listReplies } from "../outreach/replies.ts";
 import { nextDueAt } from "./config.ts";
 import { listEnrolments, putEnrolment, updateEnrolment } from "./store.ts";
-import { isSuppressed, normaliseAddress } from "./suppress.ts";
+import { isTouchKind } from "../outreach/touch.ts";
+import { isSuppressed, isSuppressedProfile, normaliseAddress, normaliseProfileUrl } from "./suppress.ts";
 import type { Enrolment, LawfulBasis } from "./types.ts";
 
 /**
@@ -68,21 +70,50 @@ export function enrol(input: {
   const client = getClient(input.clientId);
   if (!client) return { ok: false, field: "clientId", problem: "No such client." };
 
-  const email = normaliseAddress(client.email ?? "");
-  if (!email) return { ok: false, field: "clientId", problem: `${client.name} has no email address.` };
-
-  const blocked = isSuppressed(email);
-  if (blocked) {
-    return { ok: false, field: "clientId", problem: `${email} is on the suppression list (${blocked.reason}).` };
-  }
-
   const sequence = getSequence(input.sequenceId);
   if (!sequence) return { ok: false, field: "sequenceId", problem: "No such sequence." };
   if (!sequence.steps.length) {
     return { ok: false, field: "sequenceId", problem: "That sequence has no steps." };
   }
-  if (!sequence.steps.some((s) => s.kind === "email")) {
-    return { ok: false, field: "sequenceId", problem: "That sequence has no email steps, so nothing would be sent." };
+
+  // What this sequence needs from the client depends on what it is made of. It
+  // used to demand an email address unconditionally and refuse anything with no
+  // email steps, which was right while Linked Helper owned the LinkedIn half
+  // and the console only sent mail. Now a connect-and-follow-up sequence runs
+  // here too, and asking for an address it will never use would block it.
+  const needsEmail = sequence.steps.some((s) => s.kind === "email");
+  const needsProfile = sequence.steps.some((s) => isTouchKind(s.kind));
+
+  const email = normaliseAddress(client.email ?? "");
+  if (needsEmail && !email) {
+    return { ok: false, field: "clientId", problem: `${client.name} has no email address.` };
+  }
+  if (email) {
+    const blocked = isSuppressed(email);
+    if (blocked) {
+      return { ok: false, field: "clientId", problem: `${email} is on the suppression list (${blocked.reason}).` };
+    }
+  }
+
+  const profileUrl = normaliseProfileUrl(client.linkedin ?? "");
+  if (needsProfile && !profileUrl) {
+    return {
+      ok: false,
+      field: "clientId",
+      problem: client.linkedin
+        ? `${client.name}'s LinkedIn is not a public profile URL. Use the linkedin.com/in/... address, not a Sales Navigator link.`
+        : `${client.name} has no LinkedIn profile, and this sequence has LinkedIn steps.`,
+    };
+  }
+  if (profileUrl) {
+    const blocked = isSuppressedProfile(profileUrl);
+    if (blocked) {
+      return {
+        ok: false,
+        field: "clientId",
+        problem: `${profileUrl} is on the suppression list (${blocked.reason}).`,
+      };
+    }
   }
 
   const live = listEnrolments().find(
@@ -97,6 +128,7 @@ export function enrol(input: {
     clientId: client.id,
     sequenceId: sequence.id,
     email,
+    ...(profileUrl ? { profileUrl } : {}),
     stepIndex: 0,
     // The opener waits 0 days by construction, so this is "as soon as the
     // window opens", plus the jitter that keeps a batch from leaving at once.
@@ -119,6 +151,27 @@ export function enrol(input: {
   return { ok: true, enrolment };
 }
 
+/**
+ * Move the enrolment on, or finish it.
+ *
+ * Called after an email send, after a skip, and after a founder clears a
+ * LinkedIn touch: a step that will never go out must not block the one behind
+ * it forever. It lives here rather than in send.ts because two channels now
+ * need it and only one of them sends email.
+ */
+export function advance(enrolment: Enrolment, steps: OutreachStep[], now: Date): void {
+  const nextIndex = enrolment.stepIndex + 1;
+  const next = steps[nextIndex];
+  if (!next) {
+    updateEnrolment(enrolment.id, { state: "done", stepIndex: nextIndex });
+    return;
+  }
+  updateEnrolment(enrolment.id, {
+    stepIndex: nextIndex,
+    dueAt: nextDueAt(now, next.waitDays),
+  });
+}
+
 export function withdraw(id: string, reason: string): Enrolment | undefined {
   return updateEnrolment(id, { state: "stopped", stoppedReason: reason });
 }
@@ -136,11 +189,20 @@ function stageRank(stage: ClientStage): number {
   return i < 0 ? 0 : i;
 }
 
-/** Did anybody with this name or this address write back. */
-function hasReplied(client: Client, email: string): boolean {
+/**
+ * Did anybody with this name, this address or this profile write back.
+ *
+ * The empty guards are load-bearing rather than defensive. A LinkedIn-only
+ * enrolment has no email address, and "".includes() on the raw payload is true
+ * of every reply ever received — so without them the first reply from anybody
+ * would stop every LinkedIn sequence at once, silently, as a "they replied".
+ */
+function hasReplied(client: Client, email: string, profileUrl: string): boolean {
   const name = client.name?.trim().toLowerCase();
   return listReplies().some((reply) => {
     if (reply.name && name && reply.name.trim().toLowerCase() === name) return true;
+    if (profileUrl && normaliseProfileUrl(reply.profileUrl ?? "") === profileUrl) return true;
+    if (!email) return false;
     const raw = typeof reply.raw === "string" ? reply.raw : JSON.stringify(reply.raw ?? "");
     return raw.toLowerCase().includes(email);
   });
@@ -173,29 +235,59 @@ export function sweep(): SweepResult {
       stop("The client record is gone.");
       continue;
     }
-    if (!getSequence(enrolment.sequenceId)) {
+    const sequence = getSequence(enrolment.sequenceId);
+    if (!sequence) {
       stop("The sequence was deleted.");
       continue;
     }
 
+    // Only the channels this sequence actually uses can stop it. A missing
+    // email address is not a reason to halt a connect-and-follow-up sequence
+    // that was never going to send mail.
+    const needsEmail = sequence.steps.some((s) => s.kind === "email");
+    const needsProfile = sequence.steps.some((s) => isTouchKind(s.kind));
+
     const email = normaliseAddress(client.email ?? "");
-    if (!email) {
-      stop("The client record no longer has an email address.");
-      continue;
+    if (needsEmail) {
+      if (!email) {
+        stop("The client record no longer has an email address.");
+        continue;
+      }
+      if (email !== enrolment.email) {
+        stop(`The address changed from ${enrolment.email} to ${email}. Enrol again to confirm.`);
+        continue;
+      }
     }
-    if (email !== enrolment.email) {
-      stop(`The address changed from ${enrolment.email} to ${email}. Enrol again to confirm.`);
-      continue;
-    }
-    if (isSuppressed(email)) {
+    // Checked whichever channel the sequence uses: somebody who opted out by
+    // email is not then fair game on LinkedIn, and the reverse holds too.
+    if (email && isSuppressed(email)) {
       stop("That address is on the suppression list.");
+      continue;
+    }
+
+    const profileUrl = normaliseProfileUrl(client.linkedin ?? "");
+    if (needsProfile) {
+      if (!profileUrl) {
+        stop("The client record no longer has a usable LinkedIn profile.");
+        continue;
+      }
+      // Only when the enrolment recorded one. An enrolment written before
+      // profiles were stored has nothing to compare against, and treating that
+      // absence as a change would stop every sequence running at the upgrade.
+      if (enrolment.profileUrl && profileUrl !== enrolment.profileUrl) {
+        stop(`The profile changed from ${enrolment.profileUrl} to ${profileUrl}. Enrol again to confirm.`);
+        continue;
+      }
+    }
+    if (profileUrl && isSuppressedProfile(profileUrl)) {
+      stop("That profile is on the suppression list.");
       continue;
     }
     if (stageRank(client.stage) > stageRank(enrolment.stageAtEnrolment)) {
       stop(`They moved to ${client.stage}. A conversation started, so the sequence stops.`);
       continue;
     }
-    if (hasReplied(client, email)) {
+    if (hasReplied(client, email, profileUrl)) {
       stop("They replied.");
     }
   }

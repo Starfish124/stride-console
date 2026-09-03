@@ -113,20 +113,26 @@ export const MENU: MenuSection[] = [
   {
     id: "linkedin",
     label: "LinkedIn",
-    nav: { label: "LinkedIn", href: "/campaigns" },
-    blurb: "The outbound channel: who gets approached, and in whose words.",
+    nav: { label: "LinkedIn", href: "/outreach" },
+    blurb: "The outbound channel: who gets approached, in whose words, and by whose hand.",
     items: [
       {
-        href: "/campaigns",
-        label: "Campaigns",
-        hint: "What Linked Helper is running, and the switch to start or stop it.",
-        icon: "IconPipeline",
+        href: "/outreach#queue",
+        label: "The queue",
+        hint: "LinkedIn messages waiting on your thumb. Copy, open, send, mark it.",
+        icon: "IconReview",
       },
       {
         href: "/outreach",
         label: "Outreach",
         hint: "The connection notes and messages, held to the same voice gate.",
         icon: "IconWorkflow",
+      },
+      {
+        href: "/campaigns",
+        label: "Campaigns",
+        hint: "What Linked Helper is running, and the switch to start or stop it.",
+        icon: "IconPipeline",
       },
       {
         href: "/outreach#drafts",

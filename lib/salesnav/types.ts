@@ -46,8 +46,23 @@ export interface Enrolment {
   /** The only link to a person. */
   clientId: string;
   sequenceId: string;
-  /** Lowercased at enrolment. Re-read from the client before each send. */
+  /**
+   * Lowercased at enrolment. Re-read from the client before each send.
+   *
+   * Empty when the sequence has no email steps. A LinkedIn-only sequence is a
+   * real sequence, and demanding an address to run one would mean inventing a
+   * placeholder — which the suppression matcher would then have to be taught
+   * to ignore.
+   */
   email: string;
+  /**
+   * The normalised LinkedIn profile at enrolment, "linkedin.com/in/x".
+   *
+   * Optional so every enrolment written before LinkedIn touches existed still
+   * reads. Set only when the sequence has LinkedIn steps, and re-read off the
+   * client before each touch is queued, exactly as the address is.
+   */
+  profileUrl?: string;
   /** The next step to send, 0-based. */
   stepIndex: number;
   /** When steps[stepIndex] is due, ISO. */
@@ -94,8 +109,24 @@ export interface SendRecord {
 }
 
 export interface Suppression {
-  /** A lowercased address, or "@domain.nl" for a whole domain. */
+  /**
+   * On the email channel: a lowercased address, or "@domain.nl" for a whole
+   * domain. On the LinkedIn channel: a normalised profile, "linkedin.com/in/x".
+   *
+   * The two cannot collide — one form always has an "@" and the other never
+   * does — so they share a list rather than splitting the one promise this
+   * console makes unconditionally across two files.
+   */
   address: string;
+  /**
+   * Which channel the entry was recorded on. Optional so every record written
+   * before LinkedIn touches existed still reads, and those are all email.
+   *
+   * Note what this does NOT mean: it is not "the channel this person may still
+   * be reached on". Someone who opts out by email is not then fair game on
+   * LinkedIn, and the touch guard checks both lists for the same person.
+   */
+  channel?: "email" | "linkedin";
   reason: "unsubscribed" | "bounced" | "complained" | "blocked" | "invalid";
   at: string;
   by: string;

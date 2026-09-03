@@ -24,14 +24,29 @@ export async function POST(request: NextRequest) {
     address?: string;
     reason?: string;
     note?: string;
+    channel?: string;
   };
   const address = (body.address ?? "").trim();
   if (!address) return NextResponse.json({ error: "Which address." }, { status: 400 });
 
   const reason = REASONS.find((r) => r === body.reason) ?? "blocked";
+  const channel = body.channel === "linkedin" ? "linkedin" : "email";
   const jar = await cookies();
   const who = jar.get(FOUNDER_COOKIE)?.value ?? "Unknown";
-  return NextResponse.json({ suppression: suppress({ address, reason, by: who, note: body.note }) });
+
+  // suppress() throws on an address it cannot make sense of — a Sales
+  // Navigator link rather than a public profile, most likely. That sentence is
+  // the useful answer, so it goes back as the error rather than a 500.
+  try {
+    return NextResponse.json({
+      suppression: suppress({ address, reason, by: who, note: body.note, channel }),
+    });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "That address could not be suppressed." },
+      { status: 400 },
+    );
+  }
 }
 
 /** Taking somebody off the list is the risky direction, so it records who. */
