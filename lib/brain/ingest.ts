@@ -17,12 +17,12 @@ import { brain, type Brain, type Memory } from "./store.ts";
 import { embedTexts } from "./embed.ts";
 import { DATA_DIR, listBlueprints, listClients, listInvoices } from "../store.ts";
 import { listReplies, type Reply } from "../outreach/replies.ts";
-import { listResearch, listSends } from "../salesnav/store.ts";
+import { listManualSteps, listResearch, listSends } from "../salesnav/store.ts";
 import { listInboundSince } from "../whatsapp/store.ts";
 import { founderFor } from "../whatsapp/config.ts";
 import { lessons } from "../pipeline/memory.ts";
 import { invoiceTotal, type Blueprint, type Client, type Invoice } from "../types.ts";
-import type { AccountResearch, SendRecord } from "../salesnav/types.ts";
+import type { AccountResearch, ManualStep, SendRecord } from "../salesnav/types.ts";
 
 type Row = Omit<Memory, "id" | "createdAt">;
 
@@ -75,6 +75,34 @@ export function rowsFromSends(sends: SendRecord[]): Row[] {
     entityType: "client" as const,
     entityId: s.clientId,
   }));
+}
+
+/**
+ * The LinkedIn messages, which rowsFromSends cannot see.
+ *
+ * rowsFromSends reads SendRecords, and those are email only — every connection
+ * note and message a founder has ever sent by hand was invisible to the brain.
+ * That is the half of the outreach this business actually does.
+ *
+ * Only settled rows are ingested. A waiting row is a draft nobody has sent, and
+ * a brain that remembers drafts as though they went out would answer questions
+ * about what we said with things we never said.
+ */
+export function rowsFromManual(steps: ManualStep[]): Row[] {
+  return steps
+    .filter((m) => m.state === "done" || m.state === "skipped")
+    .map((m) => ({
+      kind: "outbound" as const,
+      subject:
+        m.state === "done"
+          ? `LinkedIn ${m.kind} sent by hand`
+          : `LinkedIn ${m.kind} not sent: ${m.problem ?? "skipped"}`,
+      body: trim(m.body, 1_500),
+      sourceRef: `manual:${m.key}:${m.state}`,
+      entityType: "client" as const,
+      entityId: m.clientId,
+      occurredAt: m.finishedAt,
+    }));
 }
 
 export function rowsFromResearch(research: AccountResearch[]): Row[] {
@@ -236,6 +264,7 @@ export function ingestAll(db: Brain = brain()): IngestReport {
     touches: () => rowsFromTouches(listClients()),
     replies: () => rowsFromReplies(listReplies()),
     sends: () => rowsFromSends(listSends()),
+    manual: () => rowsFromManual(listManualSteps()),
     research: () => rowsFromResearch(listResearch()),
     blueprints: () => rowsFromBlueprints(listBlueprints()),
     invoices: () => rowsFromInvoices(listInvoices()),

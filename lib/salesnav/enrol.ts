@@ -151,6 +151,39 @@ export function enrol(input: {
   return { ok: true, enrolment };
 }
 
+/**
+ * Enrol a batch against one reason.
+ *
+ * The reason is written verbatim onto every row. That is a real weakening of
+ * what enrol() asks for — a sentence about this person specifically — and it is
+ * done deliberately, because the alternative a founder actually reaches for is
+ * pasting the same sentence twenty times: the same weakening, with more typing
+ * and no record that it was a batch.
+ *
+ * What is not weakened: a human still types it, it is still measured against
+ * the minimum, and it still lands on every enrolment with who typed it.
+ *
+ * One refusal does not fail the batch. Somebody already in a sequence, or
+ * without a profile, is a fact about them; stopping there would punish the rest
+ * of the list for it.
+ */
+export function enrolMany(input: {
+  clientIds: string[];
+  sequenceId: string;
+  basis: Partial<LawfulBasis>;
+  by: string;
+  now?: Date;
+}): { enrolled: Enrolment[]; refused: { clientId: string; problem: string }[] } {
+  const enrolled: Enrolment[] = [];
+  const refused: { clientId: string; problem: string }[] = [];
+  for (const clientId of input.clientIds) {
+    const one = enrol({ clientId, sequenceId: input.sequenceId, basis: input.basis, by: input.by, now: input.now });
+    if (one.ok && one.enrolment) enrolled.push(one.enrolment);
+    else refused.push({ clientId, problem: one.problem ?? "Refused." });
+  }
+  return { enrolled, refused };
+}
+
 export function withdraw(id: string, reason: string): Enrolment | undefined {
   return updateEnrolment(id, { state: "stopped", stoppedReason: reason });
 }

@@ -29,6 +29,14 @@ export interface AttentionItem {
   /** What to do about it, in one sentence. */
   detail: string;
   href?: string;
+  /**
+   * Which surface owns this item.
+   *
+   * "What needs a person right now" is still one list — this only says where
+   * that list is rendered, so the front page's outreach band and the lead panel
+   * can each show their own half without either showing both.
+   */
+  area?: "leads" | "outreach";
 }
 
 const RANK: Record<Urgency, number> = { blocked: 0, waiting: 1, watch: 2 };
@@ -65,7 +73,8 @@ async function uncachedReadPulse(): Promise<Pulse> {
       urgency: "blocked",
       title: `${unhandled.length} repl${unhandled.length === 1 ? "y" : "ies"} waiting`,
       detail: "Somebody answered. Nothing else in the machine matters more than this.",
-      href: "/outreach",
+      href: "/outreach#replies",
+      area: "outreach",
     });
   }
 
@@ -76,6 +85,7 @@ async function uncachedReadPulse(): Promise<Pulse> {
       title: "No leads pulled yet",
       detail: "Build a list in Apollo against the ICP and export it, or there is nobody to write to.",
       href: "/leads",
+      area: "leads",
     });
   } else {
     const contactable = contactableCount(book.leads);
@@ -87,13 +97,14 @@ async function uncachedReadPulse(): Promise<Pulse> {
         title: `${missing} lead${missing === 1 ? " has" : "s have"} no email`,
         detail: "LinkedIn is the only way to reach them. The sequencer cannot pick them up.",
         href: "/leads",
+        area: "leads",
       });
     }
   }
 
   // The email sequencer folds into the same list rather than owning a second
   // one. "What needs a person right now" has to be one surface or it is none.
-  items.push(...salesnavItems());
+  items.push(...salesnavItems().map((i) => ({ ...i, area: "outreach" as const })));
 
   items.sort((a, b) => RANK[a.urgency] - RANK[b.urgency]);
 

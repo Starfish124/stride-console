@@ -15,6 +15,10 @@ import { IconApproved, IconEscalate, IconGuardrail, IconTime } from "@/component
  * Replaces the Linked Helper panel. The old one led with a running/stopped dot
  * because a machine was sending on its own; nothing sends on its own any more,
  * so the lead is what a founder has to pick up.
+ *
+ * The queue, the caps and the replies are NOT here. They are the outreach band
+ * at the top of the front page, and showing them twice on one screen is the
+ * thing lib/channels/attention.ts says must not happen.
  */
 
 const URGENCY: Record<Urgency, { icon: typeof IconEscalate; tone: string; ring: string }> = {
@@ -25,7 +29,9 @@ const URGENCY: Record<Urgency, { icon: typeof IconEscalate; tone: string; ring: 
 
 export async function LeadsPanel() {
   const pulse = await readPulse();
-  const needsYou = pulse.items.filter((i) => i.urgency !== "watch");
+  // Only the lead-book half. The outreach items live in the band at the top of
+  // the front page now: one surface for "what needs a person", not two.
+  const needsYou = pulse.items.filter((i) => i.urgency !== "watch" && i.area !== "outreach");
 
   return (
     <Panel icon="IconTarget" title="Lead generation." href="/leads" linkLabel="Open">

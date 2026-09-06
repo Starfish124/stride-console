@@ -49,6 +49,10 @@ test("the panels the deck carries are server components too", () => {
     "components/CalendarPanel.tsx",
     "components/ContentPanel.tsx",
     "components/LeadsPanel.tsx",
+    // Not a deck slide, but it renders above the fold on every visit and the
+    // same rule applies: a client component here ships its bundle to the front
+    // page before anything else can paint.
+    "components/OutreachBand.tsx",
   ]) {
     assert.equal(USE_CLIENT.test(source(file)), false, `${file} went client-side`);
   }

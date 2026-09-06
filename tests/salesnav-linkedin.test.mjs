@@ -37,6 +37,7 @@ import * as manual from ${mod("lib/salesnav/manual.ts")};
 import * as runner from ${mod("lib/salesnav/runner.ts")};
 import * as suppress from ${mod("lib/salesnav/suppress.ts")};
 import * as leads from ${mod("lib/leads.ts")};
+import * as ingest from ${mod("lib/brain/ingest.ts")};
 import { LIMITS } from ${mod("lib/outreach/lint.ts")};
 
 const BASIS = {
@@ -389,4 +390,143 @@ test("marking a LinkedIn reply stops the whole sequence, not just the step", () 
   assert.equal(result.stepIndex, 0);
   assert.equal(result.rowState, "skipped");
   assert.equal(result.touched, 1);
+});
+
+// --- rewriting the queue after the words changed -----------------------------
+
+test("rewriting the queue forgets only what is still waiting", () => {
+  const r = inSandbox(`
+    const a = enrolOne({ name: "Ann", linkedin: "https://www.linkedin.com/in/ann", email: undefined });
+    await runner.tick(LATER);
+    const first = store.listManualSteps()[0];
+
+    // One is settled by a person; it is history now.
+    manual.completeManual(first.key, "Sarvesh", LATER);
+
+    const b = enrolOne({ name: "Bas", linkedin: "https://www.linkedin.com/in/bas", email: undefined });
+    await runner.tick(LATER);
+    const waitingBefore = store.listManualSteps().filter((m) => m.state === "waiting").length;
+
+    const seqId = store.listManualSteps()[0].sequenceId;
+    const res = manual.requeueWaiting(seqId);
+
+    const after = store.listManualSteps();
+    out({
+      waitingBefore,
+      dropped: res.dropped,
+      left: after.length,
+      states: after.map((m) => m.state),
+      doneBodyKept: after.some((m) => m.state === "done" && m.body.length > 0),
+    });
+  `);
+
+  assert.equal(r.waitingBefore, 1);
+  assert.equal(r.dropped, 1);
+  // The settled row survives untouched. That is the ledger's whole promise.
+  assert.deepEqual(r.states, ["done"]);
+  assert.ok(r.doneBodyKept, "a sent message must keep the words it was sent with");
+});
+
+// --- no answer, derived rather than stored -----------------------------------
+
+test("no-answer counts a sent step, and stops counting it the moment a reply is marked", () => {
+  const r = inSandbox(`
+    const ctx = enrolOne({ email: undefined });
+    await runner.tick(LATER);
+    const key = store.listManualSteps()[0].key;
+    manual.completeManual(key, "Sarvesh", LATER);
+
+    const sameDay = manual.awaitingAnswer(7, LATER).length;
+    const tenDaysOn = manual.awaitingAnswer(7, days(10)).length;
+
+    // A reply arrives late. Nothing is rewritten; the answer just changes.
+    enrol.withdraw(ctx.enrolment.id, "They replied on LinkedIn.");
+    const afterReply = manual.awaitingAnswer(7, days(10)).length;
+
+    out({ sameDay, tenDaysOn, afterReply });
+  `);
+
+  assert.equal(r.sameDay, 0, "not owed a chase the day it went out");
+  assert.equal(r.tenDaysOn, 1);
+  // Derived, so marking a reply late corrects the past rather than leaving a
+  // stale flag behind.
+  assert.equal(r.afterReply, 0);
+});
+
+// --- what reaches the brain --------------------------------------------------
+
+test("only settled LinkedIn messages reach the brain, and twice is once", () => {
+  const r = inSandbox(`
+    const rows = (steps) => ingest.rowsFromManual(steps);
+    const step = { key: "e:s", enrolmentId: "e", clientId: "c1", sequenceId: "q", stepId: "s",
+      kind: "connect", body: "Hello there, this is the note.", basis: {}, dueAt: "", createdAt: "" };
+
+    const waiting = rows([{ ...step, state: "waiting" }]);
+    const settled = rows([
+      { ...step, state: "done", finishedAt: "2026-09-01T10:00:00.000Z" },
+      { ...step, key: "e:s2", stepId: "s2", state: "skipped", problem: "Wrong person.", finishedAt: "2026-09-01T11:00:00.000Z" },
+    ]);
+    out({
+      waiting: waiting.length,
+      settled: settled.length,
+      kinds: [...new Set(settled.map((x) => x.kind))],
+      refs: settled.map((x) => x.sourceRef),
+      bodyKept: settled[0].body,
+      entity: settled[0].entityId,
+    });
+  `);
+
+  // A waiting row is a draft nobody sent. A brain that remembers drafts as
+  // sent answers "what did we say" with things we never said.
+  assert.equal(r.waiting, 0);
+  assert.equal(r.settled, 2);
+  assert.deepEqual(r.kinds, ["outbound"]);
+  // The sourceRef carries the state, so a row settling later is a new memory
+  // rather than a silent no-op against the earlier hash.
+  assert.deepEqual(r.refs, ["manual:e:s:done", "manual:e:s2:skipped"]);
+  assert.equal(r.bodyKept, "Hello there, this is the note.");
+  assert.equal(r.entity, "c1");
+});
+
+// --- the batch and its one reason --------------------------------------------
+
+test("a batch writes the typed reason verbatim on every row, and refuses an empty one", () => {
+  const r = inSandbox(`
+    const s = seq();
+    const ids = ["Ann", "Bas", "Cor"].map((n, i) =>
+      client({ name: n, linkedin: "https://www.linkedin.com/in/" + n.toLowerCase(), email: undefined }).id);
+
+    const REASON = "All three run warehouse ops at NL wholesalers in the Apollo ICP list.";
+    const good = enrol.enrolMany({ clientIds: ids, sequenceId: s.id, basis: { ...BASIS, reason: REASON }, by: "Sarvesh", now: MONDAY });
+
+    const more = ["Dee"].map((n) =>
+      client({ name: n, linkedin: "https://www.linkedin.com/in/dee", email: undefined }).id);
+    const empty = enrol.enrolMany({ clientIds: more, sequenceId: s.id, basis: { ...BASIS, reason: "  " }, by: "Sarvesh", now: MONDAY });
+
+    // A second run over the same people: already in a sequence, so refused,
+    // and the batch keeps going rather than throwing.
+    const again = enrol.enrolMany({ clientIds: ids, sequenceId: s.id, basis: { ...BASIS, reason: REASON }, by: "Sarvesh", now: MONDAY });
+
+    out({
+      enrolled: good.enrolled.length,
+      reasons: [...new Set(good.enrolled.map((e) => e.basis.reason))],
+      recordedBy: [...new Set(good.enrolled.map((e) => e.basis.recordedBy))],
+      emptyEnrolled: empty.enrolled.length,
+      emptyProblem: empty.refused[0].problem,
+      againEnrolled: again.enrolled.length,
+      againRefused: again.refused.length,
+    });
+  `);
+
+  assert.equal(r.enrolled, 3);
+  // One reason, on every row, exactly as typed.
+  assert.deepEqual(r.reasons, ["All three run warehouse ops at NL wholesalers in the Apollo ICP list."]);
+  assert.deepEqual(r.recordedBy, ["Sarvesh"]);
+  // A blank reason is still refused. The batch weakens who the reason is about,
+  // never whether a human wrote one.
+  assert.equal(r.emptyEnrolled, 0);
+  assert.match(r.emptyProblem, /characters/);
+  // One refusal does not fail the rest.
+  assert.equal(r.againEnrolled, 0);
+  assert.equal(r.againRefused, 3);
 });

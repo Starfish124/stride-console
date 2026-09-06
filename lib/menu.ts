@@ -112,8 +112,14 @@ export const MENU: MenuSection[] = [
   },
   {
     id: "leadgen",
-    label: "Apollo and LinkedIn lead generation",
-    nav: { label: "Leads", href: "/leads" },
+    label: "Outreach",
+    // The nav slot points at the section home, not the book. A section called
+    // Outreach that reads "Leads" in the header is two names for one place.
+    nav: { label: "Outreach", href: "/outreach" },
+    // "Apollo" stays in the blurb deliberately. It was in the label, and the
+    // label scores 50 in matchDestination against the hint's 40 — which is
+    // exactly the floor. Dropping the word entirely leaves "open Apollo" with
+    // no margin at all.
     blurb:
       "Who to approach and in whose words. Apollo finds them, a founder sends it by hand.",
     items: [
@@ -140,6 +146,12 @@ export const MENU: MenuSection[] = [
         label: "Replies",
         hint: "Somebody answered. This is where that lands.",
         icon: "IconEscalate",
+      },
+      {
+        href: "/salesnav",
+        label: "The queue and the brake",
+        hint: "What is waiting to be sent by hand, the caps, and the switch that stops it all.",
+        icon: "IconDeploy",
       },
     ],
   },
@@ -179,12 +191,6 @@ export const MENU: MenuSection[] = [
         label: "Clients and leads",
         hint: "Everyone in play, by stage, with the next step on each.",
         icon: "IconTeam",
-      },
-      {
-        href: "/salesnav",
-        label: "Email sequencer",
-        hint: "Multi step email that sends itself, and the switch that stops it.",
-        icon: "IconDeploy",
       },
       {
         href: "/calendar",

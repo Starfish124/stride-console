@@ -20,8 +20,12 @@ export function salesnavItems(now: Date = new Date()): AttentionItem[] {
     items.push({
       id: "salesnav-stopped",
       urgency: "blocked",
-      title: "Email sending is stopped",
-      detail: `${s.stop.by} stopped it. ${s.stop.reason ?? "Resume it or the sequences stay frozen."}`,
+      // Not just email. tick() returns on hardStop before it reaches the
+      // LinkedIn branch, so a stop freezes the queue a founder sends by hand
+      // as well — and calling it "email sending" hid that for as long as the
+      // switch has been on.
+      title: "All outreach is stopped",
+      detail: `${s.stop.by} stopped it, and nothing queues while it is on. ${s.stop.reason ?? ""}`.trim(),
       href,
     });
   }

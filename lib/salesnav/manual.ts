@@ -22,7 +22,7 @@ import { linkedinDailyCap, linkedinQueueCap, localDay } from "./config.ts";
 import { resolveMerge } from "./merge.ts";
 import { withdraw } from "./enrol.ts";
 import { advance } from "./send.ts";
-import { findManualStep, getEnrolment, listManualSteps, putManualStep } from "./store.ts";
+import { dropManualSteps, findManualStep, getEnrolment, listManualSteps, putManualStep } from "./store.ts";
 import type { Enrolment, ManualStep } from "./types.ts";
 
 export type QueueOutcome =
@@ -212,6 +212,50 @@ export function repliedManual(key: string, by: string, now: Date = new Date()): 
     at: now.toISOString(),
   });
   return next;
+}
+
+/**
+ * Rewrite the queue after the words changed.
+ *
+ * The obvious implementation — edit the queued bodies in place — is the one
+ * thing this file may not do. A queued row may already be on somebody's
+ * clipboard, and the ledger's whole promise is that what went out stays
+ * answerable afterwards.
+ *
+ * So nothing is edited. The waiting rows are forgotten and the next tick
+ * queues them again from the sequence as it now reads, through the same
+ * merge, the same length gate and the same caps as any other step. The
+ * enrolment never moved, so nobody is skipped and nobody is written to twice.
+ *
+ * Done and skipped rows are untouched, which is the whole point.
+ */
+export function requeueWaiting(sequenceId: string): { dropped: number } {
+  const waiting = listManualSteps().filter(
+    (m) => m.sequenceId === sequenceId && m.state === "waiting",
+  );
+  return { dropped: dropManualSteps(waiting.map((m) => m.key)) };
+}
+
+/**
+ * Sent, and nothing came back yet.
+ *
+ * Derived, never stored. Nothing here can read LinkedIn, so "no answer" is only
+ * ever true relative to what a founder has told us — and the moment somebody
+ * marks a late reply, every one of these has to change its mind. A stored flag
+ * would need a second clock to disagree with the too-late rule, and a migration
+ * every time the window changed. A function needs neither.
+ */
+export function awaitingAnswer(after: number, now: Date = new Date()): ManualStep[] {
+  const cutoff = now.getTime() - after * 86_400_000;
+  return listManualSteps()
+    .filter((m) => {
+      if (m.state !== "done" || !m.finishedAt) return false;
+      if (new Date(m.finishedAt).getTime() > cutoff) return false;
+      // Somebody answered and the sequence was withdrawn: not waiting on them.
+      const enrolment = getEnrolment(m.enrolmentId);
+      return !(enrolment?.state === "stopped" && /replied/i.test(enrolment.stoppedReason ?? ""));
+    })
+    .sort((a, b) => (a.finishedAt ?? "").localeCompare(b.finishedAt ?? ""));
 }
 
 /** The runner's too-late rule reaching a step nobody got to. */

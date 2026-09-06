@@ -108,6 +108,21 @@ export function putManualStep(record: ManualStep): void {
   writeJson(FILES.manual, [record, ...all].slice(0, MAX_SENDS), MODE);
 }
 
+/**
+ * Forget waiting rows, so the runner rebuilds them from the current template.
+ *
+ * Only ever called with rows that are still waiting. A done or skipped row is
+ * the record of what a founder actually did, and this file exists on the
+ * promise that such a record is never rewritten.
+ */
+export function dropManualSteps(keys: string[]): number {
+  const drop = new Set(keys);
+  const all = listManualSteps();
+  const left = all.filter((m) => !drop.has(m.key));
+  if (left.length !== all.length) writeJson(FILES.manual, left, MODE);
+  return all.length - left.length;
+}
+
 // ---------- suppressions ----------
 
 export function listSuppressions(): Suppression[] {

@@ -94,6 +94,17 @@ const JOBS = [
     catchUpUntilHour: 20,
   },
   {
+    // The outreach review. After the brain job, so the day's messages are
+    // already ingested and the observations land on top of them rather than
+    // racing them. Reads data/, writes only brain.db.
+    name: "outreach",
+    script: "scripts/outreach-review.mjs",
+    hour: 15,
+    minute: 30,
+    days: [1, 2, 3, 4, 5],
+    catchUpUntilHour: 23,
+  },
+  {
     // Hermes, the memory keeper: distils the day's sessions and delivery runs
     // into durable memories and diffs the business stores into a timeline.
     // Runs after the graph build so the newest session notes are on disk.

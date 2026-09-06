@@ -29,6 +29,7 @@ import { StatBand } from "@/components/StatBand";
 import { QuickMenu } from "@/components/QuickMenu";
 import { RightNow } from "@/components/RightNow";
 import { AskStride } from "@/components/AskStride";
+import { OutreachBand } from "@/components/OutreachBand";
 import { BrainHub, type Thought } from "@/components/BrainHub";
 import { BootIntro } from "@/components/BootIntro";
 import { euro } from "@/lib/company";
@@ -182,7 +183,11 @@ export default async function Dashboard() {
       <BootIntro />
       <Header />
       <main className="mx-auto max-w-5xl px-4 pb-20 sm:px-6">
-        {/* The console opens as a brain having thoughts: the mark at centre,
+        {/* The work first. Everything below this is the console reporting on
+            itself; this is the one block that asks for something back. */}
+        <OutreachBand />
+
+        {/* Then the console as a brain having thoughts: the mark at centre,
             the six things that matter in orbit. Nobody who installed this
             needs to be sold it — but everybody needs to see what is moving. */}
         <BrainHub
