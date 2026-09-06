@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { IconGrid, IconPipeline, IconTeam, IconLayers } from "@/components/icons";
+import { IconGrid, IconTarget, IconTeam, IconLayers } from "@/components/icons";
 import { MenuTrigger } from "@/components/AppMenu";
 
 /**
@@ -18,7 +18,7 @@ import { MenuTrigger } from "@/components/AppMenu";
 
 const TABS = [
   { href: "/", label: "Console", icon: IconGrid },
-  { href: "/campaigns", label: "Campaigns", icon: IconPipeline },
+  { href: "/leads", label: "Leads", icon: IconTarget },
   { href: "/clients", label: "Clients", icon: IconTeam },
   { href: "/library", label: "Library", icon: IconLayers },
 ] as const;

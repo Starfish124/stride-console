@@ -5,8 +5,8 @@ import assert from "node:assert/strict";
 import {
   buildQuickMenu,
   buildStats,
-  campaignsTile,
-  linkedInStat,
+  leadsTile,
+  leadsStat,
   compact,
   euros,
   medianEngagement,
@@ -61,30 +61,27 @@ test("in play counts the open stages and never the won or lost ones", () => {
   assert.equal(stats[0].value, "€6,000");
 });
 
-test("an unreachable Linked Helper prints a dash, not a zero", () => {
-  const lh = linkedInStat(null, null);
-  assert.equal(lh.value, "—");
-  assert.match(lh.note, /out of reach/i);
+test("an empty lead book says so rather than printing a bare zero", () => {
+  const stat = leadsStat(0, 0);
+  assert.equal(stat.value, "0");
+  assert.match(stat.note, /apollo/i);
 });
 
-test("a reachable Linked Helper with nothing queued really is zero", () => {
-  assert.equal(linkedInStat(0, 0).value, "0");
+test("a full lead book counts the half that can be emailed", () => {
+  const stat = leadsStat(148, 117);
+  assert.equal(stat.value, "148");
+  assert.match(stat.note, /117/);
 });
 
-test("one running campaign is not one campaigns", () => {
-  assert.equal(linkedInStat(5, 1).note, "1 campaign running");
-  assert.equal(linkedInStat(5, 2).note, "2 campaigns running");
-});
-
-test("the streamed tiles are not in the band or the menu the page renders first", () => {
-  // They cost a round trip to the bridge, so the page must be able to paint
-  // without them. If either reappears here, the dashboard blocks again.
+test("the lead tiles stay out of the band and menu the builders return", () => {
+  // The page adds these itself from the lead book, so the shared builders must
+  // not also emit them or the front page prints each figure twice.
   assert.equal(
-    buildStats(BASE, NOW).find((s) => s.label === "Queued on LinkedIn"),
+    buildStats(BASE, NOW).find((s) => s.label === "Leads in the book"),
     undefined,
   );
   assert.equal(
-    buildQuickMenu(QUIET).find((t) => t.label === "Campaigns"),
+    buildQuickMenu(QUIET).find((t) => t.label === "Leads"),
     undefined,
   );
 });
@@ -226,11 +223,10 @@ test("every quick tile is a real destination", () => {
   }
 });
 
-test("an unreachable Linked Helper leaves the campaigns tile unknown", () => {
-  const tile = campaignsTile(null);
-  assert.equal(tile.count, null);
-  assert.match(tile.note, /out of reach/i);
-  assert.equal(campaignsTile(2).count, 2);
+test("the leads tile carries the count it was given", () => {
+  assert.equal(leadsTile(0).count, 0);
+  assert.match(leadsTile(0).note, /none/i);
+  assert.equal(leadsTile(148).count, 148);
 });
 
 test("warn is reserved for counts a person is holding up", () => {

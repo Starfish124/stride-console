@@ -137,7 +137,7 @@ export function dropSuppression(address: string): boolean {
  * This used to reuse the webhook secret, which couples two unrelated trust
  * domains to one value: every unsubscribe link already sitting in somebody's
  * inbox is only valid while that file is unchanged. WebhookCard tells a founder
- * to delete data/hooks.json to rotate the Linked Helper URL, so following the
+ * to delete data/hooks.json to rotate the inbound webhook URL, so following the
  * on-screen instruction silently broke every outstanding opt-out. A person
  * clicking "not interested" got a 404, stayed enrolled, and kept receiving
  * mail, which is both the one promise this system makes unconditionally and a

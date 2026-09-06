@@ -12,7 +12,7 @@
 export type MenuArea =
   | "content"
   | "website"
-  | "linkedin"
+  | "leadgen"
   | "automation"
   | "sales"
   | "delivery"
@@ -36,10 +36,10 @@ export interface MenuSection {
   /**
    * The section's slot in the desktop header, when it earns one.
    *
-   * Named rather than taken as the first item: Automation's pages live inside
-   * Campaigns and Settings, so its first item shares a path with LinkedIn and
-   * would light both up. A section with no `nav` simply is not in the bar, and
-   * a header is not a sitemap — the Menu button holds the rest.
+   * Named rather than taken as the first item: Automation's pages all live
+   * inside Settings, so its first item shares a path with other sections and
+   * would light two at once. A section with no `nav` simply is not in the bar,
+   * and a header is not a sitemap — the Menu button holds the rest.
    */
   nav?: { label: string; href: string };
   items: MenuItem[];
@@ -111,16 +111,17 @@ export const MENU: MenuSection[] = [
     ],
   },
   {
-    id: "linkedin",
-    label: "LinkedIn",
-    nav: { label: "LinkedIn", href: "/campaigns" },
-    blurb: "The outbound channel: who gets approached, and in whose words.",
+    id: "leadgen",
+    label: "Apollo and LinkedIn lead generation",
+    nav: { label: "Leads", href: "/leads" },
+    blurb:
+      "Who to approach and in whose words. Apollo finds them, a founder sends it by hand.",
     items: [
       {
-        href: "/campaigns",
-        label: "Campaigns",
-        hint: "What Linked Helper is running, and the switch to start or stop it.",
-        icon: "IconPipeline",
+        href: "/leads",
+        label: "Lead book",
+        hint: "Everyone Apollo found against the ICP, with a LinkedIn profile on each.",
+        icon: "IconTarget",
       },
       {
         href: "/outreach",
@@ -145,25 +146,13 @@ export const MENU: MenuSection[] = [
   {
     id: "automation",
     label: "Automation",
-    blurb: "The machine room. Linked Helper, the bridge, and what feeds them.",
+    blurb: "The machine room. The sequencer, the bridge, and what feeds them.",
     items: [
-      {
-        href: "/campaigns#runner",
-        label: "The runner",
-        hint: "Start and stop the LinkedIn session that does the sending.",
-        icon: "IconRuntime",
-      },
       {
         href: "/settings#health",
         label: "Channel health",
-        hint: "Is the bridge up, is Linked Helper reachable, how long the licence has.",
+        hint: "Is the bridge up, is the mail provider reachable, what is switched on.",
         icon: "IconConfidence",
-      },
-      {
-        href: "/settings#webhook",
-        label: "Webhook",
-        hint: "The address campaigns post replies back to.",
-        icon: "IconIntegration",
       },
       {
         href: "/settings",
@@ -316,7 +305,7 @@ export const NAV = MENU.flatMap((s) => (s.nav ? [s.nav] : []));
 export const AREA_ICON: Record<MenuArea, string> = {
   content: "IconLayers",
   website: "IconTrend",
-  linkedin: "IconPipeline",
+  leadgen: "IconTarget",
   automation: "IconRuntime",
   sales: "IconTarget",
   delivery: "IconDeploy",

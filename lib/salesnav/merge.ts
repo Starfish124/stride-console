@@ -1,7 +1,7 @@
-// Merge fields, in Linked Helper's own {first_name} syntax.
+// Merge fields, in the familiar {first_name} syntax.
 //
 // The syntax is not a preference. The DM gate already matches /\{[a-z_]+\}/gi
-// as personalisation, and the founders have LH2's spelling in their fingers.
+// as personalisation, and the founders have this spelling in their fingers.
 // A second syntax would silently trip the personalisation warn on every draft
 // and break the muscle memory at the same time.
 //

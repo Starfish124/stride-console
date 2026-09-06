@@ -2,9 +2,10 @@
  * The dashboards, on one rail.
  *
  * This is a server component and it has to stay one. Marking it "use client"
- * would pull every slide into the client bundle with it, and the LinkedIn
- * slide reads the bridge: the page would go back to waiting forty seconds on
- * Linked Helper before it painted anything. tests/deck.test.mjs guards that.
+ * would pull every slide into the client bundle with it, and a slide that
+ * reads from disk would move that read into the browser. It cost forty seconds
+ * a paint back when a slide read the Linked Helper bridge; the bridge is gone,
+ * the rule stays. tests/deck.test.mjs guards that.
  *
  * There is no carousel here at all. A CSS scroll-snap rail gives swipe,
  * momentum, keyboard arrows and anchor jumps for free, so nothing unmounts,

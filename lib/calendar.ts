@@ -76,8 +76,6 @@ export interface CalendarInput {
   signups?: PitchSignup[];
   drafts?: Draft[];
   postLog?: PostLogEntry[];
-  /** ISO date the Linked Helper licence lapses, when it is known. */
-  licenceExpiry?: string;
 }
 
 /**
@@ -176,19 +174,6 @@ export function buildCalendar(
       detail: p.destination,
       href: `/drafts/${p.draftId}`,
       actionable: false,
-    });
-  }
-
-  const licence = day(input.licenceExpiry);
-  if (licence) {
-    entries.push({
-      id: "deadline_licence",
-      date: licence,
-      kind: "deadline",
-      title: "Linked Helper licence lapses",
-      detail: "Everything on LinkedIn stops on this date.",
-      href: "/campaigns",
-      actionable: licence >= today,
     });
   }
 

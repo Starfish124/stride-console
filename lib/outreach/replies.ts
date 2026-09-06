@@ -1,12 +1,12 @@
-// Replies coming back from Linked Helper.
+// Replies coming back from the people we wrote to.
 //
-// LH2 can call a webhook as a campaign step, including when someone answers
-// (sendRepliedToWebhook). That is the return leg the console never had: the
-// machine that writes the outbound finally learns which openers got answered.
+// The return leg: the machine that writes the outbound finally learns which
+// openers got answered. Replies arrive from the email provider's webhook
+// (app/api/hooks/resend), and a founder can record a LinkedIn answer by hand.
 //
 // Two things shape this file.
 //
-// The payload is not ours. Linked Helper's exact shape is undocumented and
+// The payload is not ours. A provider's exact shape is undocumented and
 // changes between versions, so nothing here insists on a schema. Known fields
 // are read where present, the whole body is kept verbatim, and an unrecognised
 // payload is stored rather than dropped. Losing a real reply because a key was
@@ -22,8 +22,6 @@ import crypto from "node:crypto";
 import { DATA_DIR } from "../store.ts";
 
 const FILE = path.join(DATA_DIR, "replies.json");
-const SECRET_FILE = path.join(DATA_DIR, "hooks.json");
-
 /** Keep the log bounded; this is an inbox, not an archive. */
 const MAX_REPLIES = 2000;
 
@@ -62,31 +60,6 @@ function write(all: Reply[]): void {
   const tmp = `${FILE}.tmp`;
   fs.writeFileSync(tmp, `${JSON.stringify(all, null, 2)}\n`, { mode: 0o600 });
   fs.renameSync(tmp, FILE);
-}
-
-/**
- * The shared secret that makes the webhook URL unguessable. The console is
- * public over Funnel, so this endpoint is reachable from the internet and the
- * secret is the only thing standing in front of it.
- */
-export function webhookSecret(): string {
-  try {
-    const existing = JSON.parse(fs.readFileSync(SECRET_FILE, "utf8")) as { secret?: string };
-    if (typeof existing.secret === "string" && existing.secret.length >= 32) return existing.secret;
-  } catch {
-    // First call, or the file was damaged. Mint below.
-  }
-  const secret = crypto.randomBytes(24).toString("base64url");
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(SECRET_FILE, `${JSON.stringify({ secret }, null, 2)}\n`, { mode: 0o600 });
-  return secret;
-}
-
-export function secretMatches(offered: string | null): boolean {
-  if (!offered) return false;
-  const a = Buffer.from(offered);
-  const b = Buffer.from(webhookSecret());
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
 /** First present value among several possible key spellings. */

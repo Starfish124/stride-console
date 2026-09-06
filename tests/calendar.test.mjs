@@ -115,17 +115,21 @@ test("an event that has already happened is no longer actionable", () => {
   assert.equal(past.find((e) => e.kind === "event").actionable, false);
 });
 
-test("the licence lapse lands on the grid as a deadline", () => {
-  const entries = buildCalendar({ licenceExpiry: "2026-08-09" }, TODAY);
-  assert.equal(entries[0].kind, "deadline");
-  assert.equal(entries[0].actionable, true);
-});
-
 test("entries come back oldest first, whatever order the stores were in", () => {
   const entries = buildCalendar(
     {
       clients: [client({ nextStep: "2026-09-01" })],
-      licenceExpiry: "2026-08-09",
+      events: [
+        {
+          id: "event_1",
+          title: "1 Min AI Pitch",
+          date: "2026-08-09",
+          venue: "Amsterdam",
+          capacity: 60,
+          createdAt: "2026-07-01T09:00:00.000Z",
+          checklist: [],
+        },
+      ],
       signups: [
         { id: "signup_1", name: "Ana", startup: "Bureau", idea: "Routing", at: "2026-07-02T10:00:00.000Z" },
       ],

@@ -35,9 +35,11 @@ test("the deck never reads the bridge itself", () => {
   assert.equal(DECK.includes("@/lib/store"), false);
 });
 
-test("the LinkedIn panel is still behind a Suspense boundary", () => {
-  const boundary = PAGE.match(/<Suspense[\s\S]{0,120}?<LhPulsePanel\s*\/>[\s\S]{0,40}?<\/Suspense>/);
-  assert.ok(boundary, "LhPulsePanel is no longer inside a Suspense boundary");
+test("the leads panel is on the deck", () => {
+  // It used to need a Suspense boundary because it read the Linked Helper
+  // bridge. It reads a local file now, so the boundary went and the only thing
+  // left worth guarding is that the slide is actually carried.
+  assert.ok(PAGE.includes("<LeadsPanel />"), "the deck no longer carries LeadsPanel");
 });
 
 test("the panels the deck carries are server components too", () => {
@@ -46,7 +48,7 @@ test("the panels the deck carries are server components too", () => {
     "components/PipelinePanel.tsx",
     "components/CalendarPanel.tsx",
     "components/ContentPanel.tsx",
-    "components/LhPulsePanel.tsx",
+    "components/LeadsPanel.tsx",
   ]) {
     assert.equal(USE_CLIENT.test(source(file)), false, `${file} went client-side`);
   }

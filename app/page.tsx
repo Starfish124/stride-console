@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import {
   listClients,
   listDrafts,
@@ -19,7 +18,7 @@ import { Header } from "@/components/ui";
 import { RecipeCard } from "@/components/RecipeCard";
 import { MythQuickAdd } from "@/components/MythQuickAdd";
 import { InboxBanner } from "@/components/InboxBanner";
-import { LhPulsePanel } from "@/components/LhPulsePanel";
+import { LeadsPanel } from "@/components/LeadsPanel";
 import { SeoPanel } from "@/components/SeoPanel";
 import { PipelinePanel } from "@/components/PipelinePanel";
 import { CalendarPanel } from "@/components/CalendarPanel";
@@ -34,13 +33,10 @@ import { BrainHub, type Thought } from "@/components/BrainHub";
 import { BootIntro } from "@/components/BootIntro";
 import { euro } from "@/lib/company";
 import { invoiceTotal } from "@/lib/types";
-import {
-  CampaignsQuickTile,
-  CampaignsQuickTileSkeleton,
-  LhPulseSkeleton,
-  LinkedInStatTile,
-  LinkedInStatTileSkeleton,
-} from "@/components/LinkedInLive";
+import { readLeads, contactableCount } from "@/lib/leads";
+import { leadsStat, leadsTile } from "@/lib/dashboard";
+import { StatTile } from "@/components/StatBand";
+import { QuickTileCard } from "@/components/QuickMenu";
 
 export const dynamic = "force-dynamic";
 
@@ -60,8 +56,13 @@ export default async function Dashboard() {
   const clients = listClients();
   const postLog = listPostLog();
   const audits = listAudits();
+  // Local disk, so the front page reads it inline. This used to sit behind a
+  // Suspense boundary because the number came over the Linked Helper bridge.
+  const leadBook = readLeads();
+  const leadCount = leadBook.leads.length;
+  const leadsWithEmail = contactableCount(leadBook.leads);
 
-  // Nothing here asks Linked Helper anything. Every figure below comes off
+  // Nothing here asks a remote machine anything. Every figure below comes off
   // local disk, so the page ships at once and the three pieces that do need
   // the bridge stream in behind their own boundaries.
   //
@@ -129,15 +130,9 @@ export default async function Dashboard() {
   // rather than parked on the rail as an empty stop.
   const slides: DeckSlide[] = [
     {
-      id: "deck-linkedin",
-      label: "LinkedIn",
-      // The only slide that waits on anything. Its own boundary, so the rest
-      // of the deck paints without it.
-      panel: (
-        <Suspense fallback={<LhPulseSkeleton />}>
-          <LhPulsePanel />
-        </Suspense>
-      ),
+      id: "deck-leads",
+      label: "Leads",
+      panel: <LeadsPanel />,
     },
     // SeoPanel draws nothing at all when the suite has never run, and an
     // empty snap point is worse than a missing one.
@@ -204,9 +199,10 @@ export default async function Dashboard() {
 
         {/* Where everything stands, before what there is to do about it. */}
         <StatBand stats={stats}>
-          <Suspense fallback={<LinkedInStatTileSkeleton />}>
-            <LinkedInStatTile />
-          </Suspense>
+          <StatTile
+            stat={leadsStat(leadCount, leadsWithEmail)}
+            className="col-span-2 lg:col-span-1"
+          />
         </StatBand>
 
         {/* What the two of you are actually doing, before the machinery. */}
@@ -216,9 +212,7 @@ export default async function Dashboard() {
         <QuickMenu
           tiles={tiles}
           leading={
-            <Suspense fallback={<CampaignsQuickTileSkeleton />}>
-              <CampaignsQuickTile />
-            </Suspense>
+            <QuickTileCard tile={leadsTile(leadCount)} />
           }
         />
 

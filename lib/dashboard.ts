@@ -190,33 +190,30 @@ export function buildQuickMenu(input: QuickMenuInput): QuickTile[] {
 }
 
 /**
- * The one figure that costs a round trip to Linked Helper.
+ * How many people are in the lead book, and how many can be emailed.
  *
- * Split out from the rest so the dashboard can paint without it and let it
- * arrive a moment later. Null means the bridge did not answer, which is not
- * the same as nothing being queued.
+ * This used to be the one figure that cost a round trip to Linked Helper, and
+ * it carried a null the whole way up so an unreachable bridge could print a
+ * dash rather than a lying zero. The bridge is gone: the book is a file on
+ * this disk, so the number is always known and the null went with it.
  */
-export function linkedInStat(queued: number | null, running: number | null): Stat {
+export function leadsStat(held: number, contactable: number): Stat {
   return {
-    label: "Queued on LinkedIn",
-    // Unreachable is its own answer. A dash is honest where a 0 would lie.
-    value: queued === null ? "—" : compact(queued),
-    note:
-      queued === null
-        ? "Linked Helper is out of reach"
-        : `${running ?? 0} campaign${running === 1 ? "" : "s"} running`,
-    href: "/campaigns",
+    label: "Leads in the book",
+    value: compact(held),
+    note: held === 0 ? "nothing pulled from Apollo yet" : `${compact(contactable)} with an email`,
+    href: "/leads",
   };
 }
 
-/** The quick menu's Campaigns tile, for the same reason. */
-export function campaignsTile(running: number | null): QuickTile {
+/** The quick menu's leads tile, off the same two numbers. */
+export function leadsTile(held: number): QuickTile {
   return {
-    label: "Campaigns",
-    href: "/campaigns",
-    icon: "IconPipeline",
-    count: running,
-    note: running === null ? "out of reach" : "running now",
+    label: "Leads",
+    href: "/leads",
+    icon: "IconTarget",
+    count: held,
+    note: held === 0 ? "none yet" : "ready to approach",
   };
 }
 
@@ -226,7 +223,7 @@ export function campaignsTile(running: number | null): QuickTile {
  * Deal size is optional on a client, because it is only known once it has been
  * said out loud. Summing a book where nobody has quoted yet gives €0, which
  * reads as "we have nothing on" rather than "we have not priced it" — the same
- * lie a 0 tells for an unreachable Linked Helper.
+ * lie a 0 tells for a number nobody has supplied.
  */
 function money(clients: Client[]): string {
   const quoted = clients.filter((c) => typeof c.value === "number");

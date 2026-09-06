@@ -1,17 +1,22 @@
 import { cache } from "react";
-import { readAiDrafts, readCampaignsView, readLicenceDays } from "./linkedHelper.ts";
 import { listReplies } from "../outreach/replies.ts";
-import { lintMessage } from "../outreach/lint.ts";
 import { salesnavItems } from "../salesnav/attention.ts";
+import { readLeads, contactableCount } from "../leads.ts";
 
 /**
- * What Linked Helper needs from a founder right now.
+ * What needs a founder right now, across every channel.
  *
  * A dashboard that only reports numbers makes you work out what to do about
  * them. This works it out instead: it reads the machine's state and returns
  * the things that are waiting on a person, worst first.
  *
  * Everything here is derived. Nothing is stored, so nothing can go stale.
+ *
+ * This used to be Linked Helper's pulse and nothing else. LH2 is gone: the
+ * outbound half is now Apollo for finding people and a founder's own hands for
+ * sending, so the only things that can be "out of reach" are local files. That
+ * is why nothing here can fail any more, and why the reachable flag went with
+ * the bridge that justified it.
  */
 
 export type Urgency = "blocked" | "waiting" | "watch";
@@ -28,54 +33,30 @@ export interface AttentionItem {
 
 const RANK: Record<Urgency, number> = { blocked: 0, waiting: 1, watch: 2 };
 
-export interface LhPulse {
-  reachable: boolean;
-  campaigns: number;
-  running: number;
-  /** Campaigns whose armed steps can actually message someone. */
-  sending: number;
-  people: number;
-  dailyMax: number | null;
-  licenceDaysLeft: number | null;
+export interface Pulse {
+  /** People held in the lead book. */
+  leads: number;
+  /** How many of those Apollo has a verified email for. */
+  contactable: number;
+  /** How many the saved Apollo search matches in total, held or not. */
+  pool: number;
   items: AttentionItem[];
 }
 
 /**
  * Deduplicated per render.
  *
- * The front page reads the pulse for its figures and the LinkedIn panel reads
- * it again for what needs a person, which was two round trips to the bridge —
- * and two timeouts stacked back to back when it was wedged. React's cache
- * collapses them to one call per request, and callers stay unaware.
+ * The front page reads the pulse for its figures and the leads panel reads it
+ * again for what needs a person. React's cache collapses them to one call per
+ * request, and callers stay unaware. Cheap now that it is all local disk, but
+ * the panels still each want their own copy and this keeps that honest.
  */
 export const readPulse = cache(uncachedReadPulse);
 
-async function uncachedReadPulse(): Promise<LhPulse> {
-  const [view, { drafts }, licenceDaysLeft] = await Promise.all([
-    readCampaignsView(),
-    readAiDrafts(),
-    readLicenceDays(),
-  ]);
+async function uncachedReadPulse(): Promise<Pulse> {
+  const book = readLeads();
   const replies = listReplies();
-
-  const account = view.accounts[0];
-  const campaigns = account?.campaigns ?? [];
-  const running = campaigns.filter((c) => c.state === "running");
-  const sending = running.filter((c) =>
-    c.steps.some((s) => s.armed && /Invite|Message|InMail/i.test(s.type ?? "")),
-  );
-
   const items: AttentionItem[] = [];
-  const problem = view.offline ?? view.unavailable;
-
-  if (problem) {
-    items.push({
-      id: "offline",
-      urgency: "blocked",
-      title: "Linked Helper is out of reach",
-      detail: problem,
-    });
-  }
 
   const unhandled = replies.filter((r) => !r.handled);
   if (unhandled.length > 0) {
@@ -88,78 +69,26 @@ async function uncachedReadPulse(): Promise<LhPulse> {
     });
   }
 
-  if (drafts.length > 0) {
-    const failing = drafts.filter(
-      (d) => lintMessage(d.text, "message", { isFirstTouch: /_1$/.test(d.field) }).errors > 0,
-    ).length;
+  if (book.leads.length === 0) {
     items.push({
-      id: "drafts",
-      urgency: failing > 0 ? "blocked" : "waiting",
-      title: `${drafts.length} message${drafts.length === 1 ? "" : "s"} written by the AI`,
-      detail:
-        failing > 0
-          ? `${failing} would fail the voice gate. Read them before Linked Helper sends them.`
-          : "All clean against the voice guide. Worth a read before they go.",
-      href: "/outreach",
-    });
-  }
-
-  /* A campaign marked running whose sending steps are all drafts will sit
-     there looking busy and reach nobody. It is the failure most likely to
-     waste a week without anyone noticing. */
-  const stalled = running.filter((c) => c.armedSteps < c.stepCount && !sending.includes(c));
-  for (const campaign of stalled) {
-    items.push({
-      id: `stalled:${campaign.uuid}`,
+      id: "no-leads",
       urgency: "waiting",
-      title: `"${campaign.name}" is running but cannot send`,
-      detail: `${campaign.armedSteps} of ${campaign.stepCount} steps are armed. The rest are drafts, so it will research and stop.`,
-      href: "/campaigns",
+      title: "No leads pulled yet",
+      detail: "Build a list in Apollo against the ICP and export it, or there is nobody to write to.",
+      href: "/leads",
     });
-  }
-
-  const emptyRunning = running.filter((c) => c.people === 0);
-  for (const campaign of emptyRunning) {
-    items.push({
-      id: `empty:${campaign.uuid}`,
-      urgency: "waiting",
-      title: `"${campaign.name}" has nobody in it`,
-      detail: "Give it an audience in Linked Helper, or it has nothing to work on.",
-      href: "/campaigns",
-    });
-  }
-
-  if (campaigns.length === 0 && !problem) {
-    items.push({
-      id: "no-campaigns",
-      urgency: "waiting",
-      title: "No campaigns yet",
-      detail: "Make one from the campaigns page. It arrives paused, so nothing sends.",
-      href: "/campaigns",
-    });
-  }
-
-  if (licenceDaysLeft !== null && licenceDaysLeft <= 7) {
-    items.push({
-      id: "licence",
-      urgency: licenceDaysLeft <= 2 ? "blocked" : "waiting",
-      title: `Licence runs out in ${licenceDaysLeft} day${licenceDaysLeft === 1 ? "" : "s"}`,
-      detail: "Campaigns stop when it lapses. Renewing is not something the console can do.",
-    });
-  }
-
-  if (sending.length > 0) {
-    const reach = sending.reduce((n, c) => n + c.people, 0);
-    const days = account?.dailyMax ? Math.ceil(reach / account.dailyMax) : null;
-    items.push({
-      id: "sending",
-      urgency: "watch",
-      title: `${reach.toLocaleString("en-GB")} people are in reach`,
-      detail: days
-        ? `At ${account?.dailyMax} a day that runs about ${days} day${days === 1 ? "" : "s"}.`
-        : "No daily cap is set, which is worth fixing before this runs.",
-      href: "/campaigns",
-    });
+  } else {
+    const contactable = contactableCount(book.leads);
+    const missing = book.leads.length - contactable;
+    if (missing > 0) {
+      items.push({
+        id: "leads-no-email",
+        urgency: "watch",
+        title: `${missing} lead${missing === 1 ? " has" : "s have"} no email`,
+        detail: "LinkedIn is the only way to reach them. The sequencer cannot pick them up.",
+        href: "/leads",
+      });
+    }
   }
 
   // The email sequencer folds into the same list rather than owning a second
@@ -169,13 +98,9 @@ async function uncachedReadPulse(): Promise<LhPulse> {
   items.sort((a, b) => RANK[a.urgency] - RANK[b.urgency]);
 
   return {
-    reachable: !problem,
-    campaigns: campaigns.length,
-    running: running.length,
-    sending: sending.length,
-    people: account?.peopleCollected ?? 0,
-    dailyMax: account?.dailyMax ?? null,
-    licenceDaysLeft,
+    leads: book.leads.length,
+    contactable: contactableCount(book.leads),
+    pool: book.poolSize,
     items,
   };
 }

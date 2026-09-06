@@ -2,7 +2,6 @@ import { Header } from "@/components/ui";
 import { SequenceEditor } from "@/components/SequenceEditor";
 import { listSequences } from "@/lib/outreach/sequence";
 import { listReplies } from "@/lib/outreach/replies";
-import { AiDraftQueue } from "@/components/AiDraftQueue";
 import { Ramp } from "@/components/Ramp";
 
 export const dynamic = "force-dynamic";
@@ -25,9 +24,10 @@ export default async function OutreachPage() {
           <h1 className="display mt-3 text-3xl text-ink">The words you send.</h1>
           <p className="mt-3 text-[15px] text-slate">
             The console keeps the copy, so what goes out in a message answers
-            to the same voice guide as what goes out in a post. Linked Helper
-            sends the LinkedIn steps. Email steps are sent by the console
-            itself, and the stop switch for those is on the sequencer page.
+            to the same voice guide as what goes out in a post. LinkedIn steps
+            are sent by a founder, by hand, against the lead book. Email steps
+            are sent by the console itself, and the stop switch for those is on
+            the sequencer page.
           </p>
         </section>
 
@@ -58,8 +58,6 @@ export default async function OutreachPage() {
             </ul>
           </section>
         )}
-
-        <AiDraftQueue />
 
         <SequenceEditor
           initial={

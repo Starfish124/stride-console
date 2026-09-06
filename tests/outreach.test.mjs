@@ -138,7 +138,7 @@ test("a reply is read out of whatever shape Linked Helper posts", () => {
 });
 
 test("an unrecognised payload is kept rather than dropped", () => {
-  // Losing a real reply because Linked Helper renamed a key would be the worst
+  // Losing a real reply because a provider renamed a key would be the worst
   // failure this file can have, so the raw body always survives.
   const reply = inSandbox(`
     console.log(JSON.stringify(m.recordReply({ some_new_shape: { who: "nobody we know" } })));
@@ -147,20 +147,6 @@ test("an unrecognised payload is kept rather than dropped", () => {
   assert.equal(reply.name, null);
 });
 
-test("the webhook secret is long enough not to be guessed, and stable", () => {
-  const result = inSandbox(`
-    const first = m.webhookSecret();
-    console.log(JSON.stringify({
-      length: first.length,
-      matchesItself: m.secretMatches(first),
-      matchesWrong: m.secretMatches("wrong"),
-      matchesNull: m.secretMatches(null),
-      stable: m.webhookSecret() === first,
-    }));
-  `);
-  assert.ok(result.length >= 32, "the secret is the only guard on a public endpoint");
-  assert.equal(result.matchesItself, true);
-  assert.equal(result.matchesWrong, false);
-  assert.equal(result.matchesNull, false);
-  assert.equal(result.stable, true);
-});
+// The webhook secret that used to live here went with Linked Helper. Replies
+// arrive from the email provider now, and that endpoint is guarded by a signed
+// payload rather than by a secret in the URL.

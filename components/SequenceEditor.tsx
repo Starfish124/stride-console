@@ -229,10 +229,10 @@ export function SequenceEditor({
                 onClick={copyTemplate}
                 className="mt-4 rounded-input bg-ink px-4 py-2.5 text-[15px] font-semibold text-white"
               >
-                {copied ? "Copied." : "Copy for Linked Helper."}
+                {copied ? "Copied." : "Copy for LinkedIn."}
               </button>
               <p className="mt-2 text-[13px] text-slate">
-                Paste each step into the matching action in Linked Helper.
+                Send each step yourself, in order, from the lead book.
                 Nothing is sent from here.
               </p>
             </>

@@ -14,7 +14,7 @@ import { Glyph, IconChevron } from "@/components/icons";
  * carry a number rather than a zero that would read as work nobody has done.
  *
  * Campaigns is passed in as `leading` rather than built with the rest: its
- * count is the only one that costs a round trip to Linked Helper, so it
+ * count used to be the only one that cost a round trip to Linked Helper, so it
  * streams. It stays first in the DOM as well as on screen — reordering with
  * CSS would put a screen reader and the tab key in a different order than the
  * eye, which is a worse trade than a tile that fills in a moment late.

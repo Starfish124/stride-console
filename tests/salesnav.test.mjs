@@ -391,22 +391,25 @@ test("an overdue step that already went out keeps its record", () => {
   assert.equal(result.dryRun, false, "and it was not a dry run");
 });
 
-test("the unsubscribe key survives rotating the Linked Helper webhook secret", () => {
-  // WebhookCard tells a founder to delete data/hooks.json to rotate the LH2
-  // URL. While the two shared one secret, following that instruction returned
-  // a 404 to every person clicking "not interested" in an email already sent.
+test("the unsubscribe key owns its own secret and nothing else can move it", () => {
+  // This once shared a secret with the Linked Helper webhook, whose rotation
+  // was a documented routine: following it returned a 404 to every person
+  // clicking "not interested" in an email already sent. LH is gone, but the
+  // property it broke is the one promise this system makes unconditionally,
+  // so it stays guarded — deleting every other secret in data/ must not move
+  // an outstanding token.
   const result = inSandbox(`
     const before = suppress.unsubToken("jane@acme.nl");
-    const replies = await import(${mod("lib/outreach/replies.ts")});
-    replies.webhookSecret();
     const fs = await import("node:fs");
-    fs.rmSync("data/hooks.json", { force: true });
-    replies.webhookSecret();
+    for (const f of fs.readdirSync("data")) {
+      if (f.includes("secret") || f === "hooks.json") continue;
+      if (f.endsWith(".json")) fs.rmSync("data/" + f, { force: true });
+    }
     const after = suppress.unsubToken("jane@acme.nl");
     out({ before, after, honoured: suppress.verifyUnsubToken("jane@acme.nl", before) });
   `);
 
-  assert.equal(result.before, result.after, "the token must not move when an unrelated secret does");
+  assert.equal(result.before, result.after, "the token must not move when an unrelated file does");
   assert.equal(result.honoured, true, "a link already in somebody's inbox still works");
 });
 

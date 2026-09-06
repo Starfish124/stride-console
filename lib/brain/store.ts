@@ -3,7 +3,7 @@
 // SQLite rather than the usual JSON files for one reason — search. Memories
 // are only worth keeping if the right one surfaces months later, and FTS5
 // gives ranked full-text search from the standard library (node:sqlite, the
-// same module the bridge already uses to read Linked Helper's database).
+// same module the bridge already used to read Linked Helper's database).
 //
 // Three kinds of memory:
 //   session  distilled from a Claude Code session's notes

@@ -12,7 +12,7 @@ const MAX_BYTES = 2 * 1024 * 1024;
  * This route is in the PUBLIC allowlist in proxy.ts because the caller is a
  * hook script on a founder's machine, not a browser: it has no session
  * cookie and never will. It carries a per-device bearer token instead, and a
- * wrong one gets a bare 404 — the Linked Helper webhook's posture, so a
+ * wrong one gets a bare 404 — the same posture as the provider webhook, so a
  * scanner learns nothing about what lives here.
  *
  * It is POST-only and on its own path on purpose. The allowlist matches a

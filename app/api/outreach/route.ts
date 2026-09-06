@@ -5,7 +5,7 @@ import {
   listSequences,
   lintSequence,
   saveSequence,
-  toLinkedHelperTemplate,
+  toManualTemplate,
 } from "@/lib/outreach/sequence";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,7 @@ export async function GET() {
   const sequences = listSequences().map((sequence) => ({
     ...sequence,
     verdict: lintSequence(sequence),
-    template: toLinkedHelperTemplate(sequence),
+    template: toManualTemplate(sequence),
   }));
   return NextResponse.json({ sequences });
 }
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     sequence,
     verdict: lintSequence(sequence),
-    template: toLinkedHelperTemplate(sequence),
+    template: toManualTemplate(sequence),
   });
 }
 

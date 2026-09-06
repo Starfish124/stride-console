@@ -5,18 +5,13 @@ import { SourcesEditor } from "@/components/SourcesEditor";
 import { PushToggle } from "@/components/PushToggle";
 import { ChannelHealth } from "@/components/ChannelHealth";
 import { WhatsAppPanel } from "@/components/WhatsAppPanel";
-import { WebhookCard } from "@/components/WebhookCard";
 import { VoiceWakeToggle } from "@/components/VoiceWakeToggle";
 import { IconAskStride, IconTime, IconTuneLoop } from "@/components/icons";
-import { headers } from "next/headers";
 import { Ramp } from "@/components/Ramp";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const head = await headers();
-  const host = head.get("host") ?? "localhost:3000";
-  const origin = `${host.includes("localhost") ? "http" : "https"}://${host}`;
   const mode = writerMode();
   const cli = claudeCliPath();
   const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5";
@@ -67,8 +62,6 @@ export default async function SettingsPage() {
           <p className="eyebrow flex items-center gap-2 text-slate"><IconAskStride size={15} className="text-indigo" />Always listening</p>
           <VoiceWakeToggle />
         </section>
-
-        <WebhookCard origin={origin} />
 
         <section className="mb-10 card-glass rounded-card border border-line bg-white p-6">
           <p className="eyebrow flex items-center gap-2 text-slate"><IconTime size={15} className="text-indigo" />Draft-ready notifications</p>

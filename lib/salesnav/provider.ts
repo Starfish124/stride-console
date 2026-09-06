@@ -7,7 +7,7 @@
 //
 // Nothing here throws. A refusal from a provider carries the reason a founder
 // needs, and an exception loses it on the way up, so every path returns a
-// shaped result instead. Same discipline as lib/channels/linkedHelper.ts.
+// shaped result instead. Same discipline as the rest of lib/channels.
 //
 // Open and click tracking are deliberately off. A tracking pixel on a cold
 // B2B email in the EU is a liability, and it tells us nothing we would act on.

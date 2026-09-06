@@ -1,14 +1,14 @@
-// Outreach sequences: the copy the console owns, and Linked Helper sends.
+// Outreach sequences: the copy the console owns, and a founder sends.
 //
-// The division of labour is deliberate. Linked Helper keeps the campaign shell,
-// the schedule and the sending, because it is good at those and puppeting its
-// wizard would be brittle. The console owns the words, because the words are
-// the thing the voice gate can hold to a standard, and no off-the-shelf tool
-// checks outbound copy against a brand voice.
+// The division of labour is deliberate. The console owns the words, because
+// the words are the thing the voice gate can hold to a standard, and no
+// off-the-shelf tool checks outbound copy against a brand voice. It does not
+// own the sending on LinkedIn: the account that gets restricted for automating
+// LinkedIn is a founder's own, and no feature here is worth that.
 //
-// A sequence leaves here as text a founder pastes into LH2's own template
-// fields. Linked Helper sends the LinkedIn steps. Email steps are sent from
-// the console itself, and the stop switch for those is on the sequencer page.
+// A sequence leaves here as text a founder pastes into LinkedIn themselves,
+// one step at a time, against the lead book. Email steps are sent from the
+// console itself, and the stop switch for those is on the sequencer page.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -122,16 +122,20 @@ export function lintSequence(sequence: OutreachSequence): {
 }
 
 /**
- * The sequence as a founder needs it while filling in Linked Helper: each step
- * labelled with its type and delay, ready to paste one at a time.
+ * The sequence as a founder needs it with LinkedIn open in the next tab: each
+ * step labelled with its type and delay, ready to paste one at a time.
+ *
+ * This used to be a Linked Helper export, and the shape has not changed —
+ * only who does the pasting. A person sends every LinkedIn step now, which is
+ * why the steps come out one at a time rather than as one blob.
  */
-export function toLinkedHelperTemplate(sequence: OutreachSequence): string {
+export function toManualTemplate(sequence: OutreachSequence): string {
   const lines = [
     `SEQUENCE: ${sequence.name}`,
     sequence.audience ? `AUDIENCE: ${sequence.audience}` : null,
     "",
-    "Paste each step into the matching action in Linked Helper.",
-    "Merge fields use LH2's own {first_name} style.",
+    "Send each step yourself, in order, from the lead book.",
+    "Merge fields are {first_name} style — fill them in as you paste.",
     "",
   ].filter((l): l is string => l !== null);
 

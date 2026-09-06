@@ -43,7 +43,7 @@ const THINK = false;
  * Reloading costs 17 seconds against 4 warm, which is the difference between a
  * conversation and a pause. The temptation is to pin it for the afternoon.
  *
- * ⚠️ Do not. This is a 16GB Mac that also holds Linked Helper's Electron, two
+ * ⚠️ Do not. This is a 16GB Mac that also holds a browser, two
  * Next servers, Kokoro and whisper, and it was already 8.7GB into swap when
  * this was measured. qwen3:8b is 6.2GB resident. Ten minutes covers a burst of
  * questions, which is how anyone actually uses this, and gives the memory back

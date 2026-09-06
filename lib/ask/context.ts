@@ -21,7 +21,7 @@ import {
 } from "../store.ts";
 import { listArticles, listAudits, listKeywords } from "../seo/store.ts";
 import { readPulse } from "../channels/attention.ts";
-import { addDays, buildCalendar, overdue, todayISO, upcoming } from "../calendar.ts";
+import { buildCalendar, overdue, todayISO, upcoming } from "../calendar.ts";
 import { MENU } from "../menu.ts";
 import { STAGE_LABELS, LANE_LABELS, NOTE_LANES, CLIENT_STAGES } from "../types.ts";
 import { renderPassages, retrieve } from "../brain/retrieve.ts";
@@ -76,7 +76,7 @@ export async function buildContext(question?: string): Promise<AskContext> {
     heading: "What the Stride Console is",
     lines: [
       "A private marketing and sales machine for Stride AI, run by two founders: Jort Hubers and Sarvesh Singh.",
-      "It writes LinkedIn posts, runs LinkedIn outreach through Linked Helper 2, tracks the website's search performance, and keeps the client pipeline.",
+      "It writes LinkedIn posts, finds leads in Apollo for a founder to approach on LinkedIn by hand, tracks the website's search performance, and keeps the client pipeline.",
       "Nothing is ever posted or sent automatically. A founder approves everything.",
       `Today is ${today}.`,
     ],
@@ -90,29 +90,23 @@ export async function buildContext(question?: string): Promise<AskContext> {
     ),
   });
 
-  // ---------- LinkedIn ----------
-  // The machine is the one part that can be out of reach; when it is, say so
-  // rather than let a stale number read as a live one.
-  const pulse = await readPulse().catch(() => null);
+  // ---------- lead generation ----------
+  // Nothing here can be out of reach any more: Linked Helper and its bridge
+  // are gone, so every number below is a local file read.
+  const pulse = await readPulse();
   blocks.push({
-    heading: "LinkedIn and Linked Helper",
-    lines: !pulse
-      ? ["The Linked Helper bridge could not be reached, so nothing about LinkedIn is known right now."]
-      : !pulse.reachable
-        ? ["Linked Helper is not reachable. Its numbers are unknown, not zero."]
+    heading: "Apollo and LinkedIn lead generation",
+    lines:
+      pulse.leads === 0
+        ? ["No leads have been pulled from Apollo yet, so there is nobody to approach."]
         : [
-            `${pulse.campaigns} campaigns exist, ${pulse.running} running.`,
-            `${pulse.sending} of the running campaigns have armed steps that can actually message a person. The rest only research.`,
-            `${pulse.people} profiles are queued across campaigns.`,
-            pulse.dailyMax ? `The daily action cap is ${pulse.dailyMax}.` : "No daily cap is set.",
-            pulse.licenceDaysLeft !== null
-              ? `The Linked Helper licence has ${pulse.licenceDaysLeft} days left. Everything on LinkedIn stops when it lapses.`
-              : "The licence state is unknown.",
+            `${pulse.leads} people are in the lead book, out of ${pulse.pool} the saved Apollo search matches.`,
+            `${pulse.contactable} of them have a verified email; the rest can only be reached on LinkedIn.`,
+            "Nothing sends by itself. Apollo finds the people, and a founder writes and sends every LinkedIn message by hand.",
             // What needs a person is deliberately NOT repeated here. readPulse
             // merges the email sequencer's items into the same list
             // (lib/channels/attention.ts), so printing them under this heading
-            // told the model the sequencer was part of LinkedIn — and it duly
-            // reported the machine as stopped because email sending was. They
+            // told the model the sequencer was part of lead generation. They
             // live in their own section at the top of the sheet instead.
           ],
   });
@@ -183,8 +177,6 @@ export async function buildContext(question?: string): Promise<AskContext> {
       events,
       signups,
       postLog,
-      licenceExpiry:
-        pulse?.licenceDaysLeft != null ? addDays(today, pulse.licenceDaysLeft) : undefined,
     },
     today,
   );
