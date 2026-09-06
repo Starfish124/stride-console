@@ -10,6 +10,7 @@ import {
   listPostLog,
   listSignups,
 } from "@/lib/store";
+import { listProjects, listIssues, listRuns } from "@/lib/workspace/store";
 import { listAudits } from "@/lib/seo/store";
 import { unhandledCount } from "@/lib/outreach/replies";
 import { buildCalendar, todayISO, KIND_LABELS } from "@/lib/calendar";
@@ -21,6 +22,7 @@ import {
   SectionHeading,
   EmptyState,
 } from "@/components/WorkspaceUI";
+import { MobileBrief } from "@/components/MobileBrief";
 import { ActionQueue } from "@/components/ActionQueue";
 import { RecipeCard } from "@/components/RecipeCard";
 import { MythQuickAdd } from "@/components/MythQuickAdd";
@@ -61,6 +63,9 @@ export default function Dashboard() {
     awaitingApproval: drafts.filter((d) => d.status === "draft").length,
   });
   const unpaid = listInvoices().filter((i) => i.status === "sent");
+  const projects = listProjects().filter(p => clients.some(c => c.id === p.clientId && c.stage !== "past")).sort((a,b) => b.updatedAt.localeCompare(a.updatedAt));
+  const issues = listIssues().filter(i => i.status === "open");
+  const runs = listRuns();
   const doing = notes.filter((n) => n.lane === "doing");
   const date = new Date(`${today}T12:00:00Z`).toLocaleDateString("en-GB", {
     weekday: "long",
@@ -85,6 +90,7 @@ export default function Dashboard() {
             Create content
           </Link>
         </PageHeading>
+        <MobileBrief date={date} actions={actions} activeClients={clients.filter(c => c.stage !== "past").length} approvals={drafts.filter(d => d.status === "draft").length} unpaid={unpaid.length} doing={doing.length} />
         <InboxBanner entries={listInbox().filter((e) => !e.seen)} />
         <div className="overview-top">
           <ActionQueue actions={actions} />
@@ -179,7 +185,7 @@ export default function Dashboard() {
               </ul>
             )}
           </section>
-          <section className="workspace-panel agenda-panel">
+          <section className="workspace-panel agenda-panel" id="home-agenda">
             <SectionHeading
               title="Coming up"
               href="/calendar"
@@ -228,6 +234,19 @@ export default function Dashboard() {
             )}
           </section>
         </div>
+        {projects.length > 0 && <section className="workspace-panel home-projects">
+          <SectionHeading title="Work in motion" subtitle="Your recently updated projects." href="/workspaces" action="All projects" />
+          <ul className="client-work-list">{projects.slice(0,4).map(project => {
+            const client = clients.find(c => c.id === project.clientId);
+            const openIssues = issues.filter(i => i.projectId === project.id).length;
+            const running = runs.some(r => r.projectId === project.id && r.status === "running");
+            return <li key={project.id}><Link href={`/clients/${project.clientId}/workspace`}>
+              <span className="action-icon"><Glyph name="IconIntegration" size={20} /></span>
+              <span className="action-copy"><strong>{project.name}</strong><small>{client?.company || client?.name}{running ? " · Running now" : openIssues ? ` · ${openIssues} open issues` : " · Open workspace"}</small></span>
+              <Glyph name="IconChevron" size={16} />
+            </Link></li>;
+          })}</ul>
+        </section>}
         <section id="create-content" className="create-section">
           <SectionHeading
             title="Make something worth sharing"

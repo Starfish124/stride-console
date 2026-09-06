@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 import type { WorkspaceAction } from "@/lib/workspace-overview";
 export function ActionQueue({ actions }: { actions: WorkspaceAction[] }) {
   const [filter, setFilter] = useState("all");
+  const [expanded, setExpanded] = useState(false);
   const shown = actions.filter(
     (a) => filter === "all" || a.category === filter,
   );
@@ -39,7 +40,7 @@ export function ActionQueue({ actions }: { actions: WorkspaceAction[] }) {
             key={f.id}
             type="button"
             aria-pressed={filter === f.id}
-            onClick={() => setFilter(f.id)}
+            onClick={() => { setFilter(f.id); setExpanded(false); }}
             className={cn(filter === f.id && "is-active")}
           >
             {f.label}
@@ -52,8 +53,8 @@ export function ActionQueue({ actions }: { actions: WorkspaceAction[] }) {
           </button>
         ))}
       </div>
-      <div aria-live="polite">
-        <span className="sr-only">{shown.length} matching actions</span>
+      <div>
+        <span className="sr-only" role="status">{shown.length} matching actions</span>
         {shown.length === 0 ? (
           <EmptyState
             icon="IconApproved"
@@ -70,7 +71,7 @@ export function ActionQueue({ actions }: { actions: WorkspaceAction[] }) {
           />
         ) : (
           <ul className="action-list">
-            {shown.slice(0, 6).map((a) => (
+            {shown.slice(0, expanded ? shown.length : 4).map((a) => (
               <li key={a.id}>
                 <Link href={a.href} className="action-row">
                   <span className={cn("action-icon", a.urgent && "urgent")}>
@@ -95,11 +96,11 @@ export function ActionQueue({ actions }: { actions: WorkspaceAction[] }) {
           </ul>
         )}
       </div>
-      {shown.length > 6 && (
-        <p className="queue-overflow">
-          Showing 6 of {shown.length}. Open <Link href="/library">Content</Link>{" "}
-          or <Link href="/calendar">Calendar</Link> to see the full queue.
-        </p>
+      {shown.length > 4 && (
+        <button type="button" className="queue-expand" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
+          {expanded ? "Show fewer" : `Show all ${shown.length} actions`}
+          <Glyph name="IconChevron" size={16} />
+        </button>
       )}
     </section>
   );

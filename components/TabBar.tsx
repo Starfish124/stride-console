@@ -2,8 +2,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Glyph } from "@/components/icons";
-import { MenuTrigger } from "@/components/AppMenu";
-import { isWorkspaceRoute, routeIsActive } from "@/lib/workspace-nav";
+import { useState } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
+import { WORKSPACE_GROUPS, isWorkspaceRoute, routeIsActive } from "@/lib/workspace-nav";
 import { cn } from "@/lib/cn";
 const TABS = [
   { href: "/", label: "Home", icon: "IconGrid" },
@@ -13,6 +14,7 @@ const TABS = [
 ];
 export function TabBar() {
   const path = usePathname();
+  const [open, setOpen] = useState(false);
   if (!isWorkspaceRoute(path)) return null;
   return (
     <nav className="workspace-tabs" aria-label="Mobile navigation">
@@ -30,10 +32,15 @@ export function TabBar() {
           <span>{t.label}</span>
         </Link>
       ))}
-      <MenuTrigger label="Search all pages and tools" className="mobile-tab">
-        <Glyph name="IconSearch" size={21} />
-        <span>More</span>
-      </MenuTrigger>
+      <Dialog.Root open={open} onOpenChange={setOpen}>
+        <Dialog.Trigger asChild><button type="button" className={cn("mobile-tab", !TABS.some(t => routeIsActive(path, t.href)) && "is-active")} aria-label="All workspace tools"><Glyph name="IconGrid" size={21} /><span>More</span></button></Dialog.Trigger>
+        <Dialog.Portal><Dialog.Overlay className="command-overlay" /><Dialog.Content className="capture-sheet tools-sheet">
+          <div className="capture-heading"><Dialog.Title>Your workspace</Dialog.Title><Dialog.Close className="capture-close" aria-label="Close tools">×</Dialog.Close></div>
+          <Dialog.Description>Everything you need, all in one place.</Dialog.Description>
+          {WORKSPACE_GROUPS.map(group => <section key={group.label}><h3>{group.label}</h3><div className="tools-grid">{group.items.map(item => <Link key={item.href} href={item.href} onClick={() => setOpen(false)} aria-current={routeIsActive(path,item.href) ? "page" : undefined}><Glyph name={item.icon} size={21} /><span>{item.label}</span></Link>)}</div></section>)}
+          <Link href="/settings" className="tools-settings" onClick={() => setOpen(false)}>Appearance & settings<Glyph name="IconChevron" size={17} /></Link>
+        </Dialog.Content></Dialog.Portal>
+      </Dialog.Root>
     </nav>
   );
 }
