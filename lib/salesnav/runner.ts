@@ -17,7 +17,7 @@ import { getClient } from "../store.ts";
 import { getSequence } from "../outreach/sequence.ts";
 import { isTooLate, localDay, perTick, salesnavMode, sendWindow, withinWindow } from "./config.ts";
 import { sweep } from "./enrol.ts";
-import { expireManual, isManualKind, queueManual } from "./manual.ts";
+import { expireManual, isManualKind, queueManual, waitingManualSteps } from "./manual.ts";
 import { advance, attemptSend } from "./send.ts";
 import { findManualStep, findSend, hardStop, listEnrolments, putSend, runnerState, setRunnerState } from "./store.ts";
 import { newId } from "../store.ts";
@@ -55,7 +55,13 @@ export interface TickResult {
   due: number;
   sent: number;
   refused: number;
-  /** LinkedIn steps sitting in the queue, waiting on a person. */
+  /**
+   * LinkedIn steps sitting in the queue when the tick finished.
+   *
+   * The depth of the queue, not what this tick added to it — a re-tick that
+   * finds everything already queued still reports the work outstanding, which
+   * is the number anybody reading this actually wants.
+   */
   waiting: number;
   /** Steps the runner declined to queue — capped, too long, missing a field. */
   held: number;
@@ -93,10 +99,20 @@ export async function tick(now: Date = new Date()): Promise<TickResult> {
     const lines: string[] = swept.stopped.map((s) => `stopped ${s.id}: ${s.reason}`);
     let sent = 0;
     let refused = 0;
-    let waiting = 0;
     let held = 0;
 
-    for (const enrolment of due.slice(0, perTick())) {
+    // The allowance counts WORK, not rows looked at.
+    //
+    // A held step keeps its dueAt, so it sits at the front of the due list for
+    // ever. Slicing the first perTick meant the same three rows were re-offered
+    // every tick and the queue could never grow past three, however many people
+    // were enrolled behind them. Finding a row already in the queue costs a
+    // lookup and does nothing, so it does not spend the allowance — but it is
+    // still walked, because a queued step that has gone stale still has to face
+    // the too-late rule.
+    let worked = 0;
+    for (const enrolment of due) {
+      if (worked >= perTick()) break;
       const sequence = getSequence(enrolment.sequenceId);
       const step = sequence?.steps[enrolment.stepIndex];
       const client = getClient(enrolment.clientId);
@@ -119,6 +135,7 @@ export async function tick(now: Date = new Date()): Promise<TickResult> {
         // It holds instead, and shows up in held rather than silently moving.
         if (isManualKind(step.kind) && !findManualStep(key)) {
           held += 1;
+          worked += 1;
           lines.push(`${enrolment.id}: ${step.kind} overdue but never queued, still holding`);
           continue;
         }
@@ -134,6 +151,7 @@ export async function tick(now: Date = new Date()): Promise<TickResult> {
         // person in March" has to be answerable from the ledger alone.
         if (already && already.state !== "skipped") {
           advance(enrolment, sequence.steps, now);
+          worked += 1;
           lines.push(`${enrolment.id}: overdue, but step ${step.id} already ${already.state}`);
           continue;
         }
@@ -163,6 +181,7 @@ export async function tick(now: Date = new Date()): Promise<TickResult> {
         });
         advance(enrolment, sequence.steps, now);
         refused += 1;
+        worked += 1;
         lines.push(`${enrolment.id}: skipped, too late to be relevant`);
         continue;
       }
@@ -174,8 +193,11 @@ export async function tick(now: Date = new Date()): Promise<TickResult> {
         // reports it finished. The enrolment stays put until somebody works it
         // off the queue on /salesnav.
         const queued = queueManual(enrolment, step, client, now);
-        if (queued.state === "waiting") waiting += 1;
-        else held += 1;
+        // Already there: nothing happened, so nothing is spent and the tick
+        // walks on to somebody who has not been written to yet.
+        if (queued.state === "waiting" && !queued.queued) continue;
+        if (queued.state === "held") held += 1;
+        worked += 1;
         lines.push(
           queued.state === "waiting"
             ? `${enrolment.id}: ${step.kind} waiting for a founder to send`
@@ -184,12 +206,14 @@ export async function tick(now: Date = new Date()): Promise<TickResult> {
         continue;
       }
 
+      worked += 1;
       const attempt = await attemptSend(enrolment, step, client, sequence.steps, now);
       if (attempt.outcome === "sent") sent += 1;
       else if (attempt.outcome !== "already-sent") refused += 1;
       lines.push(`${enrolment.id}: ${attempt.outcome}, ${attempt.detail}`);
     }
 
+    const waiting = waitingManualSteps().length;
     setRunnerState({ lastTickAt: at, lastTickDay: localDay(now) });
     return { ran: true, mode, due: due.length, sent, refused, waiting, held, stopped: swept.stopped.length, lines, at };
   } finally {

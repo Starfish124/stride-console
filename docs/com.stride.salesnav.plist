@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- The outreach clock. The path below is rewritten by `stride install`.
+
+     Without this the engine has no heartbeat. scripts/salesnav-runner.mjs is
+     the only thing that asks the console to tick, and until 2026-09-06 nothing
+     ever started it: the sequencer had never run, not because it was broken but
+     because nobody was turning the handle.
+
+     It writes nothing itself. Every sixty seconds it mints a session and POSTs
+     /api/salesnav/run, so the console stays the single writer of data/ — which
+     is the whole reason lib/salesnav/ needs no locking. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.stride.salesnav</string>
+
+  <!-- A login shell so node is on PATH. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>cd /Users/sarveshsingh/stride-console &amp;&amp; npm run salesnav</string>
+  </array>
+
+  <!-- Long lived and self-scheduling, like the agent supervisor. A calendar
+       job would silently miss every tick the Mac slept through. -->
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+
+  <!-- The clock authenticates with the same cookie the console mints, so it
+       needs the same password. The template ships a placeholder; `stride
+       install` writes the live value, which never enters git. Without it the
+       runner ticks happily and the console answers 401 to every one. -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>STRIDE_PASSWORD</key>
+    <string>REPLACE_WITH_PASSWORD</string>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>~/Library/Logs/stride-salesnav.log</string>
+  <key>StandardErrorPath</key>
+  <string>~/Library/Logs/stride-salesnav.log</string>
+</dict>
+</plist>

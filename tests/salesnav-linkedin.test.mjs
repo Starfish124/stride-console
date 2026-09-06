@@ -530,3 +530,31 @@ test("a batch writes the typed reason verbatim on every row, and refuses an empt
   assert.equal(r.againEnrolled, 0);
   assert.equal(r.againRefused, 3);
 });
+
+// --- the queue has to be able to grow ---------------------------------------
+
+test("people already in the queue stop blocking everyone enrolled behind them", () => {
+  const r = inSandbox(
+    `
+    const s = seq();
+    const ids = Array.from({ length: 9 }, (_, i) =>
+      client({ name: "P" + i, linkedin: "https://www.linkedin.com/in/p" + i, email: undefined }).id);
+    enrol.enrolMany({ clientIds: ids, sequenceId: s.id,
+      basis: { ...BASIS, reason: "Nine wholesalers from the same Apollo list, same pain." },
+      by: "Sarvesh", now: MONDAY });
+
+    const depth = [];
+    for (let i = 0; i < 3; i++) {
+      await runner.tick(LATER);
+      depth.push(store.listManualSteps().filter((m) => m.state === "waiting").length);
+    }
+    out({ depth });
+  `,
+    { SALESNAV_LI_QUEUE: "50", SALESNAV_LI_DAILY: "50" },
+  );
+
+  // A held step keeps its dueAt, so it sits at the front of the due list for
+  // ever. Counting it against the per-tick allowance meant the first three
+  // enrolments starved every one behind them and the queue never passed three.
+  assert.deepEqual(r.depth, [3, 6, 9]);
+});

@@ -12,7 +12,7 @@
 # anywhere. Bare `stride` starts rather than reports, and is safe to repeat:
 # it checks each part and only starts what is down.
 #
-# There are three moving parts and they fail independently, which is why this
+# There are four moving parts and they fail independently, which is why this
 # reports each one rather than printing "started" and hoping:
 #
 #   console        Next.js on :3000. The app itself.
@@ -20,6 +20,10 @@
 #                  certificate. Runs from a system daemon, so it survives a
 #                  reboot without help.
 #   terminal       The relay behind /term.
+#   salesnav       The outreach clock. It ticks the console once a minute and
+#                  writes nothing itself. Without it nothing is ever queued,
+#                  however healthy the other three look — which is exactly how
+#                  the sequencer sat idle from July to September.
 #
 # There used to be two more: a loopback bridge holding a debugger connection
 # to Linked Helper, and Linked Helper itself launched with that port open.
@@ -53,6 +57,7 @@ PUBLIC_URL="https://mac-mini.tailc91701.ts.net"
 # the supervisor it starts had never run once.
 JOBS=(
   com.stride.console
+  com.stride.salesnav
   com.stride.term
   com.stride.pregen
   com.stride.seo
@@ -302,8 +307,14 @@ cmd_install() {
     # second expression is a backstop: a template that still says
     # REPLACE_WITH_REPO_PATH used to install cleanly and then fail every run,
     # because the first pattern simply never matched.
+    # A "~" in StandardOutPath does not work: launchd will not expand it, the
+    # job dies with EX_CONFIG before it runs once, and the log that would have
+    # said so is the file it could not open. So log paths are written absolute
+    # here rather than left to the template.
     sed -e "s#/Users/sarveshsingh/stride-console#$ROOT#g" \
-        -e "s#REPLACE_WITH_REPO_PATH#$ROOT#g" "$src" \
+        -e "s#REPLACE_WITH_REPO_PATH#$ROOT#g" \
+        -e "s#~/Library/Logs/#$HOME/Library/Logs/#g" \
+        -e "s#REPLACE_WITH_HOME#$HOME#g" "$src" \
       > "$HOME/Library/LaunchAgents/$job.plist"
 
     if [[ "$job" == "com.stride.console" && -n "$live_password" ]]; then
@@ -315,6 +326,14 @@ cmd_install() {
     # The relay authenticates the same cookie the console mints, so it needs
     # the same password. Its template ships a placeholder, never the value.
     if [[ "$job" == "com.stride.term" && -n "$live_password" ]]; then
+      /usr/libexec/PlistBuddy -c \
+        "Set :EnvironmentVariables:STRIDE_PASSWORD $live_password" \
+        "$HOME/Library/LaunchAgents/$job.plist" >/dev/null 2>&1
+    fi
+
+    # The outreach clock mints the same session cookie the console checks, so
+    # it needs the same password. It ships a placeholder like the relay does.
+    if [[ "$job" == "com.stride.salesnav" && -n "$live_password" ]]; then
       /usr/libexec/PlistBuddy -c \
         "Set :EnvironmentVariables:STRIDE_PASSWORD $live_password" \
         "$HOME/Library/LaunchAgents/$job.plist" >/dev/null 2>&1

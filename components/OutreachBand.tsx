@@ -4,6 +4,8 @@ import { waitingManualSteps, awaitingAnswer, sentLinkedInToday } from "@/lib/sal
 import { linkedinDailyCap } from "@/lib/salesnav/config";
 import { listClients } from "@/lib/store";
 import { IconApproved, IconEscalate, IconTarget, IconTime, IconWorkflow } from "@/components/icons";
+import { EngineLight } from "@/components/EngineLight";
+import { reach } from "@/lib/salesnav/engine";
 
 /**
  * The outreach band: the first thing on the page, because it is the first
@@ -44,11 +46,15 @@ export async function OutreachBand() {
   // other line here would be describing a machine that is not running.
   const stopped = items.find((i) => i.id === "salesnav-stopped");
   const nothingYet = queue.length === 0 && chase.length === 0 && items.length === 0;
+  const done = reach();
 
   return (
     <section className="mb-7">
-      <div className="mb-2 flex items-baseline justify-between gap-3">
-        <p className="eyebrow text-slate">Outreach</p>
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <div className="flex items-baseline gap-3">
+          <p className="eyebrow text-slate">Outreach</p>
+          <EngineLight />
+        </div>
         <Link href="/outreach" className="eyebrow text-indigo hover:text-indigo-deep">
           Open
         </Link>
@@ -83,6 +89,20 @@ export async function OutreachBand() {
             </>
           )}
         </p>
+
+        <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-2 border-t border-line pt-3">
+          {[
+            { label: "Sent", value: done.sent },
+            { label: "In a sequence", value: done.active },
+            { label: "Replied", value: done.replied },
+            { label: "Skipped", value: done.skipped },
+          ].map((f) => (
+            <div key={f.label}>
+              <dd className="figure text-[17px] text-ink">{f.value}</dd>
+              <dt className="eyebrow mt-0.5 text-slate">{f.label}</dt>
+            </div>
+          ))}
+        </dl>
 
         {/* The two stages, never one button: find people, then write to them. */}
         <div className="mt-4 flex flex-wrap gap-2">

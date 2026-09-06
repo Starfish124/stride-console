@@ -2,6 +2,11 @@ import { Header } from "@/components/ui";
 import { Ramp } from "@/components/Ramp";
 import { LeadImport } from "@/components/LeadImport";
 import { LeadPull } from "@/components/LeadPull";
+import { LeadEnrol } from "@/components/LeadEnrol";
+import { EngineLight } from "@/components/EngineLight";
+import { listClients } from "@/lib/store";
+import { listEnrolments } from "@/lib/salesnav/store";
+import { listSequences } from "@/lib/outreach/sequence";
 import { readIcp, apolloConfigured } from "@/lib/apollo";
 import {
   readLeads,
@@ -26,6 +31,25 @@ export const dynamic = "force-dynamic";
 export default function LeadsPage() {
   const book = readLeads();
   const icp = readIcp();
+
+  // Stage two of the engine: who is in the book, has a profile, and is not
+  // already being written to. Computed here rather than in the client so the
+  // page can say the number before anything is clicked.
+  const inASequence = new Set(
+    listEnrolments()
+      .filter((e) => e.state !== "stopped")
+      .map((e) => e.clientId),
+  );
+  const candidates = listClients()
+    .filter((c) => c.linkedin?.trim() && !inASequence.has(c.id))
+    .map((c) => ({ id: c.id, name: c.name, company: c.company, role: c.role }));
+  const linkedinSequences = listSequences()
+    .filter((q) => !q.steps.some((step) => step.kind === "email"))
+    .map((q) => ({
+      id: q.id,
+      name: q.name,
+      shape: q.steps.map((step) => step.kind).join(" → "),
+    }));
   const { leads, filters } = book;
 
   const personas = personaCounts(leads).filter((p) => p.count > 0);
@@ -115,6 +139,22 @@ export default function LeadsPage() {
                 </div>
               ))}
             </dl>
+
+            {/* Stage two. Finding people and writing to them are two decisions
+                and two costs — credits and an afternoon — so they are two
+                controls, with the review between them. */}
+            <section className="card-glass mb-8 rounded-card border border-line bg-white p-5">
+              <div className="mb-2 flex flex-wrap items-baseline justify-between gap-3">
+                <p className="eyebrow text-slate">Put them in a sequence</p>
+                <EngineLight />
+              </div>
+              <p className="mb-4 text-[15px] text-slate">
+                Everyone here with a LinkedIn profile who is not already being written to. The
+                console writes the messages and holds them; you send them by hand from the
+                outreach page.
+              </p>
+              <LeadEnrol candidates={candidates} sequences={linkedinSequences} />
+            </section>
 
             {/* The one thing on this page that writes anything. Reading the
                 book is free; copying it into the client book is the step that
