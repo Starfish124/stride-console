@@ -42,26 +42,11 @@
      buttons and ink blocks in both themes and must never flip. */
   --color-card: #ffffff;
 
-  /* The system face, first and on purpose.
-   *
-   * This runs inside a WKWebView on a phone, wrapped in iOS chrome that is set
-   * in SF. Any webfont next to that reads as a website someone opened, which is
-   * the one thing an app must not read as. SF is also the only face that gets
-   * the platform's optical sizing and its numerals for free.
-   *
-   * Plus Jakarta stays as the fallback for anything not on an Apple device, so
-   * the brand still shows up on a Windows laptop. */
-  --font-sans:
-    -apple-system, BlinkMacSystemFont, system-ui, "Plus Jakarta Sans",
-    sans-serif;
-  --font-display:
-    -apple-system, BlinkMacSystemFont, system-ui, "Plus Jakarta Sans",
-    sans-serif;
+  /* Match stride-ai.nl across phone, desktop, and public app pages. */
+  --font-sans: "Plus Jakarta Sans", sans-serif;
+  --font-display: "Plus Jakarta Sans", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
-
-  /* Playfair is not gone. It carries /pitch and /login, where an editorial
-     voice is the right one, and nothing else. */
-  --font-editorial: "Playfair Display", "Iowan Old Style", Georgia, serif;
+  --font-editorial: "Plus Jakarta Sans", sans-serif;
 
   --radius-input: 10px;
   --radius-card: 16px;
@@ -112,10 +97,7 @@ button {
   font-size: 11px;
 }
 
-/* SF at display size. A serif wanted air and almost no tracking; SF wants the
-   opposite — real weight and tight negative tracking, the way every large
-   title in iOS is set. Balance stops a two word heading orphaning its last
-   word, which at this size is very visible. */
+/* The website display family, sized for app headings. */
 .display {
   font-family: var(--font-display);
   font-weight: 700;
