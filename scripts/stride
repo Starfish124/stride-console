@@ -4,7 +4,7 @@
 #
 #   stride              start everything (this is the whole thing)
 #   stride status       what is up, what is not
-#   stride down         stop the console and the bridge
+#   stride down         stop the console and the terminal relay
 #   stride install      start it all at login, and link this command
 #   stride logs         tail everything at once
 #
@@ -12,17 +12,19 @@
 # anywhere. Bare `stride` starts rather than reports, and is safe to repeat:
 # it checks each part and only starts what is down.
 #
-# There are four moving parts and they fail independently, which is why this
+# There are three moving parts and they fail independently, which is why this
 # reports each one rather than printing "started" and hoping:
 #
 #   console        Next.js on :3000. The app itself.
 #   funnel         Tailscale publishing :3000 to the internet, on a real
 #                  certificate. Runs from a system daemon, so it survives a
 #                  reboot without help.
-#   bridge         The loopback API that owns the debugger connection to
-#                  Linked Helper. Without it the campaign pages go quiet.
-#   linked helper  The app, launched with a debugger port. Without the port
-#                  the bridge can see nothing.
+#   terminal       The relay behind /term.
+#
+# There used to be two more: a loopback bridge holding a debugger connection
+# to Linked Helper, and Linked Helper itself launched with that port open.
+# Apollo needs neither — it is an API and a browser tab, not a desktop app
+# being driven — so the machine has two fewer things that can be down.
 #
 # Nothing here is reachable when the Mac is off. The console is served from
 # this machine and the data lives on its disk.
@@ -42,11 +44,8 @@ done
 ROOT="$(cd "$(dirname "$SELF")/.." && pwd)"
 cd "$ROOT"
 
-BRIDGE_PORT=7455
 TERM_PORT=7457
 CONSOLE_PORT=3000
-LH_APP="/Applications/linked-helper.app"
-LH_DEBUG_PORT=9222
 PUBLIC_URL="https://mac-mini.tailc91701.ts.net"
 
 # Every launchd job this repo owns. One list, so a job cannot be installed but
@@ -54,10 +53,8 @@ PUBLIC_URL="https://mac-mini.tailc91701.ts.net"
 # the supervisor it starts had never run once.
 JOBS=(
   com.stride.console
-  com.stride.bridge
   com.stride.term
   com.stride.pregen
-  com.stride.linkedhelper
   com.stride.seo
 )
 
@@ -117,9 +114,6 @@ start_agent() {
 }
 
 console_up() { curl -sf -o /dev/null --max-time 4 "http://localhost:$CONSOLE_PORT/login"; }
-bridge_up()  { curl -sf -o /dev/null --max-time 4 "http://127.0.0.1:$BRIDGE_PORT/ping"; }
-lh_debug_up() { curl -sf -o /dev/null --max-time 4 "http://127.0.0.1:$LH_DEBUG_PORT/json/version"; }
-lh_running() { pgrep -f "linked-helper.app/Contents/MacOS/linked-helper" >/dev/null; }
 # No pipe on purpose. `... | grep -q` looks obvious and is wrong here: grep
 # exits the moment it matches, tailscale takes SIGPIPE, and pipefail reports
 # that 141 as the pipeline's status. The check then says the funnel is off
@@ -178,41 +172,8 @@ cmd_status() {
   else
     ok "funnel" "$PUBLIC_URL"
   fi
-  bridge_up  && ok "bridge"  "127.0.0.1:$BRIDGE_PORT" || bad "bridge" "down — run: stride"
   term_public && ok "terminal" "$PUBLIC_URL/term" \
     || bad "terminal" "unreachable — run: stride, or: tailscale funnel --bg --set-path /term http://127.0.0.1:$TERM_PORT"
-
-  if lh_debug_up; then
-    ok "linked helper" "open, debugger on $LH_DEBUG_PORT"
-  elif lh_running; then
-    warn "linked helper" "open WITHOUT the debugger port — quit it, then run: stride"
-  else
-    bad "linked helper" "closed — run: stride"
-  fi
-
-  # The per-account instance holds the campaign window and the AI drafts. It
-  # only exists while a LinkedIn session is running, and its port is written
-  # fresh each launch, so a stale file does not mean it is alive.
-  #
-  # Ask for the target list, not just whether the port answers. The launcher
-  # shares this file and usually wrote it last, and it answers on its own port
-  # perfectly well — so "something replied" reported a running session when
-  # none was running. The campaign window's front bundle is the proof.
-  # Same string as CAMPAIGN_UI_PATH in bridge/account.mjs; keep them together.
-  local port_file="$HOME/Library/Application Support/linked-helper/DevToolsActivePort"
-  local acct_port targets
-  acct_port="$(head -1 "$port_file" 2>/dev/null || true)"
-  targets=""
-  if [[ -n "$acct_port" ]]; then
-    targets="$(curl -sf --max-time 4 "http://127.0.0.1:$acct_port/json/list" 2>/dev/null || true)"
-  fi
-  if [[ $targets == *"@linked-helper/front/build/index.html"* ]]; then
-    ok "linkedin session" "campaign window reachable on $acct_port"
-  elif [[ $targets == *"linkedin.com"* ]]; then
-    warn "linkedin session" "running, but the campaign window is closed — open the account window"
-  else
-    warn "linkedin session" "not running — start the account in Linked Helper to create campaigns"
-  fi
 
   head_ "background jobs"
   local missing=0
@@ -255,7 +216,7 @@ cmd_status() {
   # A dead background job counts against "everything is up". Serving the site
   # while nothing writes to it is exactly the state this command used to call
   # healthy.
-  if console_up && funnel_on && funnel_public && bridge_up && term_public && lh_debug_up && [[ $missing -eq 0 ]]; then
+  if console_up && funnel_on && funnel_public && term_public && [[ $missing -eq 0 ]]; then
     printf "  ${LIME}everything is up${OFF}  ${MUTE}%s${OFF}\n" "$PUBLIC_URL"
   elif console_up; then
     printf "  ${AMBER}the app is up, part of the machine is not${OFF}  ${MUTE}run: stride${OFF}\n"
@@ -287,23 +248,6 @@ cmd_up() {
       && ok "funnel" "published" || bad "funnel" "could not publish"
   fi
 
-  # Linked Helper must carry the debugger port, and the flag only applies to a
-  # fresh launch. An instance already open without it is worse than useless.
-  if lh_debug_up; then
-    ok "linked helper" "already open with the debugger"
-  else
-    if lh_running; then
-      warn "linked helper" "open without the debugger port, restarting it"
-      osascript -e 'quit app "linked-helper"' >/dev/null 2>&1
-      sleep 4
-      pkill -f "linked-helper.app/Contents/MacOS" 2>/dev/null
-      sleep 2
-    fi
-    open -a "$LH_APP" --args --remote-debugging-port=$LH_DEBUG_PORT
-    for _ in $(seq 1 25); do lh_debug_up && break; sleep 1; done
-    lh_debug_up && ok "linked helper" "up with the debugger" || bad "linked helper" "did not open"
-  fi
-
   if term_public; then
     ok "terminal" "already up"
   else
@@ -317,23 +261,9 @@ cmd_up() {
     term_public && ok "terminal" "up" || bad "terminal" "failed — tail /tmp/stride-term.log"
   fi
 
-  if bridge_up; then
-    ok "bridge" "already up"
-  else
-    # Never leave a hand-started bridge next to the agent: only one can hold
-    # the port, and the loser dies looking like a broken service.
-    pkill -f "bridge/server.mjs" 2>/dev/null
-    sleep 1
-    if ! start_agent com.stride.bridge; then
-      ( node bridge/server.mjs >/tmp/stride-bridge.log 2>&1 & )
-    fi
-    for _ in $(seq 1 15); do bridge_up && break; sleep 1; done
-    bridge_up && ok "bridge" "up" || bad "bridge" "failed — tail /tmp/stride-bridge.log"
-  fi
-
   echo
   rule
-  if console_up && bridge_up && lh_debug_up; then
+  if console_up && term_public; then
     printf "  ${LIME}ready${OFF}  ${MUTE}%s${OFF}\n\n" "$PUBLIC_URL"
   else
     printf "  ${AMBER}partly up${OFF}  ${MUTE}stride status, or stride logs${OFF}\n\n"
@@ -343,14 +273,11 @@ cmd_up() {
 cmd_down() {
   head_ "stopping"
   launchctl bootout "gui/$(id -u)/com.stride.console" 2>/dev/null
-  launchctl bootout "gui/$(id -u)/com.stride.bridge" 2>/dev/null
   launchctl bootout "gui/$(id -u)/com.stride.term" 2>/dev/null
-  pkill -f "bridge/server.mjs" 2>/dev/null
   pkill -f "scripts/term-relay.mjs" 2>/dev/null
   ok "console" "stopped"
-  ok "bridge" "stopped"
   ok "terminal" "stopped"
-  echo "  Linked Helper and the funnel are left alone. Quit the app yourself if you want it closed."
+  echo "  The funnel is left alone."
   echo
 }
 
@@ -393,10 +320,6 @@ cmd_install() {
         "$HOME/Library/LaunchAgents/$job.plist" >/dev/null 2>&1
     fi
 
-    # A stray hand-started process holds the port and the agent then fails to
-    # bind, so clear those before handing the job to launchd.
-    [[ "$job" == "com.stride.bridge" ]] && pkill -f "bridge/server.mjs" 2>/dev/null
-
     # bootout returns before launchd has finished tearing the job down, and
     # bootstrapping into that gap fails silently. Wait for it to actually go.
     launchctl bootout "gui/$(id -u)/$job" 2>/dev/null
@@ -420,7 +343,7 @@ cmd_install() {
 
 cmd_logs() {
   echo "Ctrl-C to stop."
-  tail -f /tmp/stride-console.log /tmp/stride-bridge.log /tmp/stride-term.log /tmp/stride-pregen.log 2>/dev/null
+  tail -f /tmp/stride-console.log /tmp/stride-term.log /tmp/stride-pregen.log 2>/dev/null
 }
 
 cmd_link() {
@@ -450,7 +373,7 @@ case "${1:-up}" in
     echo "usage: stride [up|status|down|install|link|logs]"
     echo "  stride            start everything (safe to repeat)"
     echo "  stride status     what is up, what is not"
-    echo "  stride down       stop the console and the bridge"
+    echo "  stride down       stop the console and the terminal relay"
     echo "  stride install    start it all at login, and link this command"
     echo "  stride logs       tail everything"
     exit 1

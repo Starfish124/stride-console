@@ -136,8 +136,7 @@ answer:
   backoff if it dies, watches stdout for the QR/paired/logged-out moments,
   keeps `data/whatsapp-bridge.json` truthful.
 - `lib/whatsapp/store.ts` — read-only reads of the bridge's own
-  `messages.db`, the same posture `bridge/db.mjs` holds for Linked Helper's
-  database: never write someone else's store.
+  `messages.db`: never write someone else's store.
 - `lib/whatsapp/send.ts` — one POST to the bridge's `/api/send`.
 - `lib/whatsapp/config.ts` — the group JID and the founder allowlist.
 - `scripts/whatsapp-relay.mjs` — polls for new inbound, answers wake-worded

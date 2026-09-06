@@ -23,7 +23,7 @@ self.addEventListener("activate", (event) => {
  * How long a page may take before the offline shell is kinder than waiting.
  *
  * The console answers in about a tenth of a second, and its slowest honest
- * path — every figure on the dashboard with Linked Helper wedged — is under
+ * path — every figure on the dashboard, with the slowest source stalled — is under
  * three. Eight seconds is therefore far past "slow" and squarely in "this
  * machine is not coming back", which is the only case worth pre-empting. Set
  * it much tighter and a cold start after a deploy would be mistaken for the

@@ -1,10 +1,9 @@
 // Reading the Go bridge's own database.
 //
 // bridge/whatsapp keeps one SQLite file, store/messages.db, written by the
-// whatsmeow client as messages arrive — the same "read someone else's own
-// database, never write it" posture bridge/db.mjs already uses for Linked
-// Helper. Opened read-only; the bridge is the only writer, and writing
-// behind a running client's back is how you corrupt its state.
+// whatsmeow client as messages arrive. Read someone else's own database,
+// never write it: opened read-only, because the bridge is the only writer
+// and writing behind a running client's back is how you corrupt its state.
 //
 // Everything below is scoped to one chat: config.strideGroupJid(), the
 // shared founders' group. That is deliberate consolidation, not an
@@ -55,10 +54,9 @@ function open(): DatabaseSync {
   if (!fs.existsSync(DB_PATH)) {
     throw new WhatsAppUnavailable("The bridge has not paired yet — no messages.db on disk.");
   }
-  // node:sqlite's bundled types do not yet know the { readOnly } overload
-  // bridge/db.mjs uses at runtime (plain JS, unchecked). Same file, same
-  // intent — this module only ever calls .prepare(...).all()/.get() below,
-  // never a write.
+  // node:sqlite's bundled types do not yet know the { readOnly } overload,
+  // so the flag cannot be passed from TypeScript. The intent is enforced by
+  // this module instead: only .prepare(...).all()/.get() below, never a write.
   return new DatabaseSync(DB_PATH);
 }
 

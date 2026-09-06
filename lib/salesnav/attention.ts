@@ -1,6 +1,6 @@
 // What the email sequencer needs from a person right now.
 //
-// Same AttentionItem shape the Linked Helper pulse uses, so the dashboard
+// Same AttentionItem shape the lead pulse uses, so the dashboard
 // keeps one "what needs me" surface rather than growing a second widget with
 // its own idea of urgency. Everything here is derived from live state and
 // nothing is stored, so none of it can go stale.

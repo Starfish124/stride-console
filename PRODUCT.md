@@ -4,7 +4,7 @@ Compiled from the repo's own README, AGENTS.md and component commentary (the fou
 
 ## What it is
 
-The private operations console for Stride AI, a two-founder Dutch AI agency. One machine that runs their marketing (LinkedIn content pipeline with a deterministic voice gate), their website (SEO sweeps, articles), their outbound (Linked Helper campaigns, email sequencer), their sales admin (clients, calendar, events, event scout), their client delivery (workspaces, build sessions, Durabo discovery) and their shared memory (notes, brain, Ask Stride).
+The private operations console for Stride AI, a two-founder Dutch AI agency. One machine that runs their marketing (LinkedIn content pipeline with a deterministic voice gate), their website (SEO sweeps, articles), their outbound (Apollo lead generation, email sequencer), their sales admin (clients, calendar, events, event scout), their client delivery (workspaces, build sessions, Durabo discovery) and their shared memory (notes, brain, Ask Stride).
 
 ## Register
 

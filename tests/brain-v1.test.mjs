@@ -136,8 +136,8 @@ test("touch rows carry the client entity and skip empty notes", () => {
 
 test("reply rows keep only replies with a message", () => {
   const rows = rowsFromReplies([
-    { id: "r1", receivedAt: "2026-08-01", event: "replied", name: "Ana", headline: null, profileUrl: null, company: "Co", message: "yes please", campaign: null, handled: false, raw: {} },
-    { id: "r2", receivedAt: "2026-08-01", event: "connected", name: null, headline: null, profileUrl: null, company: null, message: null, campaign: null, handled: false, raw: {} },
+    { id: "r1", receivedAt: "2026-08-01", event: "replied", name: "Ana", headline: null, profileUrl: null, company: "Co", message: "yes please", handled: false, raw: {} },
+    { id: "r2", receivedAt: "2026-08-01", event: "connected", name: null, headline: null, profileUrl: null, company: null, message: null, handled: false, raw: {} },
   ]);
   assert.equal(rows.length, 1);
   assert.match(rows[0].subject, /Ana/);

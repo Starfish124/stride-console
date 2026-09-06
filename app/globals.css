@@ -309,7 +309,7 @@ button:active:not(:disabled) {
  *
  * Five dashboards on one rail. Scroll-snap does all of it: no script, no
  * state, no measurement. That is what lets every slide stay a server
- * component and lets the one slide that waits on Linked Helper keep its own
+ * component and lets a slide that waits on slower data keep its own
  * Suspense boundary without the page ever blocking on it.
  *
  * The rail's height is fixed on purpose. Skeleton and resolved panel occupy

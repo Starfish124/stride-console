@@ -1,5 +1,5 @@
 // The sequencer as a channel, so it answers "is this thing working" the same
-// way Linked Helper and the publishing API do.
+// way the publishing API does.
 //
 // Off is not an error. A dry run is the deliberate default, so it reports
 // "off by design" with the exact environment to set, in the same shape

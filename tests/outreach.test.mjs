@@ -133,7 +133,6 @@ test("a reply is read out of whatever shape Linked Helper posts", () => {
   assert.equal(reply.name, "Jane Doe", "nested person data must be found");
   assert.equal(reply.headline, "Ops lead");
   assert.equal(reply.message, "Sure, send it over.");
-  assert.equal(reply.campaign, "MKB ops Q3");
   assert.equal(reply.handled, false);
 });
 

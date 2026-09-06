@@ -28,7 +28,7 @@ const MAX_REPLIES = 2000;
 export interface Reply {
   id: string;
   receivedAt: string;
-  /** "replied", "connected", "person" — whatever LH2 said the event was. */
+  /** "replied", "connected", "person" — whatever the sender called it. */
   event: string;
   /**
    * Which way it came in. Optional so every record written before email
@@ -41,7 +41,6 @@ export interface Reply {
   company: string | null;
   /** What they actually wrote, when the payload carries it. */
   message: string | null;
-  campaign: string | null;
   handled: boolean;
   /** The untouched payload, so a renamed key is recoverable later. */
   raw: unknown;
@@ -72,7 +71,7 @@ function pick(body: Record<string, unknown>, keys: string[]): string | null {
   return null;
 }
 
-/** Flatten one level, since LH2 nests person data under varying parents. */
+/** Flatten one level, since senders nest person data under varying parents. */
 function flatten(body: Record<string, unknown>): Record<string, unknown> {
   const flat: Record<string, unknown> = { ...body };
   for (const [key, value] of Object.entries(body)) {
@@ -104,7 +103,6 @@ export function recordReply(body: unknown, channel: "linkedin" | "email" = "link
     profileUrl: pick(flat, ["profile_url", "profileUrl", "url", "link", "public_profile_url"]),
     company: pick(flat, ["company", "company_name", "companyName", "organization"]),
     message: pick(flat, ["message", "text", "reply", "reply_text", "last_message", "body"]),
-    campaign: pick(flat, ["campaign", "campaign_name", "campaignName"]),
     handled: false,
     raw: body,
   };

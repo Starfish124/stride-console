@@ -5,7 +5,7 @@ One word, from anywhere:
 ```bash
 stride              # start everything
 stride status       # what is up, what is not
-stride down         # stop the console and the bridge
+stride down         # stop the console and the terminal relay
 stride install      # start it all at login, and link this command
 stride logs         # tail everything at once
 ```
@@ -26,9 +26,8 @@ it a public address, but that address points here: it is a doorway, not a
 copy. When the Mac is off, asleep, or off the internet, the address stops
 answering for everyone, including Jort.
 
-The data is on this disk too. Drafts, campaigns, replies and the LinkedIn
-Helper database all live under `data/` and in Linked Helper's own folder.
-Nothing is mirrored anywhere.
+The data is on this disk too. Drafts, leads, replies and the client book all
+live under `data/`. Nothing is mirrored anywhere.
 
 What the phone does when it cannot reach the Mac depends on the install. The
 web app shows a branded offline screen rather than a browser error, because it
@@ -39,26 +38,25 @@ So: the Mac needs to stay on and awake for the app to work. Worth checking
 System Settings, Energy, that it is set never to sleep, and that "Wake for
 network access" is on.
 
-Linked Helper is the same story and then some. It only sends while it is
-running on this machine, so a sleeping Mac means a paused campaign.
+The email sequencer is the same story: it only sends while the console is
+running on this machine, so a sleeping Mac means a paused sequence.
 
-## The four parts
+## The three parts
 
 | Part | What it is | Fails as |
 |---|---|---|
 | console | Next.js on :3000 | the app does not load at all |
 | funnel | Tailscale publishing :3000 | works on the tailnet, dead from outside |
-| bridge | loopback API on :7455 | campaign pages go quiet, posts still work |
-| linked helper | the app, with `--remote-debugging-port=9222` | bridge sees nothing |
+| terminal | the relay behind `/term` | the phone's terminal goes quiet |
 
 They fail independently, which is why `status` reports each one rather than
 saying "started" and hoping.
 
-There is a fifth, and it is the one that trips people up: the **per-account
-instance**. Linked Helper spawns a separate app per running LinkedIn account,
-and that is where the campaign window and the AI drafts live. It only exists
-while a LinkedIn session is running. Creating a campaign from the phone needs
-it, so `status` reports it separately.
+There used to be two more — a loopback bridge on :7455 and Linked Helper
+itself, launched with a debugger port so the bridge could drive it. Apollo
+replaced both. It is an API and a browser tab, not a desktop app being
+driven through a debugger, so there is no daemon to keep alive and two fewer
+things that can be down.
 
 ## The password
 
@@ -83,10 +81,4 @@ Read `status` first; it names the fix in the line.
 
 - **console down** — `tail /tmp/stride-console.log`. After a `git pull` it is
   usually a missing build: `npm ci && npm run build`.
-- **linked helper open without the debugger port** — it was launched from the
-  Dock. The flag only applies to a fresh start, so `./scripts/stride up` quits
-  and reopens it.
-- **bridge down** — `tail /tmp/stride-bridge.log`. A hand-started
-  `node bridge/server.mjs` holding :7455 will make the agent fail to bind;
-  `up` clears that before starting.
 - **funnel off** — `tailscale funnel --bg 3000`.
