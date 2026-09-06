@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   listClients,
   listDrafts,
@@ -9,237 +10,278 @@ import {
   listPostLog,
   listSignups,
 } from "@/lib/store";
-import { listAudits, listKeywords } from "@/lib/seo/store";
+import { listProjects, listIssues, listRuns } from "@/lib/workspace/store";
+import { listAudits } from "@/lib/seo/store";
 import { unhandledCount } from "@/lib/outreach/replies";
-import { buildCalendar, overdue, todayISO, upcoming } from "@/lib/calendar";
-import { buildQuickMenu, buildStats } from "@/lib/dashboard";
-import { interviewPulse } from "@/lib/durabo/io";
+import { buildCalendar, todayISO, KIND_LABELS } from "@/lib/calendar";
+import { buildStats } from "@/lib/dashboard";
+import { workspaceActions } from "@/lib/workspace-overview";
 import { Header } from "@/components/ui";
+import {
+  PageHeading,
+  SectionHeading,
+  EmptyState,
+} from "@/components/WorkspaceUI";
+import { WeekPeek } from "@/components/WeekPeek";
+import { MobileBrief } from "@/components/MobileBrief";
+import { ActionQueue } from "@/components/ActionQueue";
 import { RecipeCard } from "@/components/RecipeCard";
 import { MythQuickAdd } from "@/components/MythQuickAdd";
 import { InboxBanner } from "@/components/InboxBanner";
-import { LeadsPanel } from "@/components/LeadsPanel";
-import { SeoPanel } from "@/components/SeoPanel";
-import { PipelinePanel } from "@/components/PipelinePanel";
-import { CalendarPanel } from "@/components/CalendarPanel";
-import { ContentPanel } from "@/components/ContentPanel";
-import { PanelDeck } from "@/components/PanelDeck";
-import type { DeckSlide } from "@/components/PanelDeck";
-import { StatBand } from "@/components/StatBand";
-import { QuickMenu } from "@/components/QuickMenu";
-import { RightNow } from "@/components/RightNow";
-import { AskStride } from "@/components/AskStride";
-import { OutreachBand } from "@/components/OutreachBand";
-import { BrainHub, type Thought } from "@/components/BrainHub";
-import { BootIntro } from "@/components/BootIntro";
+import { Glyph } from "@/components/icons";
+import { Mark } from "@/components/Ramp";
+import { STAGE_LABELS, invoiceTotal } from "@/lib/types";
 import { euro } from "@/lib/company";
-import { invoiceTotal } from "@/lib/types";
-import { readLeads, contactableCount } from "@/lib/leads";
-import { leadsStat, leadsTile } from "@/lib/dashboard";
-import { StatTile } from "@/components/StatBand";
-import { QuickTileCard } from "@/components/QuickMenu";
-
 export const dynamic = "force-dynamic";
-
-const RECIPES = [
-  { index: "01", id: "tldr", title: "The Stride TLDR." },
-  { index: "02", id: "news", title: "Breaking This Week." },
-  { index: "03", id: "myth", title: "Myth vs Reality." },
-] as const;
-
-export default async function Dashboard() {
+export default function Dashboard() {
   const today = todayISO();
-  const allDrafts = listDrafts();
-  const drafts = allDrafts.slice(0, 8);
-  const unusedMyths = listMyths().filter((m) => !m.used).length;
-  const inbox = listInbox().filter((e) => !e.seen);
-
   const clients = listClients();
+  const drafts = listDrafts();
   const postLog = listPostLog();
-  const audits = listAudits();
-  // Local disk, so the front page reads it inline. This used to sit behind a
-  // Suspense boundary because the number came over the Linked Helper bridge.
-  const leadBook = readLeads();
-  const leadCount = leadBook.leads.length;
-  const leadsWithEmail = contactableCount(leadBook.leads);
-
-  // Nothing here asks a remote machine anything. Every figure below comes off
-  // local disk, so the page ships at once and the three pieces that do need
-  // the bridge stream in behind their own boundaries.
-  //
-  // The licence lapse is deliberately not fed in: it is the one calendar date
-  // that costs a round trip, and it is a machine deadline rather than a person
-  // — the LinkedIn panel announces it, and the calendar page still plots it.
+  const audits = listAudits().filter((a) => a.ok);
+  const notes = listNotes();
   const calendar = buildCalendar(
-    {
-      clients,
-      events: listEvents(),
-      signups: listSignups(),
-      postLog,
-    },
+    { clients, events: listEvents(), signups: listSignups(), postLog },
     today,
   );
-
-  const owed = overdue(calendar, today);
-  // Late first, then what is coming — five is a glance, more is a page.
-  const nextUp = [...owed, ...upcoming(calendar, today, 5)]
-    .filter((e) => e.actionable)
-    .slice(0, 5);
-
-  const repliesWaiting = unhandledCount();
-  const draftsWaiting = allDrafts.filter((d) => d.status === "draft").length;
-  const seoFindings = audits
-    .flatMap((a) => a.findings ?? [])
-    .filter((f) => f.severity === "high").length;
-
-  // The headline count is what a person is holding up, and each of these is
-  // counted once. Queue lengths are deliberately not in it — 870 profiles
-  // waiting on a machine is not 870 things waiting on a founder.
-  const waiting = owed.length + repliesWaiting + draftsWaiting;
-
-  const notes = listNotes();
-  const tiles = buildQuickMenu({
-    replies: repliesWaiting,
-    clients: clients.length,
-    late: owed.length,
-    draftsWaiting,
-    seoFindings,
-    toBuild: notes.filter((n) => n.lane === "todo").length,
-    interviews: interviewPulse(),
-  });
-
-  // Only pages that answered. A route that returned 404 has no on-page score
-  // to average, and counting it as zero says the page reads badly when the
-  // truth is that it is not there. The sweep scores it this way too, and the
-  // front page disagreeing with /seo about one number is worse than either
-  // number being slightly off.
-  const scored = audits.filter((a) => a.ok);
-
+  const actions = workspaceActions(calendar, drafts, unhandledCount(), today);
+  const upcoming = calendar
+    .filter((e) => e.actionable && e.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 4);
+  const activeClients = clients
+    .filter((c) => c.stage !== "past")
+    .sort((a, b) => (a.nextStep ?? "9999").localeCompare(b.nextStep ?? "9999"))
+    .slice(0, 4);
   const stats = buildStats({
     clients,
     postLog,
-    siteScore: scored.length
-      ? Math.round(scored.reduce((s, a) => s + a.score, 0) / scored.length)
+    siteScore: audits.length
+      ? Math.round(audits.reduce((s, a) => s + a.score, 0) / audits.length)
       : null,
-    pages: scored.length,
-    drafts: allDrafts.length,
-    awaitingApproval: draftsWaiting,
+    pages: audits.length,
+    drafts: drafts.length,
+    awaitingApproval: drafts.filter((d) => d.status === "draft").length,
   });
-
-  // Worst first, which is the order the rest of the page already uses. The
-  // website slide is left out entirely when the SEO suite has never run,
-  // rather than parked on the rail as an empty stop.
-  const slides: DeckSlide[] = [
-    {
-      id: "deck-leads",
-      label: "Leads",
-      panel: <LeadsPanel />,
-    },
-    // SeoPanel draws nothing at all when the suite has never run, and an
-    // empty snap point is worse than a missing one.
-    ...(audits.length > 0 || listKeywords().length > 0
-      ? [{ id: "deck-website", label: "Website", panel: <SeoPanel /> }]
-      : []),
-    { id: "deck-pipeline", label: "Pipeline", panel: <PipelinePanel clients={clients} /> },
-    {
-      id: "deck-calendar",
-      label: "Calendar",
-      panel: <CalendarPanel entries={nextUp} today={today} />,
-    },
-    {
-      id: "deck-content",
-      label: "Content",
-      panel: (
-        <ContentPanel drafts={drafts} postLog={postLog} unusedMyths={unusedMyths} />
-      ),
-    },
-  ];
-
-  // The brain's thoughts: the six most important things in orbit around the
-  // mark. Each one is real, current, and a link — never decoration.
-  const invoicesAll = listInvoices();
-  const unpaidInvoices = invoicesAll.filter((i) => i.status === "sent");
+  const unpaid = listInvoices().filter((i) => i.status === "sent");
+  const projects = listProjects().filter(p => clients.some(c => c.id === p.clientId && c.stage !== "past")).sort((a,b) => b.updatedAt.localeCompare(a.updatedAt));
+  const issues = listIssues().filter(i => i.status === "open");
+  const runs = listRuns();
   const doing = notes.filter((n) => n.lane === "doing");
-  const inPlay = clients
-    .filter((c) => c.stage !== "past")
-    .sort((a, b) => (a.nextStep ?? "9999").localeCompare(b.nextStep ?? "9999"));
-  const thoughts: Thought[] = [];
-  if (owed.length > 0) thoughts.push({ value: String(owed.length), label: "overdue", href: "/calendar" });
-  if (draftsWaiting > 0) thoughts.push({ value: String(draftsWaiting), label: "drafts waiting on you", href: "/" });
-  if (repliesWaiting > 0) thoughts.push({ value: String(repliesWaiting), label: "replies to answer", href: "/outreach#replies" });
-  if (inPlay[0]) thoughts.push({ value: inPlay[0].company || inPlay[0].name, label: inPlay[0].nextStepNote ?? "next step", href: `/clients/${inPlay[0].id}` });
-  if (doing[0]) thoughts.push({ label: `Building: ${doing[0].text.slice(0, 40)}`, href: "/notes" });
-  if (unpaidInvoices.length > 0) thoughts.push({ value: euro(unpaidInvoices.reduce((s, i) => s + invoiceTotal(i), 0)), label: "out the door, unpaid", href: "/invoices" });
-  const upcomingEntry = nextUp.find((e) => e.date >= today);
-  if (upcomingEntry) thoughts.push({ value: upcomingEntry.date.slice(5), label: upcomingEntry.title.slice(0, 40), href: upcomingEntry.href ?? "/calendar" });
-  if (thoughts.length === 0) thoughts.push({ label: "Quiet brain. Radar has the sources.", href: "/radar" });
-
-  const headline =
-    waiting === 0 ? "Nothing needs you." : `${waiting} ${waiting === 1 ? "thing needs" : "things need"} you.`;
-
+  const date = new Date(`${today}T12:00:00Z`).toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
   return (
-    <div className="min-h-screen bg-paper">
-      {/* The curtain: mark, two breaths, fly to the hub. Once per session. */}
-      <BootIntro />
+    <div className="min-h-dvh bg-paper">
       <Header />
-      <main className="mx-auto max-w-5xl px-4 pb-20 sm:px-6">
-        {/* The work first. Everything below this is the console reporting on
-            itself; this is the one block that asks for something back. */}
-        <OutreachBand />
-
-        {/* Then the console as a brain having thoughts: the mark at centre,
-            the six things that matter in orbit. Nobody who installed this
-            needs to be sold it — but everybody needs to see what is moving. */}
-        <BrainHub
-          date={new Date(`${today}T00:00:00Z`).toLocaleDateString("en-GB", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-          })}
-          headline={headline}
-          accent={waiting === 0 ? "you" : String(waiting)}
-          thoughts={thoughts}
-        />
-        <InboxBanner entries={inbox} />
-
-        {/* Where everything stands, before what there is to do about it. */}
-        <StatBand stats={stats}>
-          <StatTile
-            stat={leadsStat(leadCount, leadsWithEmail)}
-            className="col-span-2 lg:col-span-1"
-          />
-        </StatBand>
-
-        {/* What the two of you are actually doing, before the machinery. */}
-        <RightNow doing={doing} clients={clients} invoices={invoicesAll} />
-
-        {/* And the way to act on any of it. */}
-        <QuickMenu
-          tiles={tiles}
-          leading={
-            <QuickTileCard tile={leadsTile(leadCount)} />
-          }
-        />
-
-        {/* Every channel's dashboard, on one rail. */}
-        <PanelDeck slides={slides} />
-
-        {/* The deck reports. These two write, so they stay where a thumb can
-            reach them without a sideways gesture. */}
-        <p className="eyebrow mb-2 text-slate">Write something</p>
-        <section className="grid gap-2 md:grid-cols-3">
-          {RECIPES.map((r) => (
-            <RecipeCard key={r.id} {...r} />
+      <main id="workspace-content" tabIndex={-1} className="workspace-main overview-main">
+        <PageHeading
+          eyebrow="YOUR WORKSPACE"
+          title="Your day, in focus."
+          description="A clear view of the work that moves Stride forward."
+        >
+          <span className="today-label">
+            <Glyph name="IconTime" size={16} />
+            {date}
+          </span>
+          <Link className="primary-button" href="#create-content">
+            <Glyph name="IconBolt" size={17} />
+            Create content
+          </Link>
+        </PageHeading>
+        <MobileBrief date={date} actions={actions} activeClients={clients.filter(c => c.stage !== "past").length} approvals={drafts.filter(d => d.status === "draft").length} unpaid={unpaid.length} doing={doing.length} />
+        <InboxBanner entries={listInbox().filter((e) => !e.seen)} />
+        <div className="overview-top">
+          <ActionQueue actions={actions} />
+          <aside className="overview-aside">
+            <Link href="/ask" className="assistant-card">
+              <div className="assistant-card-top">
+                <span>BUILT AROUND YOUR WORK</span>
+                <Glyph name="IconChevron" size={18} />
+              </div>
+              <Mark size={66} />
+              <h2>
+                A little clarity. <br />A lot of possibility.
+              </h2>
+              <p>
+                Ask Stride about your clients, projects, and what needs to
+                happen next.
+              </p>
+              <span className="assistant-cta">
+                Let’s figure it out
+                <Glyph name="IconAskStride" size={19} />
+              </span>
+            </Link>
+            <Link href="/notes" className="working-note">
+              <span className="action-icon">
+                <Glyph name="IconBranch" size={19} />
+              </span>
+              <span>
+                <strong>
+                  {doing.length
+                    ? `${doing.length} ${doing.length === 1 ? "idea" : "ideas"} in progress`
+                    : "Make space for your next idea"}
+                </strong>
+                <small>
+                  {doing[0]?.text ?? "Capture it on your shared notes board."}
+                </small>
+              </span>
+              <Glyph name="IconChevron" size={15} />
+            </Link>
+          </aside>
+        </div>
+        <WeekPeek today={today} entries={calendar.filter(e => e.actionable && e.date >= today).map(e => ({ id:e.id, date:e.date, title:e.title, detail:e.detail, href:e.href ?? "/calendar" }))} />
+        <section className="overview-metrics" aria-label="Business overview">
+          {stats.map((s) => (
+            <Link key={s.label} href={s.href}>
+              <span className="metric-label">
+                {s.label}
+                <Glyph name="IconChevron" size={13} />
+              </span>
+              <strong>{s.value}</strong>
+              <small>{s.note}</small>
+            </Link>
           ))}
         </section>
-
-        <p className="eyebrow mb-2 mt-7 text-slate">Heard a myth</p>
-        <MythQuickAdd />
-
-        {/* The model, without leaving the front page. It reads the console's
-            own state, so "what needs me" gets an answer in a sentence. */}
-        <p className="eyebrow mb-2 mt-10 text-slate">Ask Stride</p>
-        <AskStride />
+        <div className="overview-bottom">
+          <section className="workspace-panel">
+            <SectionHeading
+              title="Client work"
+              subtitle="Keep your next step close."
+              href="/clients"
+              action="All clients"
+            />
+            {activeClients.length === 0 ? (
+              <EmptyState
+                icon="IconTeam"
+                title="Good work starts with a conversation"
+                description="Add your first client or lead. Their next steps and project work will stay together here."
+                href="/clients"
+                action="Add your first client"
+              />
+            ) : (
+              <ul className="client-work-list">
+                {activeClients.map((c) => (
+                  <li key={c.id}>
+                    <Link href={`/clients/${c.id}`}>
+                      <span className="client-monogram">
+                        {(c.company || c.name).slice(0, 2).toUpperCase()}
+                      </span>
+                      <span className="action-copy">
+                        <strong>{c.company || c.name}</strong>
+                        <small>
+                          {c.nextStepNote ||
+                            c.need ||
+                            "Set the next step to keep things moving."}
+                        </small>
+                      </span>
+                      <span className="status-label">
+                        {STAGE_LABELS[c.stage]}
+                      </span>
+                      <Glyph name="IconChevron" size={15} />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+          <section className="workspace-panel agenda-panel" id="home-agenda">
+            <SectionHeading
+              title="Coming up"
+              href="/calendar"
+              action="Calendar"
+            />
+            {upcoming.length === 0 ? (
+              <EmptyState
+                icon="IconTime"
+                title="A little breathing room"
+                description="Client follow-ups and event dates will appear here as you plan them."
+                href="/calendar"
+                action="View your calendar"
+                compact
+              />
+            ) : (
+              <ul className="agenda-list">
+                {upcoming.map((e) => (
+                  <li key={e.id}>
+                    <Link href={e.href ?? "/calendar"}>
+                      <span className="agenda-date">
+                        <small>
+                          {new Date(`${e.date}T12:00:00Z`).toLocaleDateString(
+                            "en-GB",
+                            { month: "short" },
+                          )}
+                        </small>
+                        <strong>{e.date.slice(8)}</strong>
+                      </span>
+                      <span>
+                        <small>{KIND_LABELS[e.kind]}</small>
+                        <strong>{e.title}</strong>
+                        <span>{e.detail}</span>
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {unpaid.length > 0 && (
+              <Link href="/invoices" className="invoice-reminder">
+                <Glyph name="IconLineageDoc" size={17} />
+                {euro(unpaid.reduce((s, i) => s + invoiceTotal(i), 0))} awaiting
+                payment
+                <Glyph name="IconChevron" size={14} />
+              </Link>
+            )}
+          </section>
+        </div>
+        {projects.length > 0 && <section className="workspace-panel home-projects">
+          <SectionHeading title="Work in motion" subtitle="Your recently updated projects." href="/workspaces" action="All projects" />
+          <ul className="client-work-list">{projects.slice(0,4).map(project => {
+            const client = clients.find(c => c.id === project.clientId);
+            const openIssues = issues.filter(i => i.projectId === project.id).length;
+            const running = runs.some(r => r.projectId === project.id && r.status === "running");
+            return <li key={project.id}><Link href={`/clients/${project.clientId}/workspace`}>
+              <span className="action-icon"><Glyph name="IconIntegration" size={20} /></span>
+              <span className="action-copy"><strong>{project.name}</strong><small>{client?.company || client?.name}{running ? " · Running now" : openIssues ? ` · ${openIssues} open issues` : " · Open workspace"}</small></span>
+              <Glyph name="IconChevron" size={16} />
+            </Link></li>;
+          })}</ul>
+        </section>}
+        <section id="create-content" className="create-section">
+          <SectionHeading
+            title="Make something worth sharing"
+            subtitle="Your sources. Your voice. Ready for your review."
+            href="/library"
+            action="Content library"
+          />
+          <div className="recipe-grid">
+            {[
+              { index: "01", id: "tldr", title: "The Stride TLDR" },
+              { index: "02", id: "news", title: "Breaking This Week" },
+              { index: "03", id: "myth", title: "Myth vs Reality" },
+            ].map((r) => (
+              <RecipeCard key={r.id} {...r} />
+            ))}
+          </div>
+          <details className="myth-capture">
+            <summary>
+              Heard a myth worth unpacking?{" "}
+              <span>
+                {listMyths().filter((m) => !m.used).length} in your bank
+              </span>
+            </summary>
+            <div>
+              <MythQuickAdd />
+            </div>
+          </details>
+        </section>
+        <footer className="workspace-footnote">
+          <Mark size={16} />
+          <span>Make room for more.</span>
+          <Link href="/settings">Manage your workspace</Link>
+        </footer>
       </main>
     </div>
   );

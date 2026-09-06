@@ -30,7 +30,12 @@ export function LabPanel() {
   }
 
   useEffect(() => {
-    refresh();
+    const controller = new AbortController();
+    fetch("/api/lab", { cache: "no-store", signal: controller.signal })
+      .then(res => res.json())
+      .then(body => setSandboxes(body.sandboxes ?? []))
+      .catch(error => { if (error.name !== "AbortError") setError("Could not load the lab. Please try again."); });
+    return () => controller.abort();
   }, []);
 
   async function create() {

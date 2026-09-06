@@ -260,6 +260,7 @@ export function AskStride({ clientId, clientName }: { clientId?: string; clientN
         className="sticky bottom-[calc(84px+env(safe-area-inset-bottom))] flex gap-2 sm:bottom-6"
       >
         <input
+          aria-label="Ask Stride a question"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder={mic.recording ? "Listening." : clientName ? `Ask anything about ${clientName}` : "Ask anything about the console"}

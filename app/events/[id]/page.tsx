@@ -27,7 +27,7 @@ export default async function EventPage({
   return (
     <div className="min-h-screen bg-paper">
       <Header />
-      <main className="mx-auto max-w-5xl px-6 pb-20">
+      <main id="workspace-content" tabIndex={-1} className="mx-auto max-w-5xl px-6 pb-20">
         <section className="py-12">
           <p className="eyebrow text-slate">1 Min AI Pitch</p>
           <h1 className="display mt-3 text-3xl text-ink">{event.title}.</h1>

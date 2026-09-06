@@ -56,7 +56,8 @@ function Chip({
     <button
       type="button"
       onClick={onClick}
-      className={`eyebrow rounded-full border px-3 py-1.5 transition-colors ${
+      aria-pressed={active}
+      className={`eyebrow min-h-11 rounded-lg border px-3 py-1.5 transition-colors ${
         active
           ? "border-indigo bg-indigo text-white"
           : "border-line bg-white text-slate hover:border-indigo hover:text-indigo"
@@ -118,6 +119,7 @@ export function LibraryBrowser({
       <section className="mt-8 flex flex-col gap-3">
         <input
           type="search"
+          aria-label="Search content library"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search every post you ever wrote."

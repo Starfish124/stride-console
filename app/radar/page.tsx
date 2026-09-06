@@ -8,7 +8,7 @@ export default async function RadarPage() {
   return (
     <div className="min-h-screen bg-paper">
       <Header />
-      <main className="mx-auto max-w-5xl px-6 pb-20">
+      <main id="workspace-content" tabIndex={-1} className="mx-auto max-w-5xl px-6 pb-20">
         <section className="relative overflow-hidden py-10">
           <p className="eyebrow text-slate">Radar</p>
           <h1 className="display mt-3 text-4xl text-ink">

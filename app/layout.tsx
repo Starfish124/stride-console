@@ -1,3 +1,6 @@
+import { cookies } from "next/headers";
+import { AUTH_COOKIE, getPassword, sessionToken } from "@/lib/auth";
+import { AppearanceSync } from "@/components/Appearance";
 import type { Metadata, Viewport } from "next";
 // Self-hosted, deliberately: the console is installed to a home screen and
 // must render the same with no network, which rules out Google-hosted fonts.
@@ -7,22 +10,22 @@ import "@fontsource/plus-jakarta-sans/400.css";
 import "@fontsource/plus-jakarta-sans/500.css";
 import "@fontsource/plus-jakarta-sans/600.css";
 import "@fontsource/plus-jakarta-sans/700.css";
-import "@fontsource/playfair-display/500.css";
-import "@fontsource/playfair-display/500-italic.css";
-import "@fontsource/playfair-display/600.css";
+import "@fontsource/plus-jakarta-sans/800.css";
+import "@fontsource/jetbrains-mono/400.css";
 import "@fontsource/jetbrains-mono/500.css";
 import "./globals.css";
 import { SWRegister } from "@/components/SWRegister";
 import { TabBar } from "@/components/TabBar";
 import { AppMenu } from "@/components/AppMenu";
-import { RailOffset, SideNav } from "@/components/SideNav";
+import { RailOffset, SideNav, WorkspaceSkipLink } from "@/components/SideNav";
 import { VoiceAmbient } from "@/components/VoiceAmbient";
 import { listClients } from "@/lib/store";
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "Stride Console",
-  description: "The Stride AI marketing machine.",
+  description:
+    "Your clients, projects, content, and next steps. Together in Stride Console.",
   appleWebApp: {
     capable: true,
     title: "Stride",
@@ -43,23 +46,33 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const authenticated =
+    (await cookies()).get(AUTH_COOKIE)?.value ===
+    (await sessionToken(getPassword()));
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
       <body className="min-h-full bg-paper text-ink">
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var p=localStorage.getItem('stride-appearance')||'system';document.documentElement.dataset.theme=(p==='dark'||(p==='system'&&matchMedia('(prefers-color-scheme: dark)').matches))?'dark':'light'}catch(e){}})()`,
+          }}
+        />
+        <AppearanceSync />
         <SWRegister />
         {/* AppMenu owns the sheet and shares its open state down the tree, so
             the header pill and the tab bar's last slot drive the same one. */}
         <AppMenu>
+          <WorkspaceSkipLink />
           {/* Wide screens get the persistent rail; the sheet stays for ⌘K.
               The rail also carries one door per live client, read here on the
-              server so the client list never ships to the login page. */}
+              server only for authenticated founders. */}
           <SideNav
-            clients={listClients()
+            clients={(authenticated ? listClients() : [])
               .filter((c) => c.stage !== "past")
               .slice(0, 8)
               .map((c) => ({ id: c.id, label: c.company || c.name }))}

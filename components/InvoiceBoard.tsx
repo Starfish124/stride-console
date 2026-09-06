@@ -13,6 +13,7 @@ import {
 } from "@/lib/types";
 import { COMPANY, euro } from "@/lib/company";
 import { DeleteX } from "@/components/DeleteX";
+import { Glyph } from "@/components/icons";
 import { toast } from "sonner";
 
 /**
@@ -31,7 +32,12 @@ interface DraftLine {
   rate: string;
 }
 
-const EMPTY_LINE: DraftLine = { title: "", subtitle: "", qty: "1", rate: "125" };
+const EMPTY_LINE: DraftLine = {
+  title: "",
+  subtitle: "",
+  qty: "1",
+  rate: "125",
+};
 
 const STATUS_TONE: Record<InvoiceStatus, string> = {
   draft: "bg-line/40 text-slate",
@@ -39,7 +45,13 @@ const STATUS_TONE: Record<InvoiceStatus, string> = {
   paid: "bg-lime/20 text-ink",
 };
 
-function InvoiceForm({ clients, done }: { clients: Client[]; done: () => void }) {
+function InvoiceForm({
+  clients,
+  done,
+}: {
+  clients: Client[];
+  done: () => void;
+}) {
   const router = useRouter();
   const [clientId, setClientId] = useState("");
   const [name, setName] = useState("");
@@ -47,10 +59,13 @@ function InvoiceForm({ clients, done }: { clients: Client[]; done: () => void })
   const [address, setAddress] = useState("");
   const [email, setEmail] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [dueDays, setDueDays] = useState(String(COMPANY.invoice.defaultDueDays));
+  const [dueDays, setDueDays] = useState(
+    String(COMPANY.invoice.defaultDueDays),
+  );
   const [reference, setReference] = useState("");
   const [lines, setLines] = useState<DraftLine[]>([{ ...EMPTY_LINE }]);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
   const field =
     "w-full rounded-input border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-mute focus:border-indigo/40";
@@ -63,7 +78,11 @@ function InvoiceForm({ clients, done }: { clients: Client[]; done: () => void })
     const rate = num(l.rate);
     const touched = Boolean(l.title.trim() || l.qty.trim() || l.rate.trim());
     const valid =
-      Boolean(l.title.trim()) && Number.isFinite(qty) && qty > 0 && Number.isFinite(rate) && rate >= 0;
+      Boolean(l.title.trim()) &&
+      Number.isFinite(qty) &&
+      qty > 0 &&
+      Number.isFinite(rate) &&
+      rate >= 0;
     return { line: l, qty, rate, touched, valid };
   });
   // A row someone started but that cannot be billed blocks the whole form —
@@ -77,7 +96,10 @@ function InvoiceForm({ clients, done }: { clients: Client[]; done: () => void })
       qty: r.qty,
       rate: r.rate,
     }));
-  const total = invoiceTotal({ lines: parsed, vatRate: COMPANY.invoice.vatRate });
+  const total = invoiceTotal({
+    lines: parsed,
+    vatRate: COMPANY.invoice.vatRate,
+  });
 
   function pickClient(id: string) {
     setClientId(id);
@@ -95,29 +117,48 @@ function InvoiceForm({ clients, done }: { clients: Client[]; done: () => void })
         ev.preventDefault();
         if (busy || !name.trim() || parsed.length === 0) return;
         setBusy(true);
-        const res = await fetch("/api/invoices", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            clientId: clientId || undefined,
-            billTo: { name, attn, address, email },
-            date,
-            dueDays: Number(dueDays),
-            reference,
-            lines: parsed,
-            vatRate: COMPANY.invoice.vatRate,
-          }),
-        });
-        setBusy(false);
-        if (res.ok) {
-          const created = (await res.json()) as Invoice;
-          done();
-          router.push(`/invoices/${created.id}/print`);
+        setError("");
+        try {
+          const res = await fetch("/api/invoices", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              clientId: clientId || undefined,
+              billTo: { name, attn, address, email },
+              date,
+              dueDays: Number(dueDays),
+              reference,
+              lines: parsed,
+              vatRate: COMPANY.invoice.vatRate,
+            }),
+          });
+          if (!res.ok) throw new Error();
+          if (res.ok) {
+            const created = (await res.json()) as Invoice;
+            done();
+            router.push(`/invoices/${created.id}/print`);
+          }
+        } catch {
+          setError(
+            "The invoice wasn’t saved. Your details are still here; please try again.",
+          );
+        } finally {
+          setBusy(false);
         }
       }}
     >
+      {error && (
+        <p role="alert" className="form-error">
+          {error}
+        </p>
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
-        <select value={clientId} onChange={(e) => pickClient(e.target.value)} className={field}>
+        <select
+          aria-label="Choose a client"
+          value={clientId}
+          onChange={(e) => pickClient(e.target.value)}
+          className={field}
+        >
           <option value="">From the client book…</option>
           {clients.map((c) => (
             <option key={c.id} value={c.id}>
@@ -125,11 +166,30 @@ function InvoiceForm({ clients, done }: { clients: Client[]; done: () => void })
             </option>
           ))}
         </select>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Billed to (company)" aria-label="Billed to" className={field} />
-        <input value={attn} onChange={(e) => setAttn(e.target.value)} placeholder="Attn. (person or Finance)" aria-label="Attention of" className={field} />
-        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="finance@client.nl" aria-label="Billing email" className={field} />
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Billed to (company)"
+          aria-label="Billed to"
+          className={field}
+        />
+        <input
+          value={attn}
+          onChange={(e) => setAttn(e.target.value)}
+          placeholder="Attn. (person or Finance)"
+          aria-label="Attention of"
+          className={field}
+        />
+        <input
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="finance@client.nl"
+          aria-label="Billing email"
+          className={field}
+        />
       </div>
       <textarea
+        aria-label="Billing address"
         value={address}
         onChange={(e) => setAddress(e.target.value)}
         placeholder={"Street 1\n1000 AA Amsterdam"}
@@ -139,58 +199,108 @@ function InvoiceForm({ clients, done }: { clients: Client[]; done: () => void })
       <div className="grid gap-3 sm:grid-cols-3">
         <label className="block">
           <span className="eyebrow text-[10px] text-slate">Invoice date</span>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`${field} mt-1`} />
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className={`${field} mt-1`}
+          />
         </label>
         <label className="block">
           <span className="eyebrow text-[10px] text-slate">Due, days</span>
-          <input type="number" min={1} value={dueDays} onChange={(e) => setDueDays(e.target.value)} className={`${field} mt-1`} />
+          <input
+            type="number"
+            min={1}
+            value={dueDays}
+            onChange={(e) => setDueDays(e.target.value)}
+            className={`${field} mt-1`}
+          />
         </label>
         <label className="block">
           <span className="eyebrow text-[10px] text-slate">Reference / PO</span>
-          <input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="PO-0000" className={`${field} mt-1`} />
+          <input
+            value={reference}
+            onChange={(e) => setReference(e.target.value)}
+            placeholder="PO-0000"
+            className={`${field} mt-1`}
+          />
         </label>
       </div>
 
       <div className="space-y-2">
         <span className="eyebrow text-[10px] text-slate">Lines</span>
         {lines.map((line, i) => (
-          <div key={i} className="grid grid-cols-[1fr_5rem_6rem_auto] gap-2">
+          <div key={i} className="invoice-line-grid">
             <div className="space-y-1">
               <input
+                aria-label={`Line ${i + 1} description`}
                 value={line.title}
-                onChange={(e) => setLines(lines.map((l, j) => (j === i ? { ...l, title: e.target.value } : l)))}
+                onChange={(e) =>
+                  setLines(
+                    lines.map((l, j) =>
+                      j === i ? { ...l, title: e.target.value } : l,
+                    ),
+                  )
+                }
                 placeholder="AI workflow discovery"
                 className={field}
               />
               <input
+                aria-label={`Line ${i + 1} details`}
                 value={line.subtitle}
-                onChange={(e) => setLines(lines.map((l, j) => (j === i ? { ...l, subtitle: e.target.value } : l)))}
+                onChange={(e) =>
+                  setLines(
+                    lines.map((l, j) =>
+                      j === i ? { ...l, subtitle: e.target.value } : l,
+                    ),
+                  )
+                }
                 placeholder="Workshop, mapping and instrumentation plan"
                 className={`${field} text-[13px]`}
               />
             </div>
             <input
               value={line.qty}
-              onChange={(e) => setLines(lines.map((l, j) => (j === i ? { ...l, qty: e.target.value } : l)))}
+              onChange={(e) =>
+                setLines(
+                  lines.map((l, j) =>
+                    j === i ? { ...l, qty: e.target.value } : l,
+                  ),
+                )
+              }
               placeholder="Qty"
               inputMode="decimal"
               aria-label="Quantity"
-              aria-invalid={rows[i]?.touched && !rows[i].valid ? true : undefined}
+              aria-invalid={
+                rows[i]?.touched && !rows[i].valid ? true : undefined
+              }
               className={`${field} ${rows[i]?.touched && !rows[i].valid ? "border-amber-deep" : ""}`}
             />
             <input
               value={line.rate}
-              onChange={(e) => setLines(lines.map((l, j) => (j === i ? { ...l, rate: e.target.value } : l)))}
+              onChange={(e) =>
+                setLines(
+                  lines.map((l, j) =>
+                    j === i ? { ...l, rate: e.target.value } : l,
+                  ),
+                )
+              }
               placeholder="Rate €"
               inputMode="decimal"
               aria-label="Rate in euro"
-              aria-invalid={rows[i]?.touched && !rows[i].valid ? true : undefined}
+              aria-invalid={
+                rows[i]?.touched && !rows[i].valid ? true : undefined
+              }
               className={`${field} ${rows[i]?.touched && !rows[i].valid ? "border-amber-deep" : ""}`}
             />
             <button
               type="button"
-              aria-label="Remove line"
-              onClick={() => setLines(lines.length > 1 ? lines.filter((_, j) => j !== i) : lines)}
+              aria-label={`Remove line ${i + 1}`}
+              onClick={() =>
+                setLines(
+                  lines.length > 1 ? lines.filter((_, j) => j !== i) : lines,
+                )
+              }
               className="pressable self-start rounded px-2 py-2 text-sm text-mute hover:text-amber"
             >
               ✕
@@ -209,17 +319,22 @@ function InvoiceForm({ clients, done }: { clients: Client[]; done: () => void })
       <div className="flex items-center justify-between gap-3 border-t border-line pt-3">
         <p className="text-sm text-slate">
           Total incl. BTW {COMPANY.invoice.vatRate}%:{" "}
-          <span className="font-mono font-semibold text-ink">{euro(total)}</span>
+          <span className="font-mono font-semibold text-ink">
+            {euro(total)}
+          </span>
           {broken.length > 0 && (
             <span className="block font-semibold text-amber-deep">
-              {broken.length === 1 ? "One line" : `${broken.length} lines`} can&apos;t be billed yet —
-              every started line needs a title, a quantity and a rate.
+              {broken.length === 1 ? "One line" : `${broken.length} lines`}{" "}
+              can&apos;t be billed yet — every started line needs a title, a
+              quantity and a rate.
             </span>
           )}
         </p>
         <button
           type="submit"
-          disabled={busy || !name.trim() || parsed.length === 0 || broken.length > 0}
+          disabled={
+            busy || !name.trim() || parsed.length === 0 || broken.length > 0
+          }
           className="pressable rounded-full bg-indigo px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
         >
           Create and open
@@ -229,9 +344,17 @@ function InvoiceForm({ clients, done }: { clients: Client[]; done: () => void })
   );
 }
 
-export function InvoiceBoard({ invoices, clients }: { invoices: Invoice[]; clients: Client[] }) {
+export function InvoiceBoard({
+  invoices,
+  clients,
+}: {
+  invoices: Invoice[];
+  clients: Client[];
+}) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const [saveFailed, setSaveFailed] = useState(false);
 
@@ -258,42 +381,95 @@ export function InvoiceBoard({ invoices, clients }: { invoices: Invoice[]; clien
     .filter((i) => i.status === "sent")
     .reduce((s, i) => s + invoiceTotal(i), 0);
 
+  const visible = invoices.filter(
+    (i) =>
+      (statusFilter === "all" || i.status === statusFilter) &&
+      `${i.number} ${i.billTo.name}`
+        .toLowerCase()
+        .includes(query.toLowerCase()),
+  );
   return (
     <div>
+      <div className="collection-toolbar">
+        <label className="collection-search">
+          <Glyph name="IconSearch" size={18} />
+          <input
+            aria-label="Search invoices"
+            placeholder="Search client or invoice number…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </label>
+        <select
+          aria-label="Filter invoice status"
+          className="stage-select"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
+          <option value="all">All statuses</option>
+          {INVOICE_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {INVOICE_STATUS_LABELS[s]}
+            </option>
+          ))}
+        </select>
+      </div>
       <div className="flex items-center justify-between gap-3">
         <p className="eyebrow text-slate">
-          {invoices.length} invoice{invoices.length === 1 ? "" : "s"}
+          {visible.length} invoice{invoices.length === 1 ? "" : "s"}
           {outstanding > 0 && <> · {euro(outstanding)} out the door, unpaid</>}
         </p>
         <button
           type="button"
           onClick={() => setAdding((a) => !a)}
-          className="pressable rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold text-ink hover:border-indigo/30 hover:text-indigo"
+          className="primary-button"
         >
           {adding ? "Close" : "New invoice"}
         </button>
       </div>
 
       {saveFailed && (
-        <p className="mt-2 text-sm font-semibold text-amber-deep">
+        <p role="alert" className="mt-2 text-sm font-semibold text-amber-deep">
           That change did not save. Check the connection and try again.
         </p>
       )}
 
-      {adding && <InvoiceForm clients={clients} done={() => setAdding(false)} />}
+      {adding && (
+        <InvoiceForm clients={clients} done={() => setAdding(false)} />
+      )}
 
       {invoices.length === 0 && !adding && (
         <div className="mt-6 rounded-card border border-dashed border-line bg-white/60 p-8 text-center text-slate">
           <p className="display text-lg text-ink">Nothing billed yet.</p>
           <p className="mt-1 text-sm">
-            New invoice → pick the client → lines → it opens print-ready in the approved template.
+            Create your first invoice, add the line items, and open a
+            print-ready copy.
           </p>
         </div>
       )}
 
+      {invoices.length > 0 && visible.length === 0 && (
+        <div className="workspace-empty">
+          <h3>No matching invoices</h3>
+          <p>Try another search or clear your filters.</p>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => {
+              setQuery("");
+              setStatusFilter("all");
+            }}
+          >
+            Clear filters
+          </button>
+        </div>
+      )}
       <ul className="mt-4 space-y-2">
-        {invoices.map((inv) => (
-          <li key={inv.id} className="flex flex-wrap items-center gap-3 rounded-card border border-line bg-white px-4 py-3">
+        {visible.map((inv) => (
+          <li
+            key={inv.id}
+            className="flex flex-wrap items-center gap-3 rounded-card border border-line bg-white px-4 py-3"
+          >
             <Link
               href={`/invoices/${inv.id}/print`}
               className="font-mono text-sm font-semibold text-indigo underline-offset-2 hover:underline"
@@ -303,8 +479,12 @@ export function InvoiceBoard({ invoices, clients }: { invoices: Invoice[]; clien
             <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
               {inv.billTo.name}
             </span>
-            <span className="font-mono text-sm text-ink">{euro(invoiceTotal(inv))}</span>
-            <span className="eyebrow hidden text-[10px] text-mute sm:inline">{inv.date}</span>
+            <span className="font-mono text-sm text-ink">
+              {euro(invoiceTotal(inv))}
+            </span>
+            <span className="eyebrow hidden text-[10px] text-mute sm:inline">
+              {inv.date}
+            </span>
             <span className="flex gap-1">
               {INVOICE_STATUSES.map((s) => (
                 <button
@@ -312,8 +492,10 @@ export function InvoiceBoard({ invoices, clients }: { invoices: Invoice[]; clien
                   type="button"
                   onClick={() => void setStatus(inv.id, s)}
                   aria-pressed={inv.status === s}
-                  className={`pressable min-h-[36px] rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                    inv.status === s ? STATUS_TONE[s] : "text-slate hover:text-ink"
+                  className={`pressable min-h-[44px] rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                    inv.status === s
+                      ? STATUS_TONE[s]
+                      : "text-slate hover:text-ink"
                   }`}
                 >
                   {INVOICE_STATUS_LABELS[s]}

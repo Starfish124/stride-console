@@ -1,3 +1,4 @@
+import { AppearanceSettings } from "@/components/Appearance";
 import { claudeCliPath, writerMode } from "@/lib/pipeline/write";
 import { lessons } from "@/lib/pipeline/memory";
 import { Header } from "@/components/ui";
@@ -7,7 +8,7 @@ import { ChannelHealth } from "@/components/ChannelHealth";
 import { WhatsAppPanel } from "@/components/WhatsAppPanel";
 import { VoiceWakeToggle } from "@/components/VoiceWakeToggle";
 import { IconAskStride, IconTime, IconTuneLoop } from "@/components/icons";
-import { Ramp } from "@/components/Ramp";
+import { PageHeading } from "@/components/WorkspaceUI";
 
 export const dynamic = "force-dynamic";
 
@@ -20,13 +21,11 @@ export default async function SettingsPage() {
   return (
     <div className="min-h-screen bg-paper">
       <Header />
-      <main className="mx-auto max-w-3xl px-6 pb-20">
-        <section className="py-12">
-          <Ramp width={52} className="mb-4 text-indigo" />
-          <p className="eyebrow text-slate">Settings</p>
-          <h1 className="display mt-3 text-3xl text-ink">Sources and keys.</h1>
-        </section>
+      <main id="workspace-content" tabIndex={-1} className="workspace-main">
+        <PageHeading eyebrow="Workspace" title="Settings" description="Make Stride work for you. Manage appearance, connections, and preferences."/>
 
+
+        <AppearanceSettings/>
         <section className="mb-10 card-glass rounded-card border border-line bg-white p-6">
           <p className="eyebrow flex items-center gap-2 text-slate"><IconAskStride size={15} className="text-indigo" />Writing engine</p>
           {mode === "subscription" ? (

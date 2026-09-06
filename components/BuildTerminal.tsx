@@ -42,7 +42,6 @@ export default function BuildTerminal({
     let gone = false;
     let evicted = false;
     let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
-    let keepaliveTimer: ReturnType<typeof setInterval> | undefined;
 
     const term = new Terminal({
       fontSize: 13,
@@ -123,7 +122,7 @@ export default function BuildTerminal({
     window.visualViewport?.addEventListener("resize", refit);
     // Browsers cannot send WS pings; an idempotent resize keeps the funnel's
     // proxies from cutting a quiet session.
-    keepaliveTimer = setInterval(sendResize, 30_000);
+    const keepaliveTimer = setInterval(sendResize, 30_000);
 
     connect();
     term.focus();

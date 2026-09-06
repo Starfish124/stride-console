@@ -33,7 +33,7 @@ export default async function WorkspacePage({
   return (
     <div className="min-h-screen bg-paper">
       <Header />
-      <main className="mx-auto max-w-6xl px-6 pb-20">
+      <main id="workspace-content" tabIndex={-1} className="mx-auto max-w-6xl px-6 pb-20">
         <section className="py-10">
           <Ramp width={52} className="mb-4 text-indigo" />
           <Link href={`/clients/${client.id}`} className="eyebrow text-slate hover:text-indigo">

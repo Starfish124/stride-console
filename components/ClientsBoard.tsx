@@ -1,305 +1,409 @@
 "use client";
-
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useOptimistic, useState, useTransition } from "react";
 import {
   CLIENT_STAGES,
-  STAGE_HINTS,
   STAGE_LABELS,
   type Client,
   type ClientStage,
 } from "@/lib/types";
-import { IconTeam, IconTime } from "@/components/icons";
-
-/**
- * Everyone in play, in columns by stage.
- *
- * A pipeline board, not a CRM. The columns are the five things a founder
- * actually says out loud, moving somebody along is one tap on the row, and
- * the only field the board itself insists on is the next step — because an
- * agreed next step with no date is how a lead goes quiet without anyone
- * noticing it happened.
- */
-
-const STAGE_TONE: Record<ClientStage, string> = {
-  lead: "text-slate",
-  talking: "text-signal",
-  proposal: "text-amber",
-  client: "text-lime",
-  past: "text-mute",
+import { Glyph } from "@/components/icons";
+import { cn } from "@/lib/cn";
+const EMPTY = {
+  name: "",
+  company: "",
+  stage: "lead" as ClientStage,
+  source: "",
+  need: "",
+  value: "",
+  nextStep: "",
 };
-
-function euros(n: number): string {
-  return `€${n.toLocaleString("en-GB")}`;
-}
-
-/** Today, in the same yyyy-mm-dd shape the date input produces. */
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function dueLabel(date: string): { text: string; overdue: boolean } {
-  const now = today();
-  if (date < now) return { text: "Overdue", overdue: true };
-  if (date === now) return { text: "Today", overdue: true };
-  const days = Math.round((Date.parse(date) - Date.parse(now)) / 86_400_000);
-  if (days === 1) return { text: "Tomorrow", overdue: false };
-  if (days <= 14) return { text: `In ${days} days`, overdue: false };
-  return {
-    text: new Date(date).toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
-    overdue: false,
-  };
-}
-
+const euros = (n: number) => `€${n.toLocaleString("en-GB")}`;
 export function ClientsBoard({ clients }: { clients: Client[] }) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
-
-  // Moving somebody is the most-tapped thing on this page, and it used to mean
-  // a round trip to the Mac before the card visibly moved. Over Tailscale from
-  // a phone that reads as a dead button, so the card moves now and the server
-  // catches up. If the write fails the refresh puts it back where it was.
+  const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [stageFilter, setStageFilter] = useState("all");
+  const [view, setView] = useState("list");
+  const [form, setForm] = useState(EMPTY);
   const [shown, moveOptimistically] = useOptimistic(
     clients,
     (current: Client[], moved: { id: string; stage: ClientStage }) =>
-      current.map((c) => (c.id === moved.id ? { ...c, stage: moved.stage } : c)),
+      current.map((c) =>
+        c.id === moved.id ? { ...c, stage: moved.stage } : c,
+      ),
   );
-  const [, startTransition] = useTransition();
-  const [form, setForm] = useState({
-    name: "",
-    company: "",
-    stage: "lead" as ClientStage,
-    source: "",
-    need: "",
-    value: "",
-    nextStep: "",
-  });
-
+  const [moving, startTransition] = useTransition();
+  const filtered = shown.filter(
+    (c) =>
+      (stageFilter === "all" || c.stage === stageFilter) &&
+      `${c.name} ${c.company} ${c.need ?? ""} ${c.owner ?? ""}`
+        .toLowerCase()
+        .includes(query.toLowerCase()),
+  );
   async function add(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.name.trim() && !form.company.trim()) return;
+    if (busy) return;
+    if (!form.name.trim() && !form.company.trim()) {
+      setError("Add a contact name or company to continue.");
+      return;
+    }
     setBusy(true);
-    const res = await fetch("/api/clients", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    setBusy(false);
-    if (!res.ok) return;
-    setForm({
-      name: "",
-      company: "",
-      stage: "lead",
-      source: "",
-      need: "",
-      value: "",
-      nextStep: "",
-    });
-    setAdding(false);
-    router.refresh();
+    setError("");
+    try {
+      const res = await fetch("/api/clients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          value: form.value.trim() || undefined,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      setForm(EMPTY);
+      setAdding(false);
+      router.refresh();
+    } catch {
+      setError(
+        "Your client wasn’t saved. Your details are still here; please try again.",
+      );
+    } finally {
+      setBusy(false);
+    }
   }
-
   function move(client: Client, stage: ClientStage) {
-    // useOptimistic requires its update to happen inside a transition, and the
-    // await has to live in the same one or React drops the optimistic state
-    // the moment the first one settles.
+    setError("");
     startTransition(async () => {
       moveOptimistically({ id: client.id, stage });
-      await fetch(`/api/clients/${client.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stage }),
-      });
-      router.refresh();
+      try {
+        const res = await fetch(`/api/clients/${client.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stage }),
+        });
+        if (!res.ok) throw new Error();
+        router.refresh();
+      } catch {
+        setError(
+          `Couldn’t update ${client.company || client.name}. Please try again.`,
+        );
+      }
     });
   }
-
-  const field =
-    "w-full rounded-input border border-line bg-white px-3 py-2 text-sm text-ink outline-none placeholder:text-slate/60 focus:border-indigo";
-
+  function stageSelect(c: Client) {
+    return (
+      <select
+        className="stage-select"
+        aria-label={`Stage for ${c.company || c.name}`}
+        value={c.stage}
+        disabled={moving}
+        onChange={(e) => move(c, e.target.value as ClientStage)}
+      >
+        {CLIENT_STAGES.map((s) => (
+          <option key={s} value={s}>
+            {STAGE_LABELS[s]}
+          </option>
+        ))}
+      </select>
+    );
+  }
+  function nextStep(c: Client) {
+    if (!c.nextStep)
+      return <span className="text-slate">No next step set</span>;
+    const overdue = c.nextStep < new Date().toISOString().slice(0, 10);
+    return (
+      <span className={cn(overdue && "text-amber-deep")}>
+        <span>
+          {new Date(`${c.nextStep}T12:00:00Z`).toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "short",
+          })}
+        </span>
+        {overdue && <span className="due-tag">Overdue</span>}
+      </span>
+    );
+  }
   return (
-    <div>
-      <div className="mb-6 flex items-center justify-between gap-3">
-        <p className="eyebrow text-slate">
-          {shown.length} in the book
-        </p>
-        <button
-          type="button"
-          onClick={() => setAdding((v) => !v)}
-          className="rounded-input border border-ink bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-midnight"
-        >
-          {adding ? "Never mind." : "Add somebody."}
-        </button>
-      </div>
-
-      {adding && (
-        <form
-          onSubmit={add}
-          className="card-glass mb-8 grid gap-3 rounded-card border border-line bg-white p-5 sm:grid-cols-2"
-        >
+    <div className="client-workspace">
+      <div className="collection-toolbar">
+        <label className="collection-search">
+          <Glyph name="IconSearch" size={18} />
           <input
-            autoFocus
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            placeholder="Their name"
-            className={field}
+            aria-label="Search clients"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search clients, people, or work…"
           />
-          <input
-            value={form.company}
-            onChange={(e) => setForm({ ...form, company: e.target.value })}
-            placeholder="Company"
-            className={field}
-          />
+        </label>
+        <div className="collection-controls">
           <select
-            value={form.stage}
-            onChange={(e) => setForm({ ...form, stage: e.target.value as ClientStage })}
-            className={field}
+            aria-label="Filter by stage"
+            value={stageFilter}
+            onChange={(e) => setStageFilter(e.target.value)}
           >
+            <option value="all">All stages</option>
             {CLIENT_STAGES.map((s) => (
               <option key={s} value={s}>
                 {STAGE_LABELS[s]}
               </option>
             ))}
           </select>
-          <input
-            value={form.source}
-            onChange={(e) => setForm({ ...form, source: e.target.value })}
-            placeholder="Where they came from"
-            className={field}
-          />
-          <input
-            value={form.need}
-            onChange={(e) => setForm({ ...form, need: e.target.value })}
-            placeholder="What they need, in your words"
-            className={`${field} sm:col-span-2`}
-          />
-          <input
-            value={form.value}
-            onChange={(e) => setForm({ ...form, value: e.target.value })}
-            inputMode="numeric"
-            placeholder="Deal size in euros, if it has been said"
-            className={field}
-          />
-          <label className="flex items-center gap-2 text-sm text-slate">
-            <span className="shrink-0">Next step</span>
-            <input
-              type="date"
-              value={form.nextStep}
-              onChange={(e) => setForm({ ...form, nextStep: e.target.value })}
-              className={field}
-            />
-          </label>
+          <div className="view-switch" role="group" aria-label="Client view">
+            <button
+              type="button"
+              aria-label="List view"
+              aria-pressed={view === "list"}
+              onClick={() => setView("list")}
+            >
+              <Glyph name="IconLayers" size={16} />
+              <span>List</span>
+            </button>
+            <button
+              type="button"
+              aria-label="Board view"
+              aria-pressed={view === "board"}
+              onClick={() => setView("board")}
+            >
+              <Glyph name="IconGrid" size={16} />
+              <span>Board</span>
+            </button>
+          </div>
           <button
-            type="submit"
-            disabled={busy}
-            className="rounded-input border border-ink bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-midnight disabled:opacity-50 sm:col-span-2"
+            type="button"
+            className="primary-button"
+            aria-expanded={adding}
+            aria-controls="new-client-form"
+            onClick={() => {
+              setAdding(!adding);
+              setError("");
+            }}
           >
-            {busy ? "Saving." : "Add them."}
+            {adding ? "Close form" : "Add client"}
+            <span aria-hidden>{adding ? "−" : "+"}</span>
           </button>
-        </form>
-      )}
-
-      {shown.length === 0 && !adding && (
-        <p className="card-glass flex items-center gap-2.5 rounded-card border border-line bg-white px-5 py-4 text-[15px] text-slate">
-          <IconTeam size={18} className="shrink-0 text-mute" />
-          Nobody in the book yet. Add the first lead and it lands here.
+        </div>
+      </div>
+      {error && (
+        <p role="alert" className="form-error">
+          {error}
         </p>
       )}
-
-      {/* Columns on a desk, one under the other on a phone: a five-wide board
-          on a 402px screen is five slivers nobody can read. */}
-      <div className="grid gap-6 lg:grid-cols-5">
-        {CLIENT_STAGES.map((stage) => {
-          const inStage = shown.filter((c) => c.stage === stage);
-          if (inStage.length === 0 && stage === "past") return null;
-          const total = inStage.reduce((sum, c) => sum + (c.value ?? 0), 0);
-          return (
-            <section key={stage}>
-              <div className="mb-1 flex items-baseline justify-between gap-2">
-                <h2 className="display text-[17px] text-ink">{STAGE_LABELS[stage]}</h2>
-                <span className={`tabular text-[13px] ${STAGE_TONE[stage]}`}>
-                  {inStage.length}
-                </span>
-              </div>
-              <div className={`slant-rule mb-2.5 w-8 ${STAGE_TONE[stage]}`} />
-              {/* The hint explains a column you are looking at. An empty one
-                  has nothing to look at, and five paragraphs about columns
-                  with nobody in them is most of a phone screen. */}
-              {inStage.length > 0 && (
-                <p className="mb-3 text-[12px] leading-snug text-mute">
-                  {STAGE_HINTS[stage]}
-                  {total > 0 && ` ${euros(total)} in this column.`}
-                </p>
-              )}
-
-              <ul className="flex flex-col gap-2.5">
-                {inStage.map((c) => {
-                  const due = c.nextStep ? dueLabel(c.nextStep) : null;
-                  return (
-                    <li
-                      key={c.id}
-                      className="card-glass rounded-card border border-line bg-white"
-                    >
-                      <Link
-                        href={`/clients/${c.id}`}
-                        className="block px-4 pb-2 pt-3.5 hover:bg-paper"
-                      >
-                        <span className="block text-[15px] font-semibold leading-snug text-ink">
-                          {c.company}
-                        </span>
-                        <span className="mt-0.5 block text-[13px] leading-snug text-slate">
-                          {c.name}
-                          {c.role && ` · ${c.role}`}
-                        </span>
-                        {c.need && (
-                          <span className="mt-1.5 block text-[13px] leading-snug text-slate">
-                            {c.need}
-                          </span>
-                        )}
-                        <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-                          {c.value ? (
-                            <span className="tabular text-[13px] font-semibold text-ink">
-                              {euros(c.value)}
-                            </span>
-                          ) : null}
-                          {due && (
-                            <span
-                              className={`flex items-center gap-1 text-[12px] ${
-                                due.overdue ? "font-semibold text-amber" : "text-slate"
-                              }`}
-                            >
-                              <IconTime size={13} className="shrink-0" />
-                              {due.text}
-                            </span>
-                          )}
-                        </span>
-                      </Link>
-
-                      {/* Moving somebody is the most common edit on this page,
-                          so it does not require opening them first. */}
-                      <div className="flex items-center gap-1 border-t border-line px-2 py-1.5">
-                        {CLIENT_STAGES.filter((s) => s !== stage).map((s) => (
-                          <button
-                            key={s}
-                            type="button"
-                            onClick={() => move(c, s)}
-                            title={`Move to ${STAGE_LABELS[s]}`}
-                            className="rounded px-1.5 py-0.5 text-[11px] font-semibold text-mute hover:bg-indigo-tint hover:text-indigo"
-                          >
-                            {STAGE_LABELS[s].split(" ")[0]}
-                          </button>
-                        ))}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          );
-        })}
+      {adding && (
+        <form id="new-client-form" onSubmit={add} className="workspace-form">
+          <div className="form-heading">
+            <h2>A new relationship</h2>
+            <p>A name or company is all you need to get started.</p>
+          </div>
+          <div className="form-grid">
+            {[
+              { key: "name", label: "Contact name", placeholder: "Full name" },
+              { key: "company", label: "Company", placeholder: "Company name" },
+              {
+                key: "source",
+                label: "Source",
+                placeholder: "Referral, website, event…",
+              },
+              {
+                key: "value",
+                label: "Deal value (€)",
+                placeholder: "Optional",
+              },
+            ].map((f) => (
+              <label key={f.key}>
+                {f.label}
+                <input
+                  autoFocus={f.key === "name"}
+                  value={form[f.key as keyof typeof form]}
+                  onChange={(e) =>
+                    setForm({ ...form, [f.key]: e.target.value })
+                  }
+                  placeholder={f.placeholder}
+                  inputMode={f.key === "value" ? "decimal" : undefined}
+                />
+              </label>
+            ))}
+            <label>
+              Stage
+              <select
+                value={form.stage}
+                onChange={(e) =>
+                  setForm({ ...form, stage: e.target.value as ClientStage })
+                }
+              >
+                {CLIENT_STAGES.map((s) => (
+                  <option key={s} value={s}>
+                    {STAGE_LABELS[s]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Next step date
+              <input
+                type="date"
+                value={form.nextStep}
+                onChange={(e) => setForm({ ...form, nextStep: e.target.value })}
+              />
+            </label>
+            <label className="full-width">
+              What do they need?
+              <textarea
+                rows={2}
+                value={form.need}
+                onChange={(e) => setForm({ ...form, need: e.target.value })}
+                placeholder="A few words about the work ahead"
+              />
+            </label>
+          </div>
+          <div className="form-actions">
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => setAdding(false)}
+              disabled={busy}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="primary-button" disabled={busy}>
+              {busy ? "Saving…" : "Save client"}
+            </button>
+          </div>
+        </form>
+      )}
+      <div className="collection-caption" aria-live="polite">
+        <span>
+          {filtered.length}{" "}
+          {filtered.length === 1 ? "relationship" : "relationships"}
+          {query || stageFilter !== "all" ? ` of ${shown.length}` : ""}
+        </span>
+        <span>Every conversation, a next step.</span>
       </div>
+      {filtered.length === 0 ? (
+        <div className="workspace-panel workspace-empty">
+          <span className="empty-icon">
+            <Glyph name="IconTeam" size={26} />
+          </span>
+          <h3>
+            {clients.length === 0
+              ? "Your next relationship starts here"
+              : "No matching clients"}
+          </h3>
+          <p>
+            {clients.length === 0
+              ? "Keep contacts, conversations, and next steps together. Add a client or lead to get started."
+              : "Try a different search or clear your filters."}
+          </p>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => {
+              if (clients.length === 0) setAdding(true);
+              else {
+                setQuery("");
+                setStageFilter("all");
+              }
+            }}
+          >
+            {clients.length === 0 ? "Add your first client" : "Clear filters"}
+          </button>
+        </div>
+      ) : view === "list" ? (
+        <div className="workspace-table-wrap">
+          <table className="workspace-table">
+            <caption className="sr-only">
+              Clients and leads with stage, value and next step
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Company / contact</th>
+                <th scope="col">Stage</th>
+                <th scope="col">Value</th>
+                <th scope="col">Next step</th>
+                <th scope="col">
+                  <span className="sr-only">Open client</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((c) => (
+                <tr key={c.id}>
+                  <td>
+                    <Link className="table-client" href={`/clients/${c.id}`}>
+                      <span className="client-monogram">
+                        {(c.company || c.name).slice(0, 2).toUpperCase()}
+                      </span>
+                      <span>
+                        <strong>{c.company || c.name}</strong>
+                        <small>
+                          {c.company ? c.name : c.need || "Contact"}
+                        </small>
+                      </span>
+                    </Link>
+                  </td>
+                  <td>{stageSelect(c)}</td>
+                  <td className="tabular-nums">
+                    {c.value !== undefined ? euros(c.value) : "—"}
+                  </td>
+                  <td>{nextStep(c)}</td>
+                  <td>
+                    <Link
+                      className="table-open"
+                      aria-label={`Open ${c.company || c.name}`}
+                      href={`/clients/${c.id}`}
+                    >
+                      <Glyph name="IconChevron" size={18} />
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="client-kanban">
+          {CLIENT_STAGES.filter(
+            (s) => stageFilter === "all" || stageFilter === s,
+          ).map((stage) => (
+            <section key={stage} className="kanban-column">
+              <h2>
+                {STAGE_LABELS[stage]}
+                <span className="count-badge">
+                  {filtered.filter((c) => c.stage === stage).length}
+                </span>
+              </h2>
+              <ul>
+                {filtered
+                  .filter((c) => c.stage === stage)
+                  .map((c) => (
+                    <li key={c.id}>
+                      <Link href={`/clients/${c.id}`}>
+                        <span className="client-monogram">
+                          {(c.company || c.name).slice(0, 2).toUpperCase()}
+                        </span>
+                        <h3>{c.company || c.name}</h3>
+                        <p>{c.company ? c.name : c.need}</p>
+                        {c.need && <p>{c.need}</p>}
+                        <strong>
+                          {c.value !== undefined
+                            ? euros(c.value)
+                            : "Value not set"}
+                        </strong>
+                        <small>{nextStep(c)}</small>
+                      </Link>
+                      {stageSelect(c)}
+                    </li>
+                  ))}
+              </ul>
+              {!filtered.some((c) => c.stage === stage) && (
+                <p className="kanban-empty">No clients at this stage</p>
+              )}
+            </section>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

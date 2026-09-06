@@ -81,6 +81,7 @@ export function WorkspaceSearch() {
         }}
       >
         <input
+          aria-label="Search workspace files"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search every client's code"

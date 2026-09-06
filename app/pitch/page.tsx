@@ -10,7 +10,7 @@ export default async function PitchPage() {
 
   return (
     <div className="min-h-screen bg-paper">
-      <main className="relative mx-auto max-w-xl overflow-hidden px-6 pb-20">
+      <main id="workspace-content" tabIndex={-1} className="relative mx-auto max-w-xl overflow-hidden px-6 pb-20">
         <section className="py-14">
           <Wordmark height={34} />
           <p className="eyebrow mt-8 text-slate">1 Min AI Pitch</p>

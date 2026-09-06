@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Header } from "@/components/ui";
+import { PageHeading } from "@/components/WorkspaceUI";
 import { SequenceEditor } from "@/components/SequenceEditor";
 import { ManualQueue } from "@/components/ManualQueue";
 import { TemplateRequeue } from "@/components/TemplateRequeue";
@@ -135,12 +136,12 @@ export default async function OutreachPage({
   return (
     <div className="min-h-screen bg-paper">
       <Header />
-      <main className="mx-auto max-w-3xl px-6 pb-20">
-        <div className="flex flex-wrap items-baseline justify-between gap-3 py-6">
-          <div>
-            <p className="eyebrow text-slate">Apollo outreach</p>
-            <h1 className="display mt-1 text-[26px] text-ink">Sequences and the queue</h1>
-          </div>
+      <main id="workspace-content" tabIndex={-1} className="workspace-main">
+        <PageHeading
+          eyebrow="Growth"
+          title="Outreach"
+          description="Apollo sequences and the queue: what is enrolled, what is waiting, and what came back."
+        >
           <div className="flex flex-wrap gap-2">
             <Link
               href="/leads"
@@ -155,7 +156,7 @@ export default async function OutreachPage({
               New sequence
             </Link>
           </div>
-        </div>
+        </PageHeading>
 
         <div className="mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-y border-line py-3">
           <EngineLight />

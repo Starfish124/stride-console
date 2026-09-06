@@ -34,7 +34,7 @@ export default function GraphPage() {
   return (
     <div className="min-h-screen bg-paper">
       <Header />
-      <main className="mx-auto max-w-7xl px-6 pb-20">
+      <main id="workspace-content" tabIndex={-1} className="mx-auto max-w-7xl px-6 pb-20">
         {/* The drawing is the point of this page, so the words above it are
             kept to what a first-time viewer needs and no more. Anything taller
             pushes the graph under the fold, which is where it was. */}
