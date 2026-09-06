@@ -3,7 +3,7 @@ import { SequenceEditor } from "@/components/SequenceEditor";
 import { listSequences } from "@/lib/outreach/sequence";
 import { listReplies } from "@/lib/outreach/replies";
 import { AiDraftQueue } from "@/components/AiDraftQueue";
-import { Ramp } from "@/components/Ramp";
+import { PageHeading } from "@/components/WorkspaceUI";
 
 export const dynamic = "force-dynamic";
 
@@ -18,18 +18,9 @@ export default async function OutreachPage() {
   return (
     <div className="min-h-screen bg-paper">
       <Header />
-      <main className="mx-auto max-w-3xl px-6 pb-20">
-        <section className="py-10">
-          <Ramp width={52} className="mb-4 text-indigo" />
-          <p className="eyebrow text-slate">Outreach</p>
-          <h1 className="display mt-3 text-3xl text-ink">The words you send.</h1>
-          <p className="mt-3 text-[15px] text-slate">
-            The console keeps the copy, so what goes out in a message answers
-            to the same voice guide as what goes out in a post. Linked Helper
-            sends the LinkedIn steps. Email steps are sent by the console
-            itself, and the stop switch for those is on the sequencer page.
-          </p>
-        </section>
+      <main id="workspace-content" tabIndex={-1} className="workspace-main">
+        <PageHeading eyebrow="Growth" title="Outreach" description="Keep conversations moving with clear sequences, reviewed drafts, and timely replies."/>
+
 
         {unhandled.length > 0 && (
           <section

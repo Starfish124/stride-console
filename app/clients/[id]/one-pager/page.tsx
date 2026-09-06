@@ -61,7 +61,7 @@ export default async function OnePager({
         <PrintButton />
       </div>
 
-      <main className="sheet mx-auto my-6 max-w-[210mm] bg-white px-[18mm] py-[16mm] text-ink shadow-[0_1px_2px_rgba(16,17,22,0.05),0_24px_60px_-24px_rgba(16,17,22,0.3)] print:my-0 print:shadow-none">
+      <main id="workspace-content" tabIndex={-1} className="sheet mx-auto my-6 max-w-[210mm] bg-white px-[18mm] py-[16mm] text-ink shadow-[0_1px_2px_rgba(16,17,22,0.05),0_24px_60px_-24px_rgba(16,17,22,0.3)] print:my-0 print:shadow-none">
         <header className="flex items-start justify-between gap-6 border-b border-line pb-6">
           <div>
             <Mark size={30} className="text-indigo" />

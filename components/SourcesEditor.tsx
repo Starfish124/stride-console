@@ -108,18 +108,21 @@ export function SourcesEditor() {
         className="mt-4 grid gap-2 card-glass rounded-card border border-line bg-white p-5 sm:grid-cols-[1fr_1.6fr_auto_auto_auto]"
       >
         <input
+          aria-label="Source name"
           value={draft.name}
           onChange={(e) => setDraft({ ...draft, name: e.target.value })}
           placeholder="Name"
           className="rounded-input border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-indigo"
         />
         <input
+          aria-label="Source URL"
           value={draft.url}
           onChange={(e) => setDraft({ ...draft, url: e.target.value })}
           placeholder="https://feed-or-page-url"
           className="rounded-input border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-indigo"
         />
         <select
+          aria-label="Source type"
           value={draft.kind}
           onChange={(e) => setDraft({ ...draft, kind: e.target.value })}
           className="rounded-input border border-line bg-paper px-2 py-2 text-sm outline-none"
@@ -128,6 +131,7 @@ export function SourcesEditor() {
           <option value="page">Page</option>
         </select>
         <select
+          aria-label="Source tier"
           value={draft.tier}
           onChange={(e) => setDraft({ ...draft, tier: e.target.value })}
           className="rounded-input border border-line bg-paper px-2 py-2 text-sm outline-none"

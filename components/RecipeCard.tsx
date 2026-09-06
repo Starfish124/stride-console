@@ -51,9 +51,10 @@ export function RecipeCard({
         <span className="eyebrow text-slate">{index}</span>
       </span>
       <h2 className="display mt-2.5 flex-1 text-[17px] text-ink">{title}</h2>
-      {error ? <p className="mt-2 text-[11px] text-indigo-deep">{error}</p> : null}
+      {error ? <p role="alert" className="mt-2 text-xs text-indigo-deep">{error}</p> : null}
       <button
         onClick={run}
+        aria-label={`Generate ${title} draft`}
         disabled={busy}
         className="mt-3 rounded-input bg-indigo px-4 py-2 text-[13px] font-semibold text-white hover:bg-indigo-deep disabled:opacity-60"
       >

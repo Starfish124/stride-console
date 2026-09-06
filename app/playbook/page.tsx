@@ -70,7 +70,7 @@ export default async function PlaybookPage() {
   return (
     <div className="min-h-screen bg-paper">
       <Header />
-      <main className="mx-auto max-w-5xl px-6 pb-20">
+      <main id="workspace-content" tabIndex={-1} className="mx-auto max-w-5xl px-6 pb-20">
         <section className="relative overflow-hidden py-10">
           <Ramp width={52} className="mb-4 text-indigo" />
           <p className="eyebrow text-slate">Playbook</p>

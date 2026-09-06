@@ -7,8 +7,8 @@ Baseline: Starfish124/stride-console, main at 683777d. Fresh local clone at /Use
 - [x] Confirm proposed direction and any user constraints.
 - [x] Identify approaches: visual refresh; workflow-led redesign (recommended); configurable dashboard (greater complexity).
 - [x] Obtain approval of the proposed design.
-- [ ] Write and commit the approved design document.
-- [ ] Prepare the implementation plan and proceed with implementation.
+- [x] Write and commit the approved design document.
+- [x] Prepare the implementation plan and proceed with implementation.
 
 ## Observations
 - The homepage stacks BrainHub, metrics, RightNow, QuickMenu, PanelDeck, recipe generation, myth capture and AskStride.

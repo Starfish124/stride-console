@@ -1,6 +1,7 @@
+import { EmptyState, PageHeading } from "@/components/WorkspaceUI";
 import Link from "next/link";
 import { Header } from "@/components/ui";
-import { Ramp } from "@/components/Ramp";
+
 import { Glyph } from "@/components/icons";
 import { WorkspaceSearch } from "@/components/WorkspaceSearch";
 import { listClients } from "@/lib/store";
@@ -17,23 +18,14 @@ export default function WorkspacesPage() {
   return (
     <div className="min-h-screen bg-paper">
       <Header />
-      <main className="mx-auto max-w-5xl px-6 pb-20">
-        <section className="py-10">
-          <Ramp width={52} className="mb-4 text-indigo" />
-          <p className="eyebrow text-slate">Delivery</p>
-          <h1 className="display mt-3 text-4xl text-ink">Workspaces</h1>
-          <p className="mt-2 max-w-xl text-slate">
-            Every client&apos;s project files live here, on this machine, with the runner
-            that works on them. Open a client to drop files in or set a run going.
-          </p>
-        </section>
+      <main id="workspace-content" tabIndex={-1} className="workspace-main">
+        <PageHeading eyebrow="Delivery" title="Projects & workspaces" description="Client files, project progress, and the people moving the work forward."/>
+
 
         <WorkspaceSearch />
 
         {clients.length === 0 ? (
-          <p className="text-sm text-mute">
-            No clients in the book yet. Add one on the Clients board first.
-          </p>
+          <div className="workspace-panel"><EmptyState icon="IconIntegration" title="A home for every project" description="Add a client to bring their files, projects, and delivery work together in one workspace." href="/clients" action="Go to clients"/></div>
         ) : (
           <ul className="inset-group">
             {clients.map((client) => {

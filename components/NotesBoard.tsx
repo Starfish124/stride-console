@@ -81,6 +81,7 @@ export function NotesBoard({ notes }: { notes: Note[] }) {
         className="card-glass mb-10 rounded-card border border-line bg-white p-5"
       >
         <textarea
+          aria-label="New note"
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={2}
@@ -101,6 +102,7 @@ export function NotesBoard({ notes }: { notes: Note[] }) {
             ))}
           </select>
           <input
+            aria-label="Note topic"
             value={area}
             onChange={(e) => setArea(e.target.value)}
             placeholder="What it is about, optional"

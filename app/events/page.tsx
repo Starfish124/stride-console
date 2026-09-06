@@ -3,7 +3,7 @@ import { listEvents, listSignups } from "@/lib/store";
 import { Header } from "@/components/ui";
 import { EventCreateForm } from "@/components/EventCreateForm";
 import { DeleteX } from "@/components/DeleteX";
-import { Ramp } from "@/components/Ramp";
+import { PageHeading } from "@/components/WorkspaceUI";
 
 export const dynamic = "force-dynamic";
 
@@ -14,16 +14,9 @@ export default async function EventsPage() {
   return (
     <div className="min-h-screen bg-paper">
       <Header />
-      <main className="mx-auto max-w-5xl px-6 pb-20">
-        <section className="py-12">
-          <Ramp width={52} className="mb-4 text-indigo" />
-          <p className="eyebrow text-slate">1 Min AI Pitch</p>
-          <h1 className="display mt-3 text-3xl text-ink">The event engine.</h1>
-          <p className="mt-2 max-w-lg text-slate">
-            One founder, one minute, one idea. Create the event, work the
-            checklist, and every stage feeds the content machine.
-          </p>
-        </section>
+      <main id="workspace-content" tabIndex={-1} className="workspace-main">
+        <PageHeading eyebrow="Growth" title="Events" description="Plan the next 1 Min AI Pitch, keep the checklist moving, and bring people together."/>
+
 
         <div className="grid gap-8 md:grid-cols-2">
           <EventCreateForm />

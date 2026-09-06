@@ -35,7 +35,11 @@ test("the deck never reads the bridge itself", () => {
   assert.equal(DECK.includes("@/lib/store"), false);
 });
 
-test("the LinkedIn panel is still behind a Suspense boundary", () => {
+test("the homepage cannot block on the LinkedIn bridge", () => {
+  if (!PAGE.includes("LhPulsePanel")) {
+    assert.equal(/(?:lib\/channels|readLicenceDays|readAttention)/.test(PAGE), false, "Homepage reads the bridge directly");
+    return;
+  }
   const boundary = PAGE.match(/<Suspense[\s\S]{0,120}?<LhPulsePanel\s*\/>[\s\S]{0,40}?<\/Suspense>/);
   assert.ok(boundary, "LhPulsePanel is no longer inside a Suspense boundary");
 });

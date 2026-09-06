@@ -18,7 +18,7 @@ export default async function DraftPage({
   return (
     <div className="min-h-screen bg-paper">
       <Header />
-      <main className="mx-auto max-w-5xl px-6 pb-20">
+      <main id="workspace-content" tabIndex={-1} className="mx-auto max-w-5xl px-6 pb-20">
         <DraftEditor initial={draft} postLog={postLog} />
       </main>
     </div>

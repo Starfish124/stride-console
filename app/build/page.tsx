@@ -109,7 +109,7 @@ export default async function BuildPage() {
   return (
     <div className="min-h-screen bg-paper">
       <Header />
-      <main className="mx-auto max-w-6xl px-6 pb-20">
+      <main id="workspace-content" tabIndex={-1} className="mx-auto max-w-6xl px-6 pb-20">
         <section className="py-8">
           <h1 className="title-large text-ink">Build</h1>
           <p className="mt-2 max-w-xl text-slate">
