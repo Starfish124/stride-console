@@ -1,5 +1,5 @@
+import Link from "next/link";
 import { Header } from "@/components/ui";
-import { Ramp } from "@/components/Ramp";
 import { LeadImport } from "@/components/LeadImport";
 import { LeadPull } from "@/components/LeadPull";
 import { LeadEnrol } from "@/components/LeadEnrol";
@@ -8,276 +8,171 @@ import { listClients } from "@/lib/store";
 import { listEnrolments } from "@/lib/salesnav/store";
 import { listSequences } from "@/lib/outreach/sequence";
 import { readIcp, apolloConfigured } from "@/lib/apollo";
-import {
-  readLeads,
-  personaOf,
-  personaCounts,
-  multiContactCompanies,
-  contactableCount,
-  PERSONA_LABEL,
-} from "@/lib/leads";
+import { readLeads, contactableCount, multiContactCompanies } from "@/lib/leads";
 
 export const dynamic = "force-dynamic";
 
 /**
- * The lead book: who Apollo found, and the LinkedIn profile for each one.
+ * The lead book, shaped like the tool it talks to.
  *
- * This is a reading room, not a control room. Nothing on this page sends,
- * connects or spends a credit — Apollo holds the search and the credits, a
- * founder opens the profile and writes the note. That division is the whole
- * point: the account that gets restricted for automating LinkedIn is Jort's
- * own, and no console feature is worth that.
+ * Apollo's own find-people screen is a filter rail on the left and results on
+ * the right, and there is no reason to invent a different arrangement for the
+ * same job. The rail is the search — chips, and a count that follows them,
+ * because searching costs nothing. The right is who that search already found.
+ *
+ * Nothing on this page sends anything. It spends credits, which is why the
+ * reveal asks twice and says the number both times.
  */
 export default function LeadsPage() {
   const book = readLeads();
+  const { leads } = book;
   const icp = readIcp();
+  const clients = listClients();
 
-  // Stage two of the engine: who is in the book, has a profile, and is not
-  // already being written to. Computed here rather than in the client so the
-  // page can say the number before anything is clicked.
   const inASequence = new Set(
     listEnrolments()
       .filter((e) => e.state !== "stopped")
       .map((e) => e.clientId),
   );
-  const candidates = listClients()
+  const candidates = clients
     .filter((c) => c.linkedin?.trim() && !inASequence.has(c.id))
     .map((c) => ({ id: c.id, name: c.name, company: c.company, role: c.role }));
   const linkedinSequences = listSequences()
     .filter((q) => !q.steps.some((step) => step.kind === "email"))
-    .map((q) => ({
-      id: q.id,
-      name: q.name,
-      shape: q.steps.map((step) => step.kind).join(" → "),
-    }));
-  const { leads, filters } = book;
+    .map((q) => ({ id: q.id, name: q.name, shape: q.steps.map((s) => s.kind).join(" → ") }));
 
-  const personas = personaCounts(leads).filter((p) => p.count > 0);
   const shared = multiContactCompanies(leads);
   const companies = new Set(leads.map((l) => l.company).filter(Boolean)).size;
 
-  const facts: { label: string; value: string; note?: string }[] = [
-    {
-      label: "Leads held",
-      value: String(leads.length),
-      note: book.poolSize ? `of ${book.poolSize.toLocaleString("en-GB")} matching` : undefined,
-    },
-    { label: "Companies", value: String(companies), note: `${shared.length} with more than one` },
-    {
-      label: "With an email",
-      value: String(contactableCount(leads)),
-      note: "the sequencer can act on these",
-    },
-    {
-      label: "Pulled",
-      value: book.exportedAt
-        ? new Date(book.exportedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
-        : "—",
-      note: book.exportedAt ? "from Apollo" : "nothing pulled yet",
-    },
+  const facts = [
+    { label: "In the book", value: leads.length.toLocaleString("en-GB") },
+    { label: "With an address", value: contactableCount(leads).toLocaleString("en-GB") },
+    { label: "Companies", value: companies.toLocaleString("en-GB"), note: `${shared.length} with more than one` },
+    { label: "Ready to enrol", value: candidates.length.toLocaleString("en-GB") },
   ];
 
   return (
     <div className="min-h-screen bg-paper">
       <Header />
-      <main className="mx-auto max-w-3xl px-6 pb-20">
-        <section className="py-12">
-          <Ramp width={52} className="mb-4 text-indigo" />
-          <p className="eyebrow text-slate">Lead generation</p>
-          <h1 className="display mt-3 text-3xl text-ink">
-            {leads.length === 0
-              ? "Nothing pulled yet."
-              : `${leads.length} people worth a message.`}
-          </h1>
-          <p className="mt-3 text-[15px] text-slate">
-            {leads.length === 0
-              ? "Apollo holds the search. Once a list is exported it lands here, with a LinkedIn profile on every row."
-              : "Found in Apollo against the Stride ICP, and held here so a founder can open each profile and write the note themselves. Nothing on this page sends anything."}
-          </p>
-        </section>
+      <main className="mx-auto max-w-6xl px-4 pb-20 sm:px-6">
+        {/* Title row, then a toolbar. The tool's shape, not a document's. */}
+        <div className="flex flex-wrap items-baseline justify-between gap-3 py-6">
+          <div>
+            <p className="eyebrow text-slate">Apollo outreach</p>
+            <h1 className="display mt-1 text-[26px] text-ink">Lead book</h1>
+          </div>
+          <Link
+            href="/outreach"
+            className="pressable inline-flex min-h-[38px] items-center rounded-input border border-line bg-white px-4 text-[14px] text-ink"
+          >
+            The queue →
+          </Link>
+        </div>
 
-            {/* Where the list comes from. Searching is free, revealing costs
-            a credit each, and both live here so the cost is visible at the
-            moment it is decided rather than on a bill later. */}
-        <section className="card-glass mb-8 rounded-card border border-line bg-white p-5">
-          <p className="eyebrow text-slate">The search Apollo runs</p>
-          <p className="mb-4 mt-2 text-[15px] text-slate">
-            Apollo matches people for nothing and charges one credit to reveal an address and a
-            profile. So this sifts for free and pays only for the ones nobody here holds yet.
-          </p>
-          <LeadPull icp={icp} configured={apolloConfigured()} />
-        </section>
+        <div className="mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-y border-line py-3">
+          <EngineLight />
+          <div className="flex flex-wrap gap-x-5 gap-y-1">
+            {facts.map((f) => (
+              <div key={f.label} className="flex items-baseline gap-1.5">
+                <span className="num text-[15px] text-ink">{f.value}</span>
+                <span className="eyebrow text-slate">{f.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
 
-        {leads.length === 0 ? (
-          <section className="card-glass rounded-card border border-line bg-white p-6">
-            <p className="text-sm text-ink">
-              No export in <span className="font-mono">data/apollo-leads.json</span> yet. Build a
-              list in Apollo, then export it here.
-            </p>
-            <a
-              className="mt-3 inline-block text-[13px] text-indigo underline underline-offset-2"
-              href={book.list.url}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Open Apollo
-            </a>
-          </section>
-        ) : (
-          <>
-            <dl className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {facts.map((f) => (
-                <div
-                  key={f.label}
-                  className="card-raised rounded-card border border-line bg-white px-4 py-3.5"
-                >
-                  <dt className="eyebrow text-slate">{f.label}</dt>
-                  <dd className="figure mt-1.5 text-[22px] text-ink">{f.value}</dd>
-                  {f.note ? (
-                    <p className="mt-1 text-[12px] leading-snug text-slate">{f.note}</p>
-                  ) : null}
-                </div>
-              ))}
-            </dl>
+        <div className="grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
+          {/* The search. */}
+          <aside className="flex flex-col gap-4">
+            <div className="rounded-card border border-line bg-paper p-4">
+              <p className="eyebrow mb-3 text-slate">The search</p>
+              <LeadPull icp={icp} configured={apolloConfigured()} />
+            </div>
+          </aside>
 
-            {/* The one thing on this page that writes anything. Reading the
-                book is free; copying it into the client book is the step that
-                makes these people reachable by the sequencer, so it asks
-                first. */}
-            <section className="card-glass mb-8 rounded-card border border-line bg-white p-5">
-              <p className="eyebrow text-slate">Into the client book</p>
-              <p className="mb-4 mt-2 text-[15px] text-slate">
-                A lead here is a row Apollo found. A client is somebody the sequencer can enrol.
-                This copies the first into the second, skipping anyone already in the book.
+          <section className="flex min-w-0 flex-col gap-5">
+            {/* The two things that move people forward, in the order they happen. */}
+            <div className="rounded-card border border-line bg-white p-4">
+              <p className="eyebrow text-slate">1 · Into the client book</p>
+              <p className="mb-3 mt-1.5 text-[13px] leading-snug text-slate">
+                A lead is a row Apollo found. A client is somebody the sequencer can enrol.
               </p>
               <LeadImport total={leads.length} />
-            </section>
+            </div>
 
-            {/* Stage two. Finding people and writing to them are two decisions
-                and two costs — credits and an afternoon — so they are two
-                controls, with the review between them. */}
-            <section className="card-glass mb-8 rounded-card border border-line bg-white p-5">
-              <div className="mb-2 flex flex-wrap items-baseline justify-between gap-3">
-                <p className="eyebrow text-slate">Put them in a sequence</p>
-                <EngineLight />
-              </div>
-              <p className="mb-4 text-[15px] text-slate">
-                Everyone here with a LinkedIn profile who is not already being written to. The
-                console writes the messages and holds them; you send them by hand from the
-                outreach page.
+            <div className="rounded-card border border-line bg-white p-4">
+              <p className="eyebrow text-slate">2 · Into a sequence</p>
+              <p className="mb-3 mt-1.5 text-[13px] leading-snug text-slate">
+                Everyone with a LinkedIn profile who is not already being written to.
               </p>
-              <LeadEnrol candidates={candidates} sequences={linkedinSequences} imported={listClients().length} />
-            </section>
+              <LeadEnrol
+                candidates={candidates}
+                sequences={linkedinSequences}
+                imported={clients.length}
+              />
+            </div>
 
-            {/* The search itself, written out. A list nobody can see the
-                criteria for is a list nobody trusts six weeks later. */}
-            <section className="card-glass mb-8 rounded-card border border-line bg-white p-5">
-              <div className="flex flex-wrap items-baseline justify-between gap-3">
-                <p className="eyebrow text-slate">The search</p>
-                <a
-                  className="text-[13px] text-indigo underline underline-offset-2"
-                  href={book.list.url}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {book.list.name} in Apollo
-                </a>
+            {/* The results. Wide, so it scrolls inside itself rather than
+                taking the page sideways on a phone. */}
+            <div className="rounded-card border border-line bg-white">
+              <div className="flex items-baseline justify-between gap-3 border-b border-line px-4 py-2.5">
+                <p className="eyebrow text-slate">Who Apollo found</p>
+                <p className="num text-[12px] text-slate">{leads.length}</p>
               </div>
-              <dl className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2">
-                <div className="flex gap-2 text-[13px]">
-                  <dt className="shrink-0 text-slate">Where</dt>
-                  <dd className="text-ink">{filters.location}</dd>
-                </div>
-                <div className="flex gap-2 text-[13px]">
-                  <dt className="shrink-0 text-slate">Size</dt>
-                  <dd className="text-ink">{filters.employees} people</dd>
-                </div>
-                <div className="flex gap-2 text-[13px]">
-                  <dt className="shrink-0 text-slate">Trade</dt>
-                  <dd className="text-ink">{filters.industries.join(" · ")}</dd>
-                </div>
-                <div className="flex gap-2 text-[13px]">
-                  <dt className="shrink-0 text-slate">Roles</dt>
-                  <dd className="text-ink">{filters.titles.join(" · ")}</dd>
-                </div>
-              </dl>
-              {personas.length > 0 ? (
-                <p className="mt-3 border-t border-line pt-3 text-[13px] text-slate">
-                  {personas
-                    .map((p) => `${p.count} ${PERSONA_LABEL[p.persona].toLowerCase()}`)
-                    .join(" · ")}
-                </p>
-              ) : null}
-            </section>
 
-            {shared.length > 0 && (
-              <section className="mb-8 rounded-card border border-line bg-white p-5">
-                <p className="eyebrow text-slate">More than one way in</p>
-                <p className="mt-2 text-[13px] text-slate">
-                  Two people at the same firm is a warm second approach, not a second cold one.
+              {leads.length === 0 ? (
+                <p className="px-4 py-6 text-[14px] text-slate">
+                  Nothing pulled yet. Set the search on the left and press what it would cost.
                 </p>
-                <ul className="mt-3 flex flex-wrap gap-2">
-                  {shared.map((c) => (
-                    <li
-                      key={c.company}
-                      className="rounded-card border border-line px-2.5 py-1 text-[13px] text-ink"
-                    >
-                      {c.company} <span className="text-slate">{c.count}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            <section>
-              <h2 className="display mb-3 text-[22px] text-ink">The book.</h2>
-              <ul className="flex flex-col gap-2">
-                {leads.map((lead) => (
-                  <li
-                    key={lead.id}
-                    className="card-raised rounded-card border border-line bg-white px-4 py-3.5"
-                  >
-                    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                      <p className="text-[15px] text-ink">{lead.name}</p>
-                      <p className="eyebrow text-slate">{PERSONA_LABEL[personaOf(lead)]}</p>
-                    </div>
-                    <p className="mt-0.5 text-[13px] text-slate">
-                      {lead.title}
-                      {lead.company ? ` · ${lead.company}` : ""}
-                      {lead.employees ? ` · ${lead.employees} people` : ""}
-                      {lead.city ? ` · ${lead.city}` : ""}
-                    </p>
-                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
-                      {lead.linkedin ? (
-                        <a
-                          className="text-indigo underline underline-offset-2"
-                          href={lead.linkedin}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          LinkedIn
-                        </a>
-                      ) : null}
-                      <a
-                        className="text-slate underline underline-offset-2"
-                        href={lead.apolloUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Apollo
-                      </a>
-                      {lead.email ? (
-                        <span className="font-mono text-[12px] text-slate">{lead.email}</span>
-                      ) : (
-                        <span className="text-[12px] text-slate">no email</span>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          </>
-        )}
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[640px] border-collapse text-left">
+                    <thead>
+                      <tr className="border-b border-line">
+                        {["Name", "Title", "Company", "Where", "Address", ""].map((h) => (
+                          <th key={h} className="eyebrow px-4 py-2 font-medium text-slate">
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {leads.map((lead) => (
+                        <tr key={lead.id} className="border-b border-line last:border-0 hover:bg-paper">
+                          <td className="px-4 py-2.5 text-[13px] text-ink">{lead.name}</td>
+                          <td className="px-4 py-2.5 text-[13px] text-slate">{lead.title}</td>
+                          <td className="max-w-[220px] truncate px-4 py-2.5 text-[13px] text-ink">
+                            {lead.company}
+                          </td>
+                          <td className="px-4 py-2.5 text-[13px] text-slate">{lead.city || "—"}</td>
+                          <td className="px-4 py-2.5 text-[13px]">
+                            {lead.email ? (
+                              <span className="text-lime-deep">verified</span>
+                            ) : (
+                              <span className="text-mute">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2.5 text-[13px]">
+                            {lead.linkedin ? (
+                              <a
+                                href={lead.linkedin}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-indigo underline underline-offset-2"
+                              >
+                                profile
+                              </a>
+                            ) : null}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
       </main>
     </div>
   );

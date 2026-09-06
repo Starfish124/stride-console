@@ -10,7 +10,6 @@ import { waitingManualSteps, awaitingAnswer } from "@/lib/salesnav/manual";
 import { reach, engineStatus } from "@/lib/salesnav/engine";
 import { listManualSteps, listEnrolments } from "@/lib/salesnav/store";
 import { listClients } from "@/lib/store";
-import { Ramp } from "@/components/Ramp";
 
 export const dynamic = "force-dynamic";
 
@@ -137,20 +136,96 @@ export default async function OutreachPage({
     <div className="min-h-screen bg-paper">
       <Header />
       <main className="mx-auto max-w-3xl px-6 pb-20">
-        <section className="py-10">
-          <Ramp width={52} className="mb-4 text-indigo" />
-          <p className="eyebrow text-slate">Outreach</p>
-          <h1 className="display mt-3 text-3xl text-ink">The words you send.</h1>
-          <p className="mt-3 text-[15px] text-slate">
-            Apollo finds the people and the console keeps the copy, so a message answers to the
-            same voice guide as a post. Nothing here sends on LinkedIn — the account that gets
-            restricted for that is your own, and the Sales Navigator seat hangs off it.
-          </p>
-          <div className="mt-4">
-            <EngineLight />
+        <div className="flex flex-wrap items-baseline justify-between gap-3 py-6">
+          <div>
+            <p className="eyebrow text-slate">Apollo outreach</p>
+            <h1 className="display mt-1 text-[26px] text-ink">Sequences and the queue</h1>
           </div>
-        </section>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/leads"
+              className="pressable inline-flex min-h-[38px] items-center rounded-input border border-line bg-white px-4 text-[14px] text-ink"
+            >
+              Lead book
+            </Link>
+            <Link
+              href="/outreach?new=invite"
+              className="pressable inline-flex min-h-[38px] items-center rounded-input border border-line bg-white px-4 text-[14px] text-ink"
+            >
+              New sequence
+            </Link>
+          </div>
+        </div>
 
+        <div className="mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-y border-line py-3">
+          <EngineLight />
+          <div className="flex flex-wrap gap-x-5 gap-y-1">
+            {[
+              { label: "Sent", value: totals.sent },
+              { label: "Waiting", value: totals.waiting },
+              { label: "In a sequence", value: totals.active },
+              { label: "Replied", value: totals.replied },
+            ].map((f) => (
+              <div key={f.label} className="flex items-baseline gap-1.5">
+                <span className="num text-[15px] text-ink">{f.value}</span>
+                <span className="eyebrow text-slate">{f.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
+          {/* The sequences, as a rail. Two shapes of outreach, and picking the
+              wrong one wastes a connection or an InMail credit. */}
+          <aside className="flex flex-col gap-3">
+            <div className="rounded-card border border-line bg-paper p-3">
+              <p className="eyebrow mb-2 px-1 text-slate">Sequences</p>
+              <div className="inset-group">
+                {sequences.map((q) => {
+                  const mine = {
+                    sent: allSteps.filter((m) => m.sequenceId === q.id && m.state === "done").length,
+                    waiting: allSteps.filter((m) => m.sequenceId === q.id && m.state === "waiting").length,
+                  };
+                  return (
+                    <Link
+                      key={q.id}
+                      href={`/outreach?seq=${q.id}`}
+                      className={`flex min-h-[44px] flex-col justify-center gap-0.5 px-3 py-2 hover:bg-paper ${
+                        chosen?.id === q.id ? "bg-indigo-tint/40" : ""
+                      }`}
+                    >
+                      <span className="truncate text-[14px] text-ink">{q.name}</span>
+                      <span className="text-[11px] text-slate">
+                        {q.steps.map((step) => `${step.kind} +${step.waitDays}d`).join(" → ")}
+                      </span>
+                      <span className="num text-[11px] text-mute">
+                        {mine.sent} sent · {mine.waiting} waiting
+                      </span>
+                    </Link>
+                  );
+                })}
+                {sequences.length === 0 ? (
+                  <p className="px-3 py-3 text-[13px] text-slate">None written yet.</p>
+                ) : null}
+              </div>
+              <div className="mt-2 flex flex-col gap-1.5">
+                <Link
+                  href="/outreach?new=invite"
+                  className="pressable rounded-input border border-line bg-white px-3 py-2 text-center text-[13px] text-ink"
+                >
+                  New invite sequence
+                </Link>
+                <Link
+                  href="/outreach?new=inmail"
+                  className="pressable rounded-input border border-line bg-white px-3 py-2 text-center text-[13px] text-ink"
+                >
+                  New InMail sequence
+                </Link>
+              </div>
+            </div>
+          </aside>
+
+          <section className="flex min-w-0 flex-col gap-5">
         {/* What to do, above anything that reports on what was done. */}
         <section className="card-glass mb-8 rounded-card border border-indigo/25 bg-white p-5">
           <p className="display text-[19px] leading-snug text-ink">{next.title}</p>
@@ -161,67 +236,6 @@ export default async function OutreachPage({
           >
             {next.cta}
           </Link>
-        </section>
-
-        <dl className="mb-8 flex flex-wrap gap-x-6 gap-y-2">
-          {[
-            { label: "Sent", value: totals.sent },
-            { label: "In a sequence", value: totals.active },
-            { label: "Replied", value: totals.replied },
-          ].map((f) => (
-            <div key={f.label}>
-              <dd className="figure text-[19px] text-ink">{f.value}</dd>
-              <dt className="eyebrow mt-0.5 text-slate">{f.label}</dt>
-            </div>
-          ))}
-        </dl>
-
-        {/* The sequences, side by side, because there are two jobs here and
-            picking the wrong one wastes an InMail credit or a connection. */}
-        <section className="mb-8">
-          <p className="eyebrow mb-2 text-slate">Sequences</p>
-          <div className="inset-group">
-            {sequences.map((s) => {
-              const mine = {
-                sent: allSteps.filter((m) => m.sequenceId === s.id && m.state === "done").length,
-                waiting: allSteps.filter((m) => m.sequenceId === s.id && m.state === "waiting").length,
-              };
-              const active = chosen?.id === s.id;
-              return (
-                <Link
-                  key={s.id}
-                  href={`/outreach?seq=${s.id}`}
-                  className={`flex min-h-[44px] items-center gap-3 px-4 py-3 hover:bg-paper ${
-                    active ? "bg-indigo-tint/40" : ""
-                  }`}
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[15px] text-ink">{s.name}</span>
-                    <span className="mt-0.5 block text-[12px] text-slate">
-                      {s.steps.map((step) => `${step.kind} +${step.waitDays}d`).join(" → ")}
-                    </span>
-                  </span>
-                  <span className="num shrink-0 text-[12px] text-slate">
-                    {mine.sent} sent · {mine.waiting} waiting
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Link
-              href="/outreach?new=invite"
-              className="pressable rounded-input border border-line px-4 py-2 text-[14px] text-ink"
-            >
-              New invite sequence
-            </Link>
-            <Link
-              href="/outreach?new=inmail"
-              className="pressable rounded-input border border-line px-4 py-2 text-[14px] text-ink"
-            >
-              New InMail sequence
-            </Link>
-          </div>
         </section>
 
         {/* The queue. #drafts because that is what the menu has always called
@@ -320,6 +334,8 @@ export default async function OutreachPage({
           </section>
         ) : null}
 
+          </section>
+        </div>
       </main>
     </div>
   );

@@ -112,10 +112,10 @@ export const MENU: MenuSection[] = [
   },
   {
     id: "leadgen",
-    label: "Outreach",
+    label: "Apollo outreach",
     // The nav slot points at the section home, not the book. A section called
     // Outreach that reads "Leads" in the header is two names for one place.
-    nav: { label: "Outreach", href: "/outreach" },
+    nav: { label: "Apollo", href: "/outreach" },
     // "Apollo" stays in the blurb deliberately. It was in the label, and the
     // label scores 50 in matchDestination against the hint's 40 — which is
     // exactly the floor. Dropping the word entirely leaves "open Apollo" with
@@ -125,7 +125,7 @@ export const MENU: MenuSection[] = [
     items: [
       {
         href: "/outreach",
-        label: "Outreach",
+        label: "Apollo outreach",
         // Every word that used to be its own menu row lives in this hint.
         // matchDestinations scores a hint match at 40, which is exactly
         // matchDestination's floor — so without "lead", "queue", "reply" and

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { pullLeads, readIcp, saveIcp, apolloConfigured } from "@/lib/apollo";
+import { pullLeads, readIcp, saveIcp, apolloConfigured, searchPeople } from "@/lib/apollo";
 
 export const dynamic = "force-dynamic";
 // Revealing twenty-five people is twenty-five round trips to Apollo with a
@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown> & {
     confirm?: boolean;
     max?: number;
+    count?: boolean;
   };
 
   // The search the caller is LOOKING AT, not the one last saved.
@@ -55,6 +56,18 @@ export async function POST(request: NextRequest) {
   // then spent credits on it. A price for a query nobody is looking at is worse
   // than no price, because it is acted on.
   const asked = icpFrom(body);
+
+  // Just the size of the pool, for the count that moves while somebody edits
+  // the search. One page, no walk, and searching costs nothing — so the number
+  // can follow the chips instead of waiting for a button.
+  if (body.count === true) {
+    const icp = { ...readIcp(), ...pruned(asked) };
+    const found = await searchPeople(icp, 1, 1);
+    return NextResponse.json(
+      found.ok ? { ok: true, pool: found.total } : { ok: false, problem: found.problem },
+      { status: found.ok ? 200 : 502 },
+    );
+  }
   const described = Object.values(asked).some((v) => v !== undefined);
   const icp = described ? { ...readIcp(), ...pruned(asked) } : undefined;
 
