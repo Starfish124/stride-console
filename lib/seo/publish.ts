@@ -248,8 +248,14 @@ export function publish(
 
   const branch = options.branch ?? currentBranch(repo) ?? "main";
   
-  // Reconcile concurrent remote changes before pushing
-  const pull = git(repo, ["pull", "--rebase", "origin", branch]);
+  // Reconcile concurrent remote changes before pushing.
+  //
+  // --autostash because the checkout is shared with people. git refuses to
+  // rebase over unstaged changes, so a single file a founder (or a session on
+  // this Mac) left open silently blocked the whole day's publish — the article
+  // committed locally and never reached the site. Their work is stashed for the
+  // length of the rebase and put back, untouched either way.
+  const pull = git(repo, ["pull", "--rebase", "--autostash", "origin", branch]);
   if (!pull.ok) {
     return {
       ok: false,
