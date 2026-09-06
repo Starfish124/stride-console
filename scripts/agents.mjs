@@ -79,6 +79,21 @@ const JOBS = [
     catchUpUntilHour: 23,
   },
   {
+    // Topping up the lead book from Apollo. Search is free; each person
+    // revealed costs one credit, and the ceiling that bounds that lives in
+    // data/apollo-icp.json rather than here, so it can be changed — or set to
+    // zero to pause the spend — without touching this schedule.
+    //
+    // Weekdays only, and in the morning: the list exists to be worked, and
+    // topping it up on a Sunday spends money three days before anyone looks.
+    name: "leads",
+    script: "scripts/leads-pull.mjs",
+    hour: 9,
+    minute: 30,
+    days: [1, 2, 3, 4, 5],
+    catchUpUntilHour: 20,
+  },
+  {
     // Hermes, the memory keeper: distils the day's sessions and delivery runs
     // into durable memories and diffs the business stores into a timeline.
     // Runs after the graph build so the newest session notes are on disk.
@@ -149,7 +164,11 @@ export function isDue(job, now, state) {
 function run(job) {
   return new Promise((resolve) => {
     log(`starting ${job.name}`);
-    const child = spawn(process.execPath, [job.script], {
+    // Every job gets the env file. Without it a spawned script sees only what
+    // the launchd plist sets, which is CLAUDE_CLI_MODEL and nothing else — so
+    // a job needing an API key would fail at 09:30 every day, saying the key
+    // was unset while it sat on disk the whole time.
+    const child = spawn(process.execPath, ["--env-file-if-exists=.env.local", job.script], {
       cwd: process.cwd(),
       env: {
         ...process.env,

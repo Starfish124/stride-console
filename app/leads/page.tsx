@@ -1,6 +1,8 @@
 import { Header } from "@/components/ui";
 import { Ramp } from "@/components/Ramp";
 import { LeadImport } from "@/components/LeadImport";
+import { LeadPull } from "@/components/LeadPull";
+import { readIcp, apolloConfigured } from "@/lib/apollo";
 import {
   readLeads,
   personaOf,
@@ -23,6 +25,7 @@ export const dynamic = "force-dynamic";
  */
 export default function LeadsPage() {
   const book = readLeads();
+  const icp = readIcp();
   const { leads, filters } = book;
 
   const personas = personaCounts(leads).filter((p) => p.count > 0);
@@ -67,6 +70,18 @@ export default function LeadsPage() {
               ? "Apollo holds the search. Once a list is exported it lands here, with a LinkedIn profile on every row."
               : "Found in Apollo against the Stride ICP, and held here so a founder can open each profile and write the note themselves. Nothing on this page sends anything."}
           </p>
+        </section>
+
+            {/* Where the list comes from. Searching is free, revealing costs
+            a credit each, and both live here so the cost is visible at the
+            moment it is decided rather than on a bill later. */}
+        <section className="card-glass mb-8 rounded-card border border-line bg-white p-5">
+          <p className="eyebrow text-slate">The search Apollo runs</p>
+          <p className="mb-4 mt-2 text-[15px] text-slate">
+            Apollo matches people for nothing and charges one credit to reveal an address and a
+            profile. So this sifts for free and pays only for the ones nobody here holds yet.
+          </p>
+          <LeadPull icp={icp} configured={apolloConfigured()} />
         </section>
 
         {leads.length === 0 ? (

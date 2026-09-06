@@ -14,7 +14,7 @@
 // Framework-free, like lib/menu.ts: node tests import it and want no React.
 
 import path from "node:path";
-import { addClient, DATA_DIR, listClients, readJson } from "./store.ts";
+import { addClient, DATA_DIR, listClients, readJson, writeJson } from "./store.ts";
 import { normaliseAddress, profileSlug } from "./salesnav/suppress.ts";
 
 export const LEADS_FILE = path.join(DATA_DIR, "apollo-leads.json");
@@ -62,6 +62,17 @@ const EMPTY: LeadBook = {
 /** The book as exported. Missing file means "nothing pulled yet", not an error. */
 export function readLeads(): LeadBook {
   return readJson<LeadBook>(LEADS_FILE, EMPTY);
+}
+
+/**
+ * Replace the book.
+ *
+ * The only writer. lib/apollo.ts calls this after a pull; nothing else should,
+ * because a half-written book is worse than a stale one and the single-writer
+ * rule that makes every other store here safe applies to this file too.
+ */
+export function writeLeads(book: LeadBook): void {
+  writeJson(LEADS_FILE, book);
 }
 
 /**
