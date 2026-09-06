@@ -124,34 +124,15 @@ export const MENU: MenuSection[] = [
       "Who to approach and in whose words. Apollo finds them, a founder sends it by hand.",
     items: [
       {
-        href: "/leads",
-        label: "Lead book",
-        hint: "Everyone Apollo found against the ICP, with a LinkedIn profile on each.",
-        icon: "IconTarget",
-      },
-      {
         href: "/outreach",
         label: "Outreach",
-        hint: "The connection notes and messages, held to the same voice gate.",
+        // Every word that used to be its own menu row lives in this hint.
+        // matchDestinations scores a hint match at 40, which is exactly
+        // matchDestination's floor — so without "lead", "queue", "reply" and
+        // "brake" written out here, asking for the lead book resolves to
+        // nothing and asking for leads lands silently on /clients.
+        hint: "Apollo lead book, the ICP, leads, the queue waiting on you, replies, and the brake.",
         icon: "IconWorkflow",
-      },
-      {
-        href: "/outreach#drafts",
-        label: "AI drafts",
-        hint: "Every message the machine wrote, checked before it can send.",
-        icon: "IconSpark",
-      },
-      {
-        href: "/outreach#replies",
-        label: "Replies",
-        hint: "Somebody answered. This is where that lands.",
-        icon: "IconEscalate",
-      },
-      {
-        href: "/salesnav",
-        label: "The queue and the brake",
-        hint: "What is waiting to be sent by hand, the caps, and the switch that stops it all.",
-        icon: "IconDeploy",
       },
     ],
   },
@@ -188,7 +169,7 @@ export const MENU: MenuSection[] = [
     items: [
       {
         href: "/clients",
-        label: "Clients and leads",
+        label: "Clients",
         hint: "Everyone in play, by stage, with the next step on each.",
         icon: "IconTeam",
       },

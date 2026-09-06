@@ -2,9 +2,7 @@ import Link from "next/link";
 import { Header } from "@/components/ui";
 import { Ramp } from "@/components/Ramp";
 import { SalesNavControls } from "@/components/SalesNavControls";
-import { ManualQueue } from "@/components/ManualQueue";
 import { salesnavStatus } from "@/lib/salesnav/channel";
-import { waitingManualSteps } from "@/lib/salesnav/manual";
 import { listEnrolments } from "@/lib/salesnav/store";
 import { listClients } from "@/lib/store";
 
@@ -22,21 +20,11 @@ export default async function SalesNavPage() {
   const enrolments = listEnrolments();
   const byId = new Map(listClients().map((c) => [c.id, c]));
 
-  // The LinkedIn steps a person has to send. Nothing here clicks Connect: the
-  // account that gets restricted for automating LinkedIn is a founder's own,
-  // and the Sales Navigator seat hangs off it.
-  const queue = waitingManualSteps().map((m) => {
-    const client = byId.get(m.clientId);
-    return {
-      key: m.key,
-      kind: m.kind,
-      who: client ? `${client.company} · ${client.name}` : m.clientId,
-      profileUrl: m.profileUrl,
-      body: m.body,
-      dueAt: m.dueAt,
-    };
-  });
-
+  // The queue itself lives on /outreach, and only there. It was rendered on
+  // both pages from the same waitingManualSteps() — the same cards and the same
+  // buttons at two URLs — which is how a founder ends up unsure which one is
+  // the real one. This page is the engine room: the brake, the caps, the
+  // blockers and who is in a sequence.
   const live = status.mode === "live";
   const stopped = Boolean(status.stop);
 
@@ -91,16 +79,6 @@ export default async function SalesNavPage() {
             </div>
           ))}
         </dl>
-
-        <section className="mb-8">
-          <div className="mb-3 flex items-baseline justify-between gap-4">
-            <h2 className="display text-[22px] text-ink">LinkedIn, by hand.</h2>
-            {queue.length > 0 ? (
-              <p className="text-[13px] text-amber">{queue.length} waiting on you</p>
-            ) : null}
-          </div>
-          <ManualQueue steps={queue} />
-        </section>
 
         {/* Whatever is standing between this and a real send, in the order it
             has to be fixed. A blocker list is more use than a green tick. */}

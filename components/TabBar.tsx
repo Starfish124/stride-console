@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { IconGrid, IconTarget, IconTeam, IconLayers } from "@/components/icons";
+import { IconGrid, IconTeam, IconLayers, IconWorkflow } from "@/components/icons";
 import { MenuTrigger } from "@/components/AppMenu";
 
 /**
@@ -18,7 +18,9 @@ import { MenuTrigger } from "@/components/AppMenu";
 
 const TABS = [
   { href: "/", label: "Console", icon: IconGrid },
-  { href: "/leads", label: "Leads", icon: IconTarget },
+  // The outreach surface, not the book: this is the tab a founder presses to
+  // do the work, and the book is one tap inside it.
+  { href: "/outreach", label: "Outreach", icon: IconWorkflow },
   { href: "/clients", label: "Clients", icon: IconTeam },
   { href: "/library", label: "Library", icon: IconLayers },
 ] as const;

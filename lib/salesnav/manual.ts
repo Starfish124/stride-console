@@ -22,7 +22,7 @@ import { linkedinDailyCap, linkedinQueueCap, localDay } from "./config.ts";
 import { resolveMerge } from "./merge.ts";
 import { withdraw } from "./enrol.ts";
 import { advance } from "./send.ts";
-import { dropManualSteps, findManualStep, getEnrolment, listManualSteps, putManualStep } from "./store.ts";
+import { dropManualSteps, findManualStep, getEnrolment, listEnrolments, listManualSteps, putManualStep } from "./store.ts";
 import type { Enrolment, ManualStep } from "./types.ts";
 
 export type QueueOutcome =
@@ -247,12 +247,16 @@ export function requeueWaiting(sequenceId: string): { dropped: number } {
  */
 export function awaitingAnswer(after: number, now: Date = new Date()): ManualStep[] {
   const cutoff = now.getTime() - after * 86_400_000;
+  // One read, not one per step. getEnrolment re-reads the whole file each call,
+  // so asking it per done step was hundreds of full-file reads on a page that
+  // renders on every request — and it grows with a ledger that never shrinks.
+  const enrolments = new Map(listEnrolments().map((e) => [e.id, e]));
   return listManualSteps()
     .filter((m) => {
       if (m.state !== "done" || !m.finishedAt) return false;
       if (new Date(m.finishedAt).getTime() > cutoff) return false;
       // Somebody answered and the sequence was withdrawn: not waiting on them.
-      const enrolment = getEnrolment(m.enrolmentId);
+      const enrolment = enrolments.get(m.enrolmentId);
       return !(enrolment?.state === "stopped" && /replied/i.test(enrolment.stoppedReason ?? ""));
     })
     .sort((a, b) => (a.finishedAt ?? "").localeCompare(b.finishedAt ?? ""));

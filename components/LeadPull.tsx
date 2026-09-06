@@ -73,7 +73,16 @@ export function LeadPull({ icp, configured }: { icp: Icp; configured: boolean })
       const res = await fetch("/api/leads/pull", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ confirm }),
+        // The search on screen, so the price quoted is for what is being
+        // looked at. Sending only { confirm } priced whatever was last saved.
+        body: JSON.stringify({
+          confirm,
+          titles: asList(form.titles),
+          locations: asList(form.locations),
+          employeeRanges: asList(form.employeeRanges),
+          keywords: asList(form.keywords),
+          perRun: Number(form.perRun) || 0,
+        }),
       });
       const json = (await res.json().catch(() => ({}))) as PullResult;
       if (!res.ok || !json.ok) {

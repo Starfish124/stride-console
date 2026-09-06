@@ -3,12 +3,12 @@ import { Header } from "@/components/ui";
 import { SequenceEditor } from "@/components/SequenceEditor";
 import { ManualQueue } from "@/components/ManualQueue";
 import { TemplateRequeue } from "@/components/TemplateRequeue";
-import { AskStride } from "@/components/AskStride";
 import { EngineLight } from "@/components/EngineLight";
 import { listSequences } from "@/lib/outreach/sequence";
 import { listReplies } from "@/lib/outreach/replies";
 import { waitingManualSteps, awaitingAnswer } from "@/lib/salesnav/manual";
-import { reach, reachBySequence } from "@/lib/salesnav/engine";
+import { reach, engineStatus } from "@/lib/salesnav/engine";
+import { listManualSteps, listEnrolments } from "@/lib/salesnav/store";
 import { listClients } from "@/lib/store";
 import { Ramp } from "@/components/Ramp";
 
@@ -61,7 +61,12 @@ export default async function OutreachPage({
   const replies = listReplies();
   const unhandled = replies.filter((r) => !r.handled);
   const totals = reach();
+  const engine = engineStatus();
 
+  // One read of the ledger, shared by every count on the page. Asking per
+  // sequence re-read the whole file each time for numbers nobody acts on.
+  const allSteps = listManualSteps();
+  const enrolments = listEnrolments();
   const byId = new Map(listClients().map((c) => [c.id, c]));
   const queue = waitingManualSteps().map((m) => ({
     key: m.key,
@@ -75,8 +80,58 @@ export default async function OutreachPage({
   }));
   const chase = awaitingAnswer(CHASE_AFTER_DAYS);
   const waitingHere = chosen
-    ? waitingManualSteps().filter((m) => m.sequenceId === chosen.id).length
+    ? allSteps.filter((m) => m.sequenceId === chosen.id && m.state === "waiting").length
     : 0;
+
+  // The one next thing.
+  //
+  // The order matters more than anything else here. The queue comes first
+  // because queued words need no clock — they are written and merged already —
+  // and ranking a machine-health warning above them hides ready messages behind
+  // a state that is true after every reboot.
+  //
+  // The second rung is the one that did not exist. A held step is invisible
+  // everywhere, so an empty queue with people enrolled used to read as "enrol
+  // more" or "widen the search", both of which spend Apollo credits to fix what
+  // is usually a missing field on one client record.
+  const activeCount = enrolments.filter((e) => e.state === "active").length;
+  const next =
+    queue.length > 0
+      ? {
+          title: `${queue.length} message${queue.length === 1 ? "" : "s"} waiting on you.`,
+          detail: "Copy it, send it in LinkedIn, then say so. Ten seconds each.",
+          href: "#queue",
+          cta: "Work the queue",
+        }
+      : activeCount > 0
+        ? {
+            title: "Enrolled, but nothing is queued.",
+            detail:
+              "The runner is holding somebody back — usually a missing field on a client record, a merged message over the limit, or the day's cap already spent.",
+            href: "/salesnav",
+            cta: "Open the engine room",
+          }
+        : engine.state === "stopped" || engine.state === "no-clock"
+          ? {
+              title: engine.state === "stopped" ? "The engine is stopped." : "The engine has no clock.",
+              detail: engine.detail,
+              href: "/salesnav",
+              cta: "Open the engine room",
+            }
+          : sequences.length === 0
+            ? {
+                title: "No sequence written yet.",
+                detail:
+                  "Write the words once and everyone gets them with their own details filled in.",
+                href: "/outreach?new=invite",
+                cta: "Write one",
+              }
+            : {
+                title: "Nobody is in a sequence.",
+                detail: "Pick people from the lead book and put them in one. Nothing sends by itself.",
+                href: "/leads",
+                cta: "Choose who to write to",
+              };
 
   return (
     <div className="min-h-screen bg-paper">
@@ -96,18 +151,27 @@ export default async function OutreachPage({
           </div>
         </section>
 
-        <dl className="mb-8 grid grid-cols-3 gap-3 sm:grid-cols-6">
+        {/* What to do, above anything that reports on what was done. */}
+        <section className="card-glass mb-8 rounded-card border border-indigo/25 bg-white p-5">
+          <p className="display text-[19px] leading-snug text-ink">{next.title}</p>
+          <p className="mt-1.5 text-[14px] leading-snug text-slate">{next.detail}</p>
+          <Link
+            href={next.href}
+            className="pressable mt-4 inline-flex min-h-[44px] items-center rounded-input bg-ink px-5 text-[15px] font-semibold text-white"
+          >
+            {next.cta}
+          </Link>
+        </section>
+
+        <dl className="mb-8 flex flex-wrap gap-x-6 gap-y-2">
           {[
             { label: "Sent", value: totals.sent },
-            { label: "Waiting", value: totals.waiting },
             { label: "In a sequence", value: totals.active },
             { label: "Replied", value: totals.replied },
-            { label: "Finished", value: totals.finished },
-            { label: "Skipped", value: totals.skipped },
           ].map((f) => (
-            <div key={f.label} className="card-raised rounded-card border border-line bg-white px-3 py-2.5">
-              <dd className="figure text-[21px] text-ink">{f.value}</dd>
-              <dt className="eyebrow mt-1 text-slate">{f.label}</dt>
+            <div key={f.label}>
+              <dd className="figure text-[19px] text-ink">{f.value}</dd>
+              <dt className="eyebrow mt-0.5 text-slate">{f.label}</dt>
             </div>
           ))}
         </dl>
@@ -118,7 +182,10 @@ export default async function OutreachPage({
           <p className="eyebrow mb-2 text-slate">Sequences</p>
           <div className="inset-group">
             {sequences.map((s) => {
-              const mine = reachBySequence(s.id);
+              const mine = {
+                sent: allSteps.filter((m) => m.sequenceId === s.id && m.state === "done").length,
+                waiting: allSteps.filter((m) => m.sequenceId === s.id && m.state === "waiting").length,
+              };
               const active = chosen?.id === s.id;
               return (
                 <Link
@@ -253,8 +320,6 @@ export default async function OutreachPage({
           </section>
         ) : null}
 
-        <p className="eyebrow mb-2 mt-10 text-slate">Ask about the outreach</p>
-        <AskStride />
       </main>
     </div>
   );

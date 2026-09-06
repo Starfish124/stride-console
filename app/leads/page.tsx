@@ -140,6 +140,19 @@ export default function LeadsPage() {
               ))}
             </dl>
 
+            {/* The one thing on this page that writes anything. Reading the
+                book is free; copying it into the client book is the step that
+                makes these people reachable by the sequencer, so it asks
+                first. */}
+            <section className="card-glass mb-8 rounded-card border border-line bg-white p-5">
+              <p className="eyebrow text-slate">Into the client book</p>
+              <p className="mb-4 mt-2 text-[15px] text-slate">
+                A lead here is a row Apollo found. A client is somebody the sequencer can enrol.
+                This copies the first into the second, skipping anyone already in the book.
+              </p>
+              <LeadImport total={leads.length} />
+            </section>
+
             {/* Stage two. Finding people and writing to them are two decisions
                 and two costs — credits and an afternoon — so they are two
                 controls, with the review between them. */}
@@ -153,20 +166,7 @@ export default function LeadsPage() {
                 console writes the messages and holds them; you send them by hand from the
                 outreach page.
               </p>
-              <LeadEnrol candidates={candidates} sequences={linkedinSequences} />
-            </section>
-
-            {/* The one thing on this page that writes anything. Reading the
-                book is free; copying it into the client book is the step that
-                makes these people reachable by the sequencer, so it asks
-                first. */}
-            <section className="card-glass mb-8 rounded-card border border-line bg-white p-5">
-              <p className="eyebrow text-slate">Into the client book</p>
-              <p className="mb-4 mt-2 text-[15px] text-slate">
-                A lead here is a row Apollo found. A client is somebody the sequencer can enrol.
-                This copies the first into the second, skipping anyone already in the book.
-              </p>
-              <LeadImport total={leads.length} />
+              <LeadEnrol candidates={candidates} sequences={linkedinSequences} imported={listClients().length} />
             </section>
 
             {/* The search itself, written out. A list nobody can see the

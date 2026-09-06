@@ -25,9 +25,12 @@ export interface EnrolCandidate {
 export function LeadEnrol({
   candidates,
   sequences,
+  imported,
 }: {
   candidates: EnrolCandidate[];
   sequences: { id: string; name: string; shape: string }[];
+  /** How many people are in the client book at all, to tell the two empties apart. */
+  imported: number;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -44,10 +47,15 @@ export function LeadEnrol({
     );
   }
   if (candidates.length === 0) {
+    // Two very different situations, and saying the wrong one sends a founder
+    // hunting for a problem that is not there. An empty client book means the
+    // import above has not been run; a full one means everybody is already
+    // being written to.
     return (
       <p className="text-[15px] text-slate">
-        Nobody new to enrol. Everyone in the book with a LinkedIn profile is already in a sequence,
-        or has been through one.
+        {imported === 0
+          ? "Nobody in the client book yet. Add them with the import just above, and they appear here."
+          : "Nobody new to enrol. Everyone with a LinkedIn profile is already in a sequence, or has been through one."}
       </p>
     );
   }

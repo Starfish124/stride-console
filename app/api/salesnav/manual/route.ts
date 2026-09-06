@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { FOUNDER_COOKIE } from "@/lib/auth";
 import { completeManual, repliedManual, skipManual, waitingManualSteps } from "@/lib/salesnav/manual";
+import { findManualStep } from "@/lib/salesnav/store";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,18 @@ export async function POST(request: NextRequest) {
           : undefined;
 
   if (!manual) {
+    // Settling is idempotent, so a second attempt at a step that is already
+    // done is not an error — it is the same answer arriving twice. Saying 400
+    // to it is how a dropped response over the tailnet became "that failed" on
+    // a phone: the card comes back, the founder taps again, and the console
+    // reports an error for a write that succeeded the first time.
+    //
+    // The runner's too-late rule can settle a card between render and tap and
+    // produce exactly the same shape with no network fault at all.
+    const settled = findManualStep(body.key);
+    if (settled && settled.state !== "waiting") {
+      return NextResponse.json({ manual: settled, already: true });
+    }
     return NextResponse.json(
       { error: "Send action: sent, skipped or replied, for a step still waiting." },
       { status: 400 },
