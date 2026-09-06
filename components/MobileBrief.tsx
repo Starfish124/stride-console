@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Mark, Ramp } from "@/components/Ramp";
+import { BrandAtmosphere } from "@/components/BrandAtmosphere";
 import { Working } from "@/components/Loader";
 import { Glyph } from "@/components/icons";
 import type { WorkspaceAction } from "@/lib/workspace-overview";
@@ -35,13 +36,17 @@ export function MobileBrief({ date, actions, activeClients, approvals, unpaid, d
   }
   return <section className="mobile-brief" aria-label="Your daily overview">
     <div className="brief-heading"><p>{date}<span className="brief-edition">STRIDE DAILY</span></p><h1>Your day.<br /><span>One clear view.</span></h1></div>
+    <div className="daily-stage">
+    <BrandAtmosphere />
     <Link href={actions[0]?.href ?? "/calendar"} className="brief-priority">
-      <span className="brief-priority-top"><span><Ramp width={35} /> THE DAILY BRIEF</span><span className="brief-open"><Glyph name="IconChevron" size={17} /></span></span>
-      <Mark size={110} className="brief-signature" />
-      <strong>{actions.length ? `${actions.length} ${actions.length === 1 ? "thing needs" : "things need"} you` : "You’re all caught up"}</strong>
+      <span className="brief-priority-top"><span><Ramp width={35} /> THE DAILY BRIEF</span></span>
+
+      <span className="brief-state-label">{actions.length ? "A LITTLE FOCUS GOES A LONG WAY" : "MAKE ROOM FOR MORE"}</span>
+      <strong>{actions.length ? <><span className="brief-action-number">{actions.length}</span><span className="brief-action-caption">{actions.length === 1 ? "thing needs you" : "things need you"}</span></> : <>Room to<br />think ahead.</>}</strong>
       <p>{urgent ? `${urgent} overdue · start with the most important.` : actions.length ? "Reviews and next steps, ready when you are." : "Check your schedule or start something new."}</p>
       <span className="brief-next"><span>{actions[0] ? actions[0].title : "Explore your day"}</span><Glyph name="IconChevron" size={16} /></span>
     </Link>
+    </div>
     <div className="brief-counts">
       <Link href="/clients"><strong>{activeClients}</strong><span>Active clients</span></Link>
       <Link href="/library"><strong>{approvals}</strong><span>To review</span></Link>

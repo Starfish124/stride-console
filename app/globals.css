@@ -2849,3 +2849,57 @@ main {
 @media (max-width:767px) {
   .toolbar-mobile-brand .stride-site-lockup > span { display:none; }
 }
+
+/* Ambient art direction, inspired by Awwwards' sculptural interfaces. */
+.daily-stage { position:relative; isolation:isolate; border-radius:26px; background:#121447; }
+.brand-atmosphere { position:absolute; inset:0; z-index:2; pointer-events:none; overflow:hidden; border-radius:inherit; }
+.brand-sculpture { position:absolute; right:-14px; top:60px; width:168px; height:180px; perspective:700px; }
+.sculpture-body { position:absolute; left:32px; top:38px; width:105px; height:110px; transform-style:preserve-3d; transform:rotateX(18deg) rotateY(-25deg) rotateZ(15deg); animation:stride-sculpture-breathe 9s ease-in-out infinite; }
+.sculpture-layer,.sculpture-face { position:absolute; inset:0; border-radius:27px; }
+.layer-back { background:#1c1da6; transform:translateZ(-20px); border:1px solid #5053ff; }
+.layer-middle { background:#272ae1; transform:translateZ(-10px); border:1px solid #7476ff; }
+.sculpture-face { display:grid; place-items:center; background:#393cff; border:1px solid #9698ff; box-shadow:inset 0 1px 0 #c1c2ff,inset -6px -8px 14px #2426b8; overflow:hidden; }
+.sculpture-face .stride-site-lockup > span { display:none; }
+.sculpture-face .stride-site-lockup svg { width:64px; height:68px; color:white; }
+.sculpture-highlight { position:absolute; width:18px; height:180px; top:-35px; left:0; background:#fff; opacity:.09; transform:rotate(35deg) translateX(-80px); animation:stride-sculpture-light 9s ease-in-out infinite; }
+.sculpture-orbit { position:absolute; border:1px solid #797cff; width:156px; height:156px; top:13px; left:3px; border-radius:50%; opacity:.38; }
+.orbit-one { transform:rotateX(62deg) rotateZ(-25deg); }
+.orbit-two { transform:rotateY(62deg) rotateZ(25deg); }
+.sculpture-dot { position:absolute; width:5px; height:5px; background:#c5c6ff; border-radius:50%; animation:stride-orbit-dot 9s ease-in-out infinite; }
+.dot-one { left:12px; top:99px; }
+.dot-two { right:18px; top:28px; animation-delay:-4s; opacity:.5; }
+.ambient-toggle { position:absolute; top:9px; right:10px; min-width:64px; min-height:44px; display:flex; align-items:center; justify-content:center; gap:5px; color:#d9daff; font-size:10px; border-radius:12px; pointer-events:auto; }
+.ambient-toggle:hover { background:#ffffff14; }
+.brand-atmosphere[data-visible="false"] *, .brand-atmosphere[data-paused="true"] * { animation-play-state:paused !important; }
+.brief-state-label { display:block; font-family:var(--font-mono); font-size:10px; color:#c5c7ff; margin-bottom:8px; max-width:175px; line-height:1.5; }
+.brief-action-number { display:block; font-size:52px; line-height:1; font-weight:700; font-variant-numeric:tabular-nums; }
+.brief-action-caption { display:block; font-size:19px; margin-top:8px; }
+@keyframes stride-sculpture-breathe { 0%,100% { transform:translateY(2px) rotateX(18deg) rotateY(-25deg) rotateZ(15deg); } 50% { transform:translateY(-8px) rotateX(10deg) rotateY(-13deg) rotateZ(10deg); } }
+@keyframes stride-sculpture-light { 0%,20% { transform:rotate(35deg) translateX(-80px); } 65%,100% { transform:rotate(35deg) translateX(170px); } }
+@keyframes stride-orbit-dot { 0%,100% { transform:translate(0,0); opacity:.5; } 50% { transform:translate(7px,-9px); opacity:1; } }
+@media(max-width:767px) {
+  .brief-heading h1 { font-size:32px; margin-bottom:24px; }
+  .daily-stage { box-shadow:0 10px 15px -3px #11144220; }
+  .daily-stage .brief-priority { background:transparent; box-shadow:none; padding:20px; min-height:292px; border-radius:26px; }
+  .daily-stage .brief-priority-top { margin-bottom:25px; padding-right:62px; }
+  .daily-stage .brief-priority > strong { font-size:30px; line-height:1.15; max-width:66%; min-height:70px; }
+  .daily-stage .brief-priority > p { font-size:12px; max-width:64%; line-height:1.6; margin-top:10px; color:#d5d7f6; }
+  .daily-stage .brief-next { margin-top:22px; border-color:#ffffff26; padding-top:16px; color:white; }
+  .brief-counts { margin-top:14px; gap:0; border:1px solid var(--color-line); border-radius:20px; background:var(--color-card); padding:17px 0; }
+  .brief-counts a { padding:0 12px; background:none; border:0; border-radius:0; }
+  .brief-counts a + a { border-left:1px solid var(--color-line); }
+  .brief-counts strong { font-size:24px; }
+  .brief-shortcuts { margin:18px 0 22px; }
+  .week-peek-heading h2,.section-heading h2 { font-size:16px; }
+  .workspace-panel { border-color:color-mix(in srgb,var(--color-line) 70%,transparent); }
+  .overview-main .workspace-panel { scroll-margin-top:80px; }
+}
+@media(max-width:350px) {
+  .brand-sculpture { right:-27px; transform:scale(.82); transform-origin:center right; }
+  .daily-stage .brief-priority > strong { font-size:27px; }
+  .brief-state-label { max-width:135px; font-size:9px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .brand-atmosphere * { animation:none !important; }
+  .ambient-toggle { display:none; }
+}
