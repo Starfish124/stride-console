@@ -2838,3 +2838,10 @@ main {
   .tab-selection-track > span { transition:none; }
   .capture-success-mark > svg polygon,.capture-success-mark > span,.capture-sheet[data-state="open"] .capture-heading,.capture-sheet[data-state="open"] > p,.tools-sheet[data-state="open"] > section,.week-agenda[data-direction] { animation:none !important; }
 }
+
+.stride-site-lockup { display:inline-flex; align-items:center; gap:8.4px; white-space:nowrap; line-height:1; }
+.stride-site-lockup svg { display:block; flex-shrink:0; color:#2e30f8; }
+.stride-site-lockup > span { font-family:"Plus Jakarta Sans",sans-serif; font-size:24.08px; font-weight:800; letter-spacing:-.035em; color:var(--color-ink); }
+@media(max-width:767px) { .toolbar-location { gap:8px; } .toolbar-page-label:empty { display:none; } }
+
+.toolbar-compact-brand .stride-site-lockup > span { display:none; }

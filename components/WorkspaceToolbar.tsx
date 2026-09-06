@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { workspaceLocation } from "@/lib/workspace-nav";
 import { MenuButton } from "@/components/AppMenu";
-import { Mark } from "@/components/Ramp";
+import { StrideLogo } from "@/components/StrideLogo";
 import { Glyph } from "@/components/icons";
 export function WorkspaceToolbar() {
   const path = usePathname();
@@ -14,15 +14,15 @@ export function WorkspaceToolbar() {
         <Link
           href="/"
           aria-label="Stride home"
-          className="toolbar-mobile-brand"
+          className={path === "/" ? "toolbar-mobile-brand" : "toolbar-mobile-brand toolbar-compact-brand"}
         >
-          <Mark size={23} className="text-indigo" />
+          <StrideLogo />
         </Link>
         <span className="toolbar-area">{location.area}</span>
         <span className="toolbar-divider" aria-hidden>
           /
         </span>
-        <span className="toolbar-page-label">{path === "/" ? <><b className="toolbar-wordmark">stride</b><span className="toolbar-product">console</span></> : location.label}</span>
+        <span className="toolbar-page-label">{path === "/" ? null : location.label}</span>
       </div>
       <div className="toolbar-actions">
         <MenuButton />
