@@ -22,6 +22,7 @@ import {
   SectionHeading,
   EmptyState,
 } from "@/components/WorkspaceUI";
+import { WeekPeek } from "@/components/WeekPeek";
 import { MobileBrief } from "@/components/MobileBrief";
 import { ActionQueue } from "@/components/ActionQueue";
 import { RecipeCard } from "@/components/RecipeCard";
@@ -131,6 +132,7 @@ export default function Dashboard() {
             </Link>
           </aside>
         </div>
+        <WeekPeek today={today} entries={calendar.filter(e => e.actionable && e.date >= today).map(e => ({ id:e.id, date:e.date, title:e.title, detail:e.detail, href:e.href ?? "/calendar" }))} />
         <section className="overview-metrics" aria-label="Business overview">
           {stats.map((s) => (
             <Link key={s.label} href={s.href}>

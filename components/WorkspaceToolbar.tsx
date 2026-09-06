@@ -22,7 +22,7 @@ export function WorkspaceToolbar() {
         <span className="toolbar-divider" aria-hidden>
           /
         </span>
-        <span>{location.label}</span>
+        <span className="toolbar-page-label">{path === "/" ? <><b className="toolbar-wordmark">stride</b><span className="toolbar-product">console</span></> : location.label}</span>
       </div>
       <div className="toolbar-actions">
         <MenuButton />
