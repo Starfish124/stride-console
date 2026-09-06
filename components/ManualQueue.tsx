@@ -27,7 +27,11 @@ const LABEL: Record<QueuedStep["kind"], string> = {
  * seat hangs off it.
  *
  * Sent is a claim a person makes. Nothing here can see LinkedIn, so the button
- * records what somebody says happened rather than pretending to verify it.
+ * records what somebody says happened rather than pretending to verify it. So
+ * is "They replied", which stops the whole sequence rather than this one step —
+ * the inbox webhook only sees email, so a LinkedIn answer is invisible here
+ * unless somebody says so, and following up on it would be the rudest bug in
+ * the system.
  */
 export function ManualQueue({ steps }: { steps: QueuedStep[] }) {
   const router = useRouter();
@@ -38,7 +42,7 @@ export function ManualQueue({ steps }: { steps: QueuedStep[] }) {
   const [skipping, setSkipping] = useState("");
   const [reason, setReason] = useState("");
 
-  function act(key: string, action: "sent" | "skipped", why?: string) {
+  function act(key: string, action: "sent" | "skipped" | "replied", why?: string) {
     setBusy(`${key}:${action}`);
     setNote("");
     startTransition(async () => {
@@ -120,6 +124,15 @@ export function ManualQueue({ steps }: { steps: QueuedStep[] }) {
               className="pressable rounded-input bg-ink px-4 py-2 text-[14px] font-semibold text-white disabled:opacity-50"
             >
               {busy === `${step.key}:sent` ? "Marking." : "I sent it"}
+            </button>
+
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => act(step.key, "replied")}
+              className="pressable rounded-input border border-line px-4 py-2 text-[14px] text-ink disabled:opacity-50"
+            >
+              {busy === `${step.key}:replied` ? "Stopping." : "They replied"}
             </button>
 
             <button

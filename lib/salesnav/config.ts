@@ -17,6 +17,21 @@ const DEFAULTS = {
   perTick: 3,
   /** Up to this many minutes are added when scheduling the next step. */
   jitterMinutes: 37,
+  /**
+   * LinkedIn actions a person may actually send in one local day.
+   *
+   * Fifteen across five sending days is seventy-five a week, under the ~100
+   * invitations LinkedIn has soft-capped since 2021. Going over does not fail
+   * loudly; it gets the account restricted, and the Sales Navigator seat hangs
+   * off that account.
+   *
+   * ponytail: one blunt cap over every LinkedIn kind. Per-kind caps — invites
+   * metered separately from messages to people who already accepted — are the
+   * upgrade if this proves too tight.
+   */
+  linkedinDaily: 15,
+  /** How deep the queue may get before the runner stops adding to it. */
+  linkedinQueue: 15,
 } as const;
 
 function num(name: string, fallback: number): number {
@@ -83,6 +98,27 @@ export function dailyCap(): number {
 
 export function domainCap(): number {
   return num("SALESNAV_DOMAIN_CAP", DEFAULTS.domainCap);
+}
+
+/**
+ * The LinkedIn day cap.
+ *
+ * Counted against what a person actually sent, never against what the console
+ * queued. See sentLinkedInToday in manual.ts for why that distinction is the
+ * whole point.
+ */
+export function linkedinDailyCap(): number {
+  return num("SALESNAV_LI_DAILY", DEFAULTS.linkedinDaily);
+}
+
+/**
+ * How many drafts may sit unsent before the runner stops queueing more.
+ *
+ * A page with eighty cards on it is a page nobody works. This is about the
+ * queue staying legible, not about LinkedIn — which has never seen any of them.
+ */
+export function linkedinQueueCap(): number {
+  return num("SALESNAV_LI_QUEUE", DEFAULTS.linkedinQueue);
 }
 
 export function maxLateDays(): number {

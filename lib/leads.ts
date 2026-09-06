@@ -14,7 +14,8 @@
 // Framework-free, like lib/menu.ts: node tests import it and want no React.
 
 import path from "node:path";
-import { DATA_DIR, readJson } from "./store.ts";
+import { addClient, DATA_DIR, listClients, readJson } from "./store.ts";
+import { normaliseAddress, profileSlug } from "./salesnav/suppress.ts";
 
 export const LEADS_FILE = path.join(DATA_DIR, "apollo-leads.json");
 
@@ -120,4 +121,97 @@ export function multiContactCompanies(leads: Lead[]): { company: string; count: 
 /** Leads with a verified email, which is the half the sequencer can act on. */
 export function contactableCount(leads: Lead[]): number {
   return leads.filter((l) => l.email).length;
+}
+
+
+// ---------- getting them into the client book ----------
+//
+// This is the one function that turns a row Apollo found into somebody the
+// sequencer can actually work. Until it existed the whole book was a reading
+// room: 148 qualified people, none of them reachable by anything downstream.
+
+export interface ImportResult {
+  /** Written, or would be written when this was a dry run. */
+  imported: { name: string; company: string }[];
+  /** Already in the book, with the field that matched. */
+  known: { name: string; company: string; matched: "profile" | "email" | "name" }[];
+  /** Nothing usable to import. */
+  unusable: { name: string; company: string; why: string }[];
+  dryRun: boolean;
+}
+
+/**
+ * Copy the lead book into the client book, once.
+ *
+ * Dry by default, and that is not politeness. data/ is gitignored, so
+ * clients.json has no history at all — 148 rows appended on top of the
+ * founders' real six is not something a checkout can undo. The first call
+ * reports what it would do and the second one does it.
+ */
+export function importLeads(input: { dryRun?: boolean } = {}): ImportResult {
+  const dryRun = input.dryRun !== false;
+  const book = readLeads();
+  const result: ImportResult = { imported: [], known: [], unusable: [], dryRun };
+
+  // Built once, from one read, and updated in memory as we go. Every write
+  // below is synchronous with no await between the read and the write, which
+  // is the whole of this codebase's concurrency design — an await in this loop
+  // would throw that away and let two founders clobber each other.
+  const existing = listClients();
+  const bySlug = new Set(existing.map((c) => profileSlug(c.linkedin ?? "")).filter(Boolean));
+  const byEmail = new Set(existing.map((c) => normaliseAddress(c.email ?? "")).filter(Boolean));
+  const byName = new Set(existing.map((c) => `${c.name.trim().toLowerCase()}|${c.company.trim().toLowerCase()}`));
+
+  for (const lead of book.leads) {
+    const name = lead.name?.trim() ?? "";
+    const company = lead.company?.trim() ?? "";
+    if (!name || !company) {
+      result.unusable.push({ name, company, why: "No name or no company." });
+      continue;
+    }
+
+    // Profile first: it is the field every lead carries, and the one that
+    // survives somebody changing jobs. http/https and www differ between
+    // Apollo's export and the client book, so both go through the slug.
+    const slug = profileSlug(lead.linkedin ?? "");
+    const email = normaliseAddress(lead.email ?? "");
+    const nameKey = `${name.toLowerCase()}|${company.toLowerCase()}`;
+
+    const matched = slug && bySlug.has(slug)
+      ? ("profile" as const)
+      : email && byEmail.has(email)
+        ? ("email" as const)
+        : byName.has(nameKey)
+          ? ("name" as const)
+          : undefined;
+
+    if (matched) {
+      result.known.push({ name, company, matched });
+      continue;
+    }
+
+    if (!dryRun) {
+      // Six fields, named. Never a spread of the lead: addClient copies every
+      // key it is handed straight onto disk, and apolloUrl, poolSize and the
+      // rest have no business in the client book.
+      // ponytail: addClient re-reads the file per call, so this is O(n^2) on a
+      // 148-row import. Batch it if the book ever reaches thousands.
+      addClient({
+        name,
+        company,
+        stage: "lead",
+        source: book.list.name ? `Apollo — ${book.list.name}` : "Apollo",
+        role: lead.title?.trim() || undefined,
+        email: lead.email?.trim() || undefined,
+        linkedin: lead.linkedin?.trim() || undefined,
+      });
+    }
+
+    if (slug) bySlug.add(slug);
+    if (email) byEmail.add(email);
+    byName.add(nameKey);
+    result.imported.push({ name, company });
+  }
+
+  return result;
 }

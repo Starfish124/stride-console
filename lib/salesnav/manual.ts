@@ -18,7 +18,9 @@ import type { Client } from "../types.ts";
 import { getSequence } from "../outreach/sequence.ts";
 import type { OutreachStep } from "../outreach/sequence.ts";
 import { LIMITS } from "../outreach/lint.ts";
+import { linkedinDailyCap, linkedinQueueCap, localDay } from "./config.ts";
 import { resolveMerge } from "./merge.ts";
+import { withdraw } from "./enrol.ts";
 import { advance } from "./send.ts";
 import { findManualStep, getEnrolment, listManualSteps, putManualStep } from "./store.ts";
 import type { Enrolment, ManualStep } from "./types.ts";
@@ -31,6 +33,25 @@ export type QueueOutcome =
 
 export function isManualKind(kind: OutreachStep["kind"]): kind is ManualStep["kind"] {
   return kind === "connect" || kind === "message" || kind === "inmail";
+}
+
+/**
+ * What a person actually sent today, from the ledger rather than a counter.
+ *
+ * Only "done" counts, and it is bucketed on finishedAt — the moment somebody
+ * said they sent it, not the moment the console printed it. A waiting row is a
+ * draft LinkedIn has never seen, so counting it would cap this console's
+ * output instead of the account's exposure, and would stall the queue for a
+ * whole day every time nobody got round to working it.
+ */
+export function sentLinkedInToday(now: Date): number {
+  const day = localDay(now);
+  let total = 0;
+  for (const manual of listManualSteps()) {
+    if (manual.state !== "done" || !manual.finishedAt) continue;
+    if (localDay(new Date(manual.finishedAt)) === day) total += 1;
+  }
+  return total;
 }
 
 /**
@@ -63,6 +84,32 @@ export function queueManual(
     };
   }
 
+  // Lint ran on the template, against a placeholder company. It cannot know
+  // that "MAAT | Transport | Techniek | Heftrucks | Logistiek | Truckparq 24/7"
+  // is a real name in this book, and that a note passing at 280 characters
+  // merges to 340. LinkedIn refuses it; a founder finds out after pasting.
+  const body = merged.text.trim();
+  const limit = LIMITS[step.kind];
+  if (body.length > limit.hard) {
+    return {
+      state: "held",
+      problem: `${body.length} characters once merged for ${client.company}; a ${limit.label} takes ${limit.hard}. Shorten the step.`,
+    };
+  }
+
+  // Queue depth, then the day cap. Both hold rather than skip, so nothing is
+  // lost — the step is offered again on the next tick that has room.
+  const waitingNow = listManualSteps().filter((m) => m.state === "waiting").length;
+  if (waitingNow >= linkedinQueueCap()) {
+    return { state: "held", problem: `${waitingNow} already waiting to be sent. Work the queue down first.` };
+  }
+
+  const cap = linkedinDailyCap();
+  const already = sentLinkedInToday(now);
+  if (already >= cap) {
+    return { state: "held", problem: `${already} LinkedIn actions sent today, which is the cap. This goes tomorrow.` };
+  }
+
   const manual: ManualStep = {
     key,
     id: newId("man"),
@@ -72,7 +119,7 @@ export function queueManual(
     stepId: step.id,
     kind: step.kind,
     profileUrl: client.linkedin?.trim() || undefined,
-    body: merged.text.trim(),
+    body,
     state: "waiting",
     basis: enrolment.basis,
     dueAt: enrolment.dueAt,
@@ -135,6 +182,36 @@ export function skipManual(
   now: Date = new Date(),
 ): ManualStep | undefined {
   return settle(key, { state: "skipped", problem: reason.trim() || "Skipped." }, by, now);
+}
+
+/**
+ * They answered on LinkedIn, so the whole sequence stops.
+ *
+ * Not skip-then-advance. Skipping moves the enrolment to the next step with a
+ * fresh dueAt and leaves sweep to catch it a tick later; withdrawing stops it
+ * here, and does not depend on hasReplied matching a name — which it does
+ * globally across every reply ever received, and two Jan de Vries in a Dutch
+ * book of 148 is not a stretch.
+ */
+export function repliedManual(key: string, by: string, now: Date = new Date()): ManualStep | undefined {
+  const manual = findManualStep(key);
+  if (!manual || manual.state !== "waiting") return undefined;
+
+  const next: ManualStep = {
+    ...manual,
+    state: "skipped",
+    problem: "They replied.",
+    finishedAt: now.toISOString(),
+    finishedBy: by,
+  };
+  putManualStep(next);
+  withdraw(manual.enrolmentId, "They replied on LinkedIn.");
+  addTouch(manual.clientId, {
+    note: `Replied on LinkedIn. The sequence stopped.`,
+    who: by,
+    at: now.toISOString(),
+  });
+  return next;
 }
 
 /** The runner's too-late rule reaching a step nobody got to. */

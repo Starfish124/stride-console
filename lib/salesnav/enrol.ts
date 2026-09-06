@@ -14,7 +14,7 @@ import { getSequence } from "../outreach/sequence.ts";
 import { listReplies } from "../outreach/replies.ts";
 import { nextDueAt } from "./config.ts";
 import { listEnrolments, putEnrolment, updateEnrolment } from "./store.ts";
-import { isSuppressed, normaliseAddress } from "./suppress.ts";
+import { isProfileSuppressed, isSuppressed, normaliseAddress } from "./suppress.ts";
 import type { Enrolment, LawfulBasis } from "./types.ts";
 
 /**
@@ -103,6 +103,18 @@ export function enrol(input: {
   const blocked = email ? isSuppressed(email) : undefined;
   if (blocked) {
     return { ok: false, field: "clientId", problem: `${email} is on the suppression list (${blocked.reason}).` };
+  }
+
+  // The same refusal for a profile. Without this a LinkedIn-only enrolment,
+  // whose email is "" and so skips the check above, could be re-created the
+  // moment after somebody was suppressed.
+  const profileBlocked = client.linkedin ? isProfileSuppressed(client.linkedin) : undefined;
+  if (profileBlocked) {
+    return {
+      ok: false,
+      field: "clientId",
+      problem: `${client.name}'s LinkedIn profile is on the suppression list (${profileBlocked.reason}).`,
+    };
   }
 
   const live = listEnrolments().find(
@@ -218,9 +230,19 @@ export function sweep(): SweepResult {
         continue;
       }
     }
-    if (channels.linkedin && !client.linkedin?.trim()) {
-      stop("The client record no longer has a LinkedIn profile.");
-      continue;
+    if (channels.linkedin) {
+      if (!client.linkedin?.trim()) {
+        stop("The client record no longer has a LinkedIn profile.");
+        continue;
+      }
+      // Stopped here rather than held at the queue. Holding is non-fatal by
+      // design — the enrolment stays active and comes back every tick — which
+      // against somebody who asked to be left alone is exactly the thing
+      // suppression is an unconditional promise not to do.
+      if (isProfileSuppressed(client.linkedin)) {
+        stop("That LinkedIn profile is on the suppression list.");
+        continue;
+      }
     }
     if (stageRank(client.stage) > stageRank(enrolment.stageAtEnrolment)) {
       stop(`They moved to ${client.stage}. A conversation started, so the sequence stops.`);

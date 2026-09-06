@@ -7,7 +7,8 @@
 
 import { salesnavStatus } from "./channel.ts";
 import { listEnrolments, listSends } from "./store.ts";
-import { localDay } from "./config.ts";
+import { sentLinkedInToday, waitingManualSteps } from "./manual.ts";
+import { linkedinDailyCap, linkedinQueueCap, localDay } from "./config.ts";
 import type { AttentionItem } from "../channels/attention.ts";
 
 export function salesnavItems(now: Date = new Date()): AttentionItem[] {
@@ -92,6 +93,40 @@ export function salesnavItems(now: Date = new Date()): AttentionItem[] {
       urgency: "watch",
       title: `${s.sentToday} of ${s.dailyCap} sent today`,
       detail: "The rest of today's queue goes tomorrow.",
+      href,
+    });
+  }
+
+  // The LinkedIn queue. A held step lives only in the tick's log lines, so
+  // without these two an empty queue and a spent cap look exactly the same
+  // from the outside — the runner appears to have stopped working.
+  const waiting = waitingManualSteps();
+  if (waiting.length) {
+    items.push({
+      id: "salesnav-linkedin-waiting",
+      urgency: "waiting",
+      title: `${waiting.length} LinkedIn step${waiting.length === 1 ? "" : "s"} waiting on you`,
+      detail: "The words are written and merged. Copy, open the profile, send, mark it.",
+      href,
+    });
+  }
+
+  const liSent = sentLinkedInToday(now);
+  const liCap = linkedinDailyCap();
+  if (liSent >= liCap) {
+    items.push({
+      id: "salesnav-linkedin-cap",
+      urgency: "watch",
+      title: `${liSent} LinkedIn actions sent today, which is the cap`,
+      detail: "Nothing more queues until tomorrow. That is the cap doing its job, not a fault.",
+      href,
+    });
+  } else if (waiting.length >= linkedinQueueCap()) {
+    items.push({
+      id: "salesnav-linkedin-queue",
+      urgency: "watch",
+      title: "The LinkedIn queue is full",
+      detail: `${waiting.length} drafts are waiting, so no more are being written. Work some off.`,
       href,
     });
   }

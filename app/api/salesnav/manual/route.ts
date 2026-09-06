@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { FOUNDER_COOKIE } from "@/lib/auth";
-import { completeManual, skipManual, waitingManualSteps } from "@/lib/salesnav/manual";
+import { completeManual, repliedManual, skipManual, waitingManualSteps } from "@/lib/salesnav/manual";
 
 export const dynamic = "force-dynamic";
 
@@ -34,11 +34,13 @@ export async function POST(request: NextRequest) {
       ? completeManual(body.key, who)
       : body.action === "skipped"
         ? skipManual(body.key, who, body.reason ?? "Skipped.")
-        : undefined;
+        : body.action === "replied"
+          ? repliedManual(body.key, who)
+          : undefined;
 
   if (!manual) {
     return NextResponse.json(
-      { error: "Send action: sent or action: skipped, for a step still waiting." },
+      { error: "Send action: sent, skipped or replied, for a step still waiting." },
       { status: 400 },
     );
   }

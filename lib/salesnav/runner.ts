@@ -17,9 +17,9 @@ import { getClient } from "../store.ts";
 import { getSequence } from "../outreach/sequence.ts";
 import { isTooLate, localDay, perTick, salesnavMode, sendWindow, withinWindow } from "./config.ts";
 import { sweep } from "./enrol.ts";
-import { expireManual, queueManual } from "./manual.ts";
+import { expireManual, isManualKind, queueManual } from "./manual.ts";
 import { advance, attemptSend } from "./send.ts";
-import { findSend, hardStop, listEnrolments, putSend, runnerState, setRunnerState } from "./store.ts";
+import { findManualStep, findSend, hardStop, listEnrolments, putSend, runnerState, setRunnerState } from "./store.ts";
 import { newId } from "../store.ts";
 import type { Enrolment } from "./types.ts";
 
@@ -57,6 +57,8 @@ export interface TickResult {
   refused: number;
   /** LinkedIn steps sitting in the queue, waiting on a person. */
   waiting: number;
+  /** Steps the runner declined to queue — capped, too long, missing a field. */
+  held: number;
   stopped: number;
   lines: string[];
   at: string;
@@ -65,7 +67,7 @@ export interface TickResult {
 export async function tick(now: Date = new Date()): Promise<TickResult> {
   const at = now.toISOString();
   const mode = salesnavMode();
-  const base: TickResult = { ran: false, mode, due: 0, sent: 0, refused: 0, waiting: 0, stopped: 0, lines: [], at };
+  const base: TickResult = { ran: false, mode, due: 0, sent: 0, refused: 0, waiting: 0, held: 0, stopped: 0, lines: [], at };
 
   if (ticking) return { ...base, skipped: "A tick is already running." };
 
@@ -92,6 +94,7 @@ export async function tick(now: Date = new Date()): Promise<TickResult> {
     let sent = 0;
     let refused = 0;
     let waiting = 0;
+    let held = 0;
 
     for (const enrolment of due.slice(0, perTick())) {
       const sequence = getSequence(enrolment.sequenceId);
@@ -106,6 +109,20 @@ export async function tick(now: Date = new Date()): Promise<TickResult> {
       // better than firing last Tuesday's opener at somebody today.
       if (isTooLate(enrolment.dueAt, now)) {
         const key = `${enrolment.id}:${step.id}`;
+
+        // A LinkedIn step that was never queued is not too late — it was never
+        // put in front of anybody. Held steps keep their original dueAt, so a
+        // cap doing its job ages one day per day and would land here on the
+        // fourth, skip a connection request nobody ever saw, and advance to a
+        // follow-up written as though the handshake had happened. That is the
+        // "it looks like outreach happened" failure this queue exists to stop.
+        // It holds instead, and shows up in held rather than silently moving.
+        if (isManualKind(step.kind) && !findManualStep(key)) {
+          held += 1;
+          lines.push(`${enrolment.id}: ${step.kind} overdue but never queued, still holding`);
+          continue;
+        }
+
         const already = findSend(key);
 
         // Unless it already went. A send that completed in the gap before the
@@ -157,7 +174,8 @@ export async function tick(now: Date = new Date()): Promise<TickResult> {
         // reports it finished. The enrolment stays put until somebody works it
         // off the queue on /salesnav.
         const queued = queueManual(enrolment, step, client, now);
-        waiting += 1;
+        if (queued.state === "waiting") waiting += 1;
+        else held += 1;
         lines.push(
           queued.state === "waiting"
             ? `${enrolment.id}: ${step.kind} waiting for a founder to send`
@@ -173,7 +191,7 @@ export async function tick(now: Date = new Date()): Promise<TickResult> {
     }
 
     setRunnerState({ lastTickAt: at, lastTickDay: localDay(now) });
-    return { ran: true, mode, due: due.length, sent, refused, waiting, stopped: swept.stopped.length, lines, at };
+    return { ran: true, mode, due: due.length, sent, refused, waiting, held, stopped: swept.stopped.length, lines, at };
   } finally {
     ticking = false;
   }

@@ -9,6 +9,7 @@
 
 import crypto from "node:crypto";
 
+import { listClients } from "../store.ts";
 import {
   dropSuppression,
   listEnrolments,
@@ -26,6 +27,34 @@ export function normaliseAddress(email: string): string {
 export function domainOf(email: string): string {
   const at = normaliseAddress(email).lastIndexOf("@");
   return at < 0 ? "" : normaliseAddress(email).slice(at + 1);
+}
+
+/**
+ * A LinkedIn profile reduced to "linkedin:slug".
+ *
+ * Stored as a slug rather than a URL for two reasons. Suppression.address is
+ * documented as an address or "@domain" and isSuppressed runs domainOf over
+ * it, so a URL sitting there is inert but still shows up in the suppressed
+ * count and the /api/salesnav/suppress contract. And http/https, www, a
+ * trailing slash and Apollo's tracking query are four spellings of one person:
+ * Apollo writes http://www.linkedin.com/in/x, the client book holds
+ * https://www.linkedin.com/in/x, and anything comparing them raw matches
+ * nothing at all.
+ */
+export function profileSlug(url: string): string {
+  const raw = url.trim().toLowerCase().split(/[?#]/)[0];
+  if (!raw) return "";
+  if (raw.startsWith("linkedin:")) return raw.replace(/\/+$/, "");
+  const inPath = raw.match(/\/in\/([^/]+)/);
+  const slug = (inPath ? inPath[1] : raw.replace(/^https?:\/\//, "").replace(/^www\./, "")).replace(/\/+$/, "");
+  return slug ? `linkedin:${slug}` : "";
+}
+
+/** Is this profile on the list? Nothing to do with domains. */
+export function isProfileSuppressed(url: string): Suppression | undefined {
+  const key = profileSlug(url);
+  if (!key) return undefined;
+  return listSuppressions().find((s) => normaliseAddress(s.address) === key);
 }
 
 /**
@@ -50,8 +79,11 @@ export function suppress(input: {
   by: string;
   note?: string;
 }): Suppression {
+  const looksLikeProfile =
+    input.address.includes("linkedin.com/") || input.address.trim().toLowerCase().startsWith("linkedin:");
+
   const entry: Suppression = {
-    address: normaliseAddress(input.address),
+    address: looksLikeProfile ? profileSlug(input.address) : normaliseAddress(input.address),
     reason: input.reason,
     at: new Date().toISOString(),
     by: input.by,
@@ -60,10 +92,21 @@ export function suppress(input: {
   putSuppression(entry);
 
   const target = entry.address;
+  // A LinkedIn-only enrolment carries email "", so matching on the enrolment
+  // alone would leave it running against somebody who just asked to be left
+  // alone. The profile lives on the client, so that is where it is read from.
+  const profiles = target.startsWith("linkedin:")
+    ? new Map(listClients().map((c) => [c.id, profileSlug(c.linkedin ?? "")]))
+    : undefined;
+
   for (const enrolment of listEnrolments()) {
     if (enrolment.state !== "active" && enrolment.state !== "paused") continue;
     const address = normaliseAddress(enrolment.email);
-    const hit = target.startsWith("@") ? domainOf(address) === target.slice(1) : address === target;
+    const hit = profiles
+      ? profiles.get(enrolment.clientId) === target
+      : target.startsWith("@")
+        ? domainOf(address) === target.slice(1)
+        : !!address && address === target;
     if (hit) {
       updateEnrolment(enrolment.id, { state: "stopped", stoppedReason: `Suppressed: ${entry.reason}.` });
     }
