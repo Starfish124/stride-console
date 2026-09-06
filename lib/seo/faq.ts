@@ -21,6 +21,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { callClaudeCli, writerMode } from "../pipeline/write.ts";
 import { BANNED_WORDS, phraseRegex } from "../pipeline/lint.ts";
+import { isGeoTargeted, isTargetableTerm } from "./expand.ts";
 import type { Keyword, Locale } from "./types.ts";
 
 /** A question shape in either language. */
@@ -129,6 +130,98 @@ export function questionsForRoute(
       locale,
       impressions: k.stats?.impressions,
     }));
+}
+
+/**
+ * Questions aimed at somebody who wants to DO the job rather than buy it.
+ *
+ * `isTargetableTerm` already drops courses, salaries and "how to start an
+ * agency", but the store is full of the softer practitioner shapes — "how to
+ * build ai agents", "how to train ai chatbot", "what is ai agency business
+ * model". They pass every existing filter because they are on topic; they are
+ * simply not our reader. Kept local to the FAQ layer on purpose: an article on
+ * "build vs buy" is a legitimate subject, an unread FAQ answer about it is not.
+ */
+const PRACTITIONER =
+  /\bhow to (build|make|sell|learn|train|do|create|write|use|start|become)\b|\bagency business\b|^how to ai\b|\bhoe (bouw|maak|start|word)\b/i;
+
+/** Contiguous word pairs, the same subject test the Dutch twin runs on. */
+function pairs(phrase: string): string[] {
+  const NOISE = new Set([
+    "for", "the", "and", "with", "your", "a", "an",
+    "van", "voor", "een", "het", "de",
+    "vs", "versus", "best", "beste", "top",
+  ]);
+  const words = phrase.toLowerCase().split(/\s+/).filter((w) => w && !NOISE.has(w));
+  const out: string[] = [];
+  for (let i = 0; i < words.length - 1; i++) out.push(`${words[i]} ${words[i + 1]}`);
+  return out;
+}
+
+/**
+ * The questions to answer at the bottom of one article.
+ *
+ * The route FAQ (above) waits for measured demand and has therefore never fired
+ * — every measured query on this domain is the company's own name, so the file
+ * sat empty for five weeks while an article shipped every day. This is the
+ * source that actually has supply: the article that just published is a strong
+ * page by construction, it is about a subject the store has autocomplete
+ * questions for, and the answers ride the same commit.
+ *
+ * Three rules keep it from becoming the thin-content version of itself:
+ * - Subject, not vibes: a question has to share a contiguous pair with the
+ *   article's own keyword. Single words match nothing here — every term in this
+ *   store contains "ai".
+ * - `answered` is every question already live anywhere in faq.json. Without it
+ *   "what is an ai agent" lands identically on seven pricing articles, which is
+ *   duplicate content with a question mark on it.
+ * - Under three survivors, the article gets no block at all. A two-question FAQ
+ *   is a stub, and a stub on every page reads as filler.
+ */
+export function questionsForArticle(
+  keywords: Keyword[],
+  article: { primaryKeyword: string; locale: Locale },
+  options: { answered?: Set<string>; limit?: number; minQuestions?: number } = {},
+): FaqQuestion[] {
+  const { answered = new Set<string>(), limit = 5, minQuestions = 3 } = options;
+  const subject = pairs(article.primaryKeyword);
+  if (subject.length === 0) return [];
+
+  const picked = keywords
+    .filter((k) => k.locale === article.locale)
+    .filter((k) => QUESTION.test(k.term) && !PRACTITIONER.test(k.term))
+    // The filters grew after these terms were stored, and a city in a question
+    // is the doorway shape one sentence long.
+    .filter((k) => isTargetableTerm(k.term) && !isGeoTargeted(k.term))
+    .filter((k) => !answered.has(k.term.trim().toLowerCase()))
+    .map((k) => ({ k, hits: subject.filter((p) => k.term.toLowerCase().includes(p)).length }))
+    .filter((m) => m.hits > 0)
+    // Closest to the article's subject first, then whatever Search Console has
+    // measured, then the engine's own guess as the last tie-break.
+    .sort(
+      (a, b) =>
+        b.hits - a.hits ||
+        (b.k.stats?.impressions ?? 0) - (a.k.stats?.impressions ?? 0) ||
+        b.k.opportunity - a.k.opportunity,
+    )
+    .slice(0, limit)
+    .map(({ k }) => ({
+      question: asQuestion(k.term),
+      term: k.term,
+      locale: article.locale,
+      impressions: k.stats?.impressions,
+    }));
+
+  return picked.length >= minQuestions ? picked : [];
+}
+
+/** Every question already answered somewhere on the site, lowercased. */
+export function answeredQuestions(file: FaqFile): Set<string> {
+  return new Set(
+    file.entries.flatMap((e) =>
+      e.items.map((i) => i.question.trim().toLowerCase().replace(/\?+$/, "")),
+    ),
+  );
 }
 
 /**

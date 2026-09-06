@@ -36,9 +36,11 @@ import {
 } from "./expand.ts";
 import { decideCap } from "./governor.ts";
 import {
+  answeredQuestions,
   answerQuestions,
   mergeEntry,
   nextRouteToAnswer,
+  questionsForArticle,
   questionsForRoute,
   readFaqFile,
   writeFaqFile,
@@ -766,6 +768,7 @@ export async function draftArticles(
   }
 
   const written: ArticleRunResult["articles"] = [];
+  const publishedNow: { slug: string; locale: Locale; primaryKeyword: string }[] = [];
   let failed = 0;
   let publishedCount = 0;
 
@@ -788,7 +791,14 @@ export async function draftArticles(
     let sent: ArticleOutcome | undefined;
     if (config.autoPublishArticles && !geo && result.article.lint.errors === 0) {
       sent = publishArticle(result.article, { now });
-      if (sent.ok) publishedCount++;
+      if (sent.ok) {
+        publishedCount++;
+        publishedNow.push({
+          slug: result.article.slug,
+          locale: result.article.locale,
+          primaryKeyword: brief.primaryKeyword,
+        });
+      }
     }
 
     written.push({
@@ -853,6 +863,43 @@ export async function draftArticles(
     }
   }
 
+  // ---- the article's own questions, answered under the article ----
+  //
+  // The route FAQ in the sweep waits for measured demand and has therefore
+  // never fired: every measured query on this domain is the company's own name,
+  // so faq.json sat empty for five weeks while an article shipped every day.
+  // The article that just published is the page that does have supply, and the
+  // website already renders <Faq route={`/blog/${slug}`}> on every article, so
+  // nothing changes on the site side.
+  //
+  // One block per run, first article that has three honest questions left. A
+  // second Claude call to fill the Dutch twin as well would double the run for
+  // the day's second-best questions.
+  let faqAdded: { route: string; answers: number } | undefined;
+  try {
+    const faqFile = readFaqFile(config.siteRepo);
+    const answered = answeredQuestions(faqFile);
+    const keywords = listKeywords();
+    for (const article of publishedNow) {
+      const route = `/blog/${article.slug}`;
+      if (faqFile.entries.some((e) => e.route === route && e.locale === article.locale)) continue;
+      const questions = questionsForArticle(keywords, article, { answered });
+      if (questions.length === 0) continue;
+
+      const { entry } = await answerQuestions(questions, route, article.locale);
+      if (!entry) continue;
+      writeFaqFile(config.siteRepo, mergeEntry(faqFile, entry));
+      // Its own commit: the article is already live, and an answer block that
+      // fails to publish must not take the article's commit down with it.
+      const sent = publish([], { repo: config.siteRepo, push: true, now });
+      if (sent.ok) faqAdded = { route, answers: entry.items.length };
+      break;
+    }
+  } catch {
+    // An FAQ block is a bonus on top of the day's article. What the floor
+    // measures is the article, and that has already published.
+  }
+
   const clean = written.filter((w) => w.errors === 0).length;
   const held = clean - publishedCount;
   const short = floor > 0 && publishedCount < floor;
@@ -870,6 +917,8 @@ export async function draftArticles(
           }${written.length - clean > 0 ? `, ${written.length - clean} held by the voice gate` : ""}${
             failed > 0 ? `, ${failed} failed` : ""
           }.${
+            faqAdded ? ` ${faqAdded.answers} questions answered under ${faqAdded.route}.` : ""
+          }${
             short
               ? ` FLOOR MISSED: ${floor} article${floor === 1 ? "" : "s"} a day is the standing rule and today published ${publishedCount}.`
               : ""

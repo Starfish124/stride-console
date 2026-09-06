@@ -8,6 +8,8 @@ import {
   parseAnswers,
   nextRouteToAnswer,
   questionsForRoute,
+  questionsForArticle,
+  answeredQuestions,
 } from "../lib/seo/faq.ts";
 
 function keyword(term, locale, extra = {}) {
@@ -244,4 +246,63 @@ test("the practitioner audience cannot reach a FAQ block either", async () => {
   assert.equal(isTargetableTerm("how to grow ai consultancy"), false);
   // A buyer asking how to do the work is still ours.
   assert.equal(isTargetableTerm("how to automate invoice processing with ai"), true);
+});
+
+// --- questions under the article that just published ---
+
+test("questionsForArticle takes questions about the article's own subject", () => {
+  const kws = [
+    keyword("what is ai chatbot development", "en", { assignedRoute: "/services" }),
+    keyword("what is ai chatbot", "en"),
+    keyword("how does ai chatbot work", "en"),
+    keyword("what is workflow automation", "en"),
+  ];
+  const picked = questionsForArticle(kws, {
+    primaryKeyword: "enterprise ai chatbot development cost",
+    locale: "en",
+  });
+  assert.equal(picked.length, 3);
+  assert.ok(picked.every((q) => /chatbot/i.test(q.term)));
+  // Closest to the subject first: two pairs matched, not one.
+  assert.equal(picked[0].term, "what is ai chatbot development");
+});
+
+test("questionsForArticle refuses practitioner questions and other locales", () => {
+  const kws = [
+    keyword("how to build ai agents", "en"),
+    keyword("how to sell ai agents", "en"),
+    keyword("what is ai agency business model", "en"),
+    keyword("wat is een ai agent", "nl"),
+    keyword("what is ai agent", "en"),
+  ];
+  assert.deepEqual(
+    questionsForArticle(kws, { primaryKeyword: "ai agent pricing models", locale: "en" }),
+    [],
+    "one honest question left is a stub, not an FAQ",
+  );
+});
+
+test("questionsForArticle never repeats a question already answered elsewhere", () => {
+  const kws = [
+    keyword("what is ai agent", "en"),
+    keyword("what is ai agent and how it works", "en"),
+    keyword("why ai agent matters", "en"),
+  ];
+  const article = { primaryKeyword: "ai agent pricing models", locale: "en" };
+  assert.equal(questionsForArticle(kws, article).length, 3);
+
+  const file = mergeEntry(
+    { updatedAt: "", entries: [] },
+    {
+      route: "/blog/ai-agent-pricing",
+      locale: "en",
+      items: [{ question: "What is AI agent?", answer: "..." }],
+      updatedAt: "2026-09-01T00:00:00.000Z",
+    },
+  );
+  assert.deepEqual(
+    questionsForArticle(kws, article, { answered: answeredQuestions(file) }),
+    [],
+    "the same answer on two pages is duplicate content",
+  );
 });
