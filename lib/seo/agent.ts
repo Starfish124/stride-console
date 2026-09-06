@@ -895,9 +895,12 @@ export async function draftArticles(
       if (sent.ok) faqAdded = { route, answers: entry.items.length };
       break;
     }
-  } catch {
+  } catch (error) {
     // An FAQ block is a bonus on top of the day's article. What the floor
-    // measures is the article, and that has already published.
+    // measures is the article, and that has already published — so this never
+    // fails the run. It does say so in the log: a layer that silently produced
+    // nothing is exactly how faq.json stayed empty for five weeks.
+    console.error(`[seo-articles] faq skipped: ${msg(error)}`);
   }
 
   const clean = written.filter((w) => w.errors === 0).length;
