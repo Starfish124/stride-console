@@ -22,7 +22,9 @@ export function MythQuickAdd() {
   }
 
   useEffect(() => {
-    void load();
+    const controller = new AbortController();
+    fetch("/api/myths", { signal: controller.signal }).then(res => res.ok ? res.json() : []).then((items: Myth[]) => setBank(items.filter(m => !m.used))).catch(() => {});
+    return () => controller.abort();
   }, []);
 
   async function add(e: React.FormEvent) {
@@ -55,10 +57,11 @@ export function MythQuickAdd() {
     <div>
       <form onSubmit={add} className="flex gap-2">
         <input
+          aria-label="New myth"
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder={'e.g. "You need perfect data before AI is useful"'}
-          className="flex-1 rounded-input border border-line bg-white px-3 py-2 text-sm text-ink outline-none placeholder:text-slate/60 focus:border-indigo"
+          className="min-w-0 flex-1 rounded-input border border-line bg-white px-3 py-2 text-sm text-ink outline-none placeholder:text-slate/60 focus:border-indigo"
         />
         <button
           type="submit"

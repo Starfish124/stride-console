@@ -1,7 +1,7 @@
 import { brain, type Memory } from "@/lib/brain/store";
 import { BrainSearch } from "@/components/BrainSearch";
 import { Header } from "@/components/ui";
-import { Ramp } from "@/components/Ramp";
+import { PageHeading } from "@/components/WorkspaceUI";
 import { IconBars, IconSpark, IconTime, IconWorkflow } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
@@ -17,9 +17,11 @@ export default async function BrainPage() {
   let lessons: Memory[] = [];
   let timeline: Memory[] = [];
   let total = 0;
+
   try {
     const b = brain();
     total = b.count();
+
     lessons = b.recent(80).filter((m) => m.kind !== "event").slice(0, 20);
     timeline = b.recent(20, "event");
   } catch {
@@ -29,28 +31,9 @@ export default async function BrainPage() {
   return (
     <div className="min-h-screen bg-paper">
       <Header />
-      <main className="mx-auto max-w-4xl px-6 pb-20">
-        <section className="py-10">
-          <Ramp width={52} className="mb-4 text-indigo" />
-          <p className="eyebrow text-slate">Hermes</p>
-          <h1 className="title-large mt-3 text-ink">
-            {total > 0 ? (
-              <>
-                <span className="accent">{total}</span>{" "}
-                {total === 1 ? "thing" : "things"} the machine remembers.
-              </>
-            ) : (
-              <>
-                Nothing remembered <span className="accent">yet</span>.
-              </>
-            )}
-          </h1>
-          <p className="mt-2 max-w-xl text-slate">
-            Every Claude session and delivery run is distilled overnight into lessons, and every
-            pipeline move becomes a line of history. Runs and new sessions read this before they
-            start.
-          </p>
-        </section>
+      <main id="workspace-content" tabIndex={-1} className="workspace-main">
+        <PageHeading eyebrow="Knowledge" title="Your shared knowledge" description="Lessons from sessions and delivery work, ready to help with what comes next."/>
+
 
         <div className="grid grid-cols-3 gap-3 sm:gap-4">
           <Stat icon={IconSpark} label="Sessions" value={countOf(lessons, "session")} />

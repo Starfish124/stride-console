@@ -1,8 +1,7 @@
 import Image from "next/image";
-import Link from "next/link";
 import type { DraftStatus } from "@/lib/types";
-import { NavLinks } from "@/components/NavLinks";
-import { MenuButton } from "@/components/AppMenu";
+import { WorkspaceToolbar } from "@/components/WorkspaceToolbar";
+
 import { BRAND } from "@/lib/brand";
 
 /**
@@ -17,7 +16,6 @@ export function Wordmark({ height = 26 }: { height?: number }) {
   // not a redraw. Both render and CSS picks one; a ~22KB PNG is cheaper than
   // a flash of the wrong logo while script decides.
   const common = {
-    alt: "StrideAI",
     width: Math.round(height * (660 / 161)),
     height,
     // Next 16 deprecated `priority` for this. The lockup is above the fold on
@@ -27,8 +25,8 @@ export function Wordmark({ height = 26 }: { height?: number }) {
   } as const;
   return (
     <>
-      <Image src="/brand/strideai.png" className="w-auto dark:hidden" {...common} />
-      <Image src="/brand/strideai-dark.png" className="hidden w-auto dark:block" {...common} />
+      <Image alt="StrideAI" src="/brand/strideai.png" className="w-auto dark:hidden" {...common} />
+      <Image alt="StrideAI" src="/brand/strideai-dark.png" className="hidden w-auto dark:block" {...common} />
     </>
   );
 }
@@ -49,32 +47,7 @@ export function StatusBadge({ status }: { status: DraftStatus }) {
   );
 }
 
-export function Header() {
-  return (
-    // No bar at all. A white strip pinned to the top, blurred or not, is the
-    // most web-page thing an interface can do. The mark and the avatar sit
-    // straight on the paper and scroll away with everything else.
-    <header className="pt-[env(safe-area-inset-top)]">
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-1.5 sm:px-6 sm:py-2.5">
-        {/* The rail already carries the mark at xl; twice in one corner is a
-            typo, not branding. The header keeps it everywhere narrower. */}
-        <Link href="/" className="pressable -m-2 p-2 xl:invisible" aria-label="Stride console">
-          <Wordmark height={24} />
-        </Link>
-        <nav className="flex items-center gap-4 sm:gap-6">
-          {/* Phone widths navigate with the bottom tab bar; xl widths with the
-              side rail — the header links only exist in between, because two
-              navigations saying the same thing at once is one too many. */}
-          <span className="hidden items-center gap-4 sm:flex sm:gap-6 xl:hidden">
-            <NavLinks />
-          </span>
-          {/* Everything else — every width — is one button away. */}
-          <MenuButton />
-        </nav>
-      </div>
-    </header>
-  );
-}
+export function Header() { return <WorkspaceToolbar />; }
 
 /** Dotted concentric radar circles, the brand background device. */
 export function Radar({

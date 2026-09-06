@@ -32,7 +32,7 @@ export default async function BuildReportPage() {
   return (
     <div className="min-h-screen bg-paper">
       <Header />
-      <main className="mx-auto max-w-3xl px-6 pb-20">
+      <main id="workspace-content" tabIndex={-1} className="mx-auto max-w-3xl px-6 pb-20">
         <section className="flex items-baseline justify-between py-8">
           <div>
             <Link href="/build" className="eyebrow text-slate no-print">

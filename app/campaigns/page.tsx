@@ -2,7 +2,7 @@ import { Header } from "@/components/ui";
 import { readCampaignsView } from "@/lib/channels/linkedHelper";
 import { CampaignDeck } from "@/components/CampaignDeck";
 import { CampaignCreator } from "@/components/CampaignCreator";
-import { Ramp } from "@/components/Ramp";
+import { PageHeading } from "@/components/WorkspaceUI";
 
 export const dynamic = "force-dynamic";
 
@@ -14,18 +14,9 @@ export default async function CampaignsPage() {
   return (
     <div className="min-h-screen bg-paper">
       <Header />
-      <main className="mx-auto max-w-3xl px-6 pb-20">
-        <section className="py-12">
-          <Ramp width={52} className="mb-4 text-indigo" />
-          <p className="eyebrow text-slate">Campaigns</p>
-          <h1 className="display mt-3 text-3xl text-ink">
-            What Linked Helper is doing.
-          </h1>
-          <p className="mt-3 text-[15px] text-slate">
-            Read from Linked Helper&apos;s own database, so the numbers hold
-            whether or not the app is open. The controls reach the real thing.
-          </p>
-        </section>
+      <main id="workspace-content" tabIndex={-1} className="workspace-main">
+        <PageHeading eyebrow="Growth" title="Campaigns" description="Track LinkedIn campaign progress and manage the work in motion."/>
+
 
         {problem && (
           <section className="mb-10 card-glass rounded-card border border-line bg-white p-6">

@@ -48,7 +48,7 @@ export default async function ClientPage({
   return (
     <div className="min-h-screen bg-paper">
       <Header />
-      <main className="mx-auto max-w-5xl px-6 pb-20">
+      <main id="workspace-content" tabIndex={-1} className="mx-auto max-w-5xl px-6 pb-20">
         <section className="py-10">
           <Ramp width={52} className="mb-4 text-indigo" />
           <Link href="/clients" className="eyebrow text-slate hover:text-indigo">

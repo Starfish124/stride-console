@@ -29,7 +29,7 @@ export default function Error({
   }, [error]);
 
   return (
-    <main className="mx-auto flex min-h-[70vh] max-w-lg flex-col justify-center px-6">
+    <main id="workspace-content" tabIndex={-1} className="mx-auto flex min-h-[70vh] max-w-lg flex-col justify-center px-6">
       <IconEscalate size={26} className="text-amber" />
       <h1 className="title-large mt-4 text-ink">That page broke.</h1>
       <p className="mt-2 text-slate">

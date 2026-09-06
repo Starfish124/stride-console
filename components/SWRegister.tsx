@@ -6,7 +6,7 @@ import { useEffect } from "react";
 export function SWRegister() {
   useEffect(() => {
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => {
+      navigator.serviceWorker.register("/sw.js?workspace=2", { updateViaCache: "none" }).catch(() => {
         // An old browser without service workers still gets the full console.
       });
     }

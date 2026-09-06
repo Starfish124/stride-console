@@ -1,7 +1,7 @@
 // Stride Console service worker: offline shell + self-hosted web push.
 // No external push service beyond the browser's own delivery.
 
-const CACHE = "stride-shell-v1";
+const CACHE = "stride-shell-v2";
 const SHELL = ["/offline.html", "/icons/icon-192.png"];
 
 self.addEventListener("install", (event) => {
@@ -79,6 +79,9 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(navigateOrOffline(request));
     return;
   }
+
+  // Development chunks reuse URLs. Never cache them on a local preview.
+  if (["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)) return;
 
   // Static assets: cache first, fill the cache from the network.
   if (

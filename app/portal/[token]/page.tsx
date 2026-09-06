@@ -109,7 +109,7 @@ export default async function PortalPage({
 
   return (
     <div className="min-h-screen bg-paper">
-      <main className="mx-auto max-w-2xl px-6 pb-16 pt-[calc(env(safe-area-inset-top)+3rem)]">
+      <main id="workspace-content" tabIndex={-1} className="mx-auto max-w-2xl px-6 pb-16 pt-[calc(env(safe-area-inset-top)+3rem)]">
         <header className="pb-10">
           <div className="flex items-center gap-2.5">
             <Mark size={22} className="text-indigo" />

@@ -96,7 +96,7 @@ export default function DuraboBuildPage() {
   return (
     <div className="min-h-screen bg-paper">
       <Header />
-      <main className="mx-auto max-w-3xl px-6 pb-20">
+      <main id="workspace-content" tabIndex={-1} className="mx-auto max-w-3xl px-6 pb-20">
         <section className="py-8">
           <Link href="/durabo" className="eyebrow text-slate">
             ← Durabo · rooster

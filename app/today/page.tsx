@@ -29,7 +29,7 @@ export default async function TodayPage() {
   return (
     <div className="min-h-screen bg-paper">
       <Header />
-      <main className="mx-auto max-w-4xl px-6 pb-20">
+      <main id="workspace-content" tabIndex={-1} className="mx-auto max-w-4xl px-6 pb-20">
         <section className="py-10">
           <Ramp width={52} className="mb-4 text-indigo" />
           <p className="eyebrow text-slate">The log</p>
