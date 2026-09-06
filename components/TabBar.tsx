@@ -15,9 +15,11 @@ const TABS = [
 export function TabBar() {
   const path = usePathname();
   const [open, setOpen] = useState(false);
+  const activeIndex = open ? 4 : TABS.findIndex(t => routeIsActive(path, t.href));
   if (!isWorkspaceRoute(path)) return null;
   return (
     <nav className="workspace-tabs" aria-label="Mobile navigation">
+      <span className="tab-selection-track" aria-hidden="true"><span style={{ transform: `translateX(${(activeIndex < 0 ? 4 : activeIndex) * 100}%)` }} /></span>
       {TABS.map((t) => (
         <Link
           key={t.href}
@@ -25,7 +27,7 @@ export function TabBar() {
           aria-current={routeIsActive(path, t.href) ? "page" : undefined}
           className={cn(
             "mobile-tab",
-            routeIsActive(path, t.href) && "is-active",
+            (!open && routeIsActive(path, t.href)) && "is-active",
           )}
         >
           <Glyph name={t.icon} size={21} />
@@ -33,7 +35,7 @@ export function TabBar() {
         </Link>
       ))}
       <Dialog.Root open={open} onOpenChange={setOpen}>
-        <Dialog.Trigger asChild><button type="button" className={cn("mobile-tab", !TABS.some(t => routeIsActive(path, t.href)) && "is-active")} aria-label="All workspace tools"><Glyph name="IconGrid" size={21} /><span>More</span></button></Dialog.Trigger>
+        <Dialog.Trigger asChild><button type="button" className={cn("mobile-tab", (open || !TABS.some(t => routeIsActive(path, t.href))) && "is-active")} aria-label="All workspace tools"><Glyph name="IconGrid" size={21} /><span>More</span></button></Dialog.Trigger>
         <Dialog.Portal><Dialog.Overlay className="command-overlay sheet-overlay" /><Dialog.Content className="capture-sheet tools-sheet">
           <div className="sheet-handle" aria-hidden="true" /><div className="capture-heading"><Dialog.Title>Your workspace</Dialog.Title><Dialog.Close className="capture-close" aria-label="Close tools">×</Dialog.Close></div>
           <Dialog.Description>Everything you need, all in one place.</Dialog.Description>

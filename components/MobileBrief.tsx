@@ -1,9 +1,10 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Mark, Ramp } from "@/components/Ramp";
+import { Working } from "@/components/Loader";
 import { Glyph } from "@/components/icons";
 import type { WorkspaceAction } from "@/lib/workspace-overview";
 
@@ -16,6 +17,9 @@ export function MobileBrief({ date, actions, activeClients, approvals, unpaid, d
   const [lane, setLane] = useState("idea");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [saved, setSaved] = useState(false);
+  const doneButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => { if (saved) doneButton.current?.focus(); }, [saved]);
   const [notice, setNotice] = useState("");
   const urgent = actions.filter(a => a.urgent).length;
   async function save(event: React.FormEvent) {
@@ -25,7 +29,7 @@ export function MobileBrief({ date, actions, activeClients, approvals, unpaid, d
     try {
       const response = await fetch("/api/notes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, lane }) });
       if (!response.ok) throw new Error("Your note couldn’t be saved. Please try again.");
-      setText(""); setOpen(false); setNotice("Saved to your shared notes board."); router.refresh();
+      setText(""); setSaved(true); setNotice("Saved to your shared notes board."); router.refresh();
     } catch (e) { setError(e instanceof Error ? e.message : "Please try again."); }
     finally { setSaving(false); }
   }
@@ -44,18 +48,19 @@ export function MobileBrief({ date, actions, activeClients, approvals, unpaid, d
       <Link href="/invoices"><strong>{unpaid}</strong><span>Unpaid invoices</span></Link>
     </div>
     <div className="brief-shortcuts" aria-label="Quick actions">
-      <Dialog.Root open={open} onOpenChange={next => { if (!saving) { setOpen(next); setError(""); } }}>
+      <Dialog.Root open={open} onOpenChange={next => { if (!saving) { setOpen(next); setError(""); if (next) setSaved(false); } }}>
         <Dialog.Trigger asChild><button type="button"><Glyph name="IconBranch" size={22} /><span>Capture</span></button></Dialog.Trigger>
         <Dialog.Portal><Dialog.Overlay className="command-overlay sheet-overlay" /><Dialog.Content className="capture-sheet">
-          <div className="sheet-handle" aria-hidden="true" /><div className="capture-heading"><Dialog.Title>Get it out of your head.</Dialog.Title><Dialog.Close className="capture-close" disabled={saving} aria-label="Close capture">×</Dialog.Close></div>
-          <Dialog.Description>Save an idea or next step to your shared board.</Dialog.Description>
+          <div className="sheet-handle" aria-hidden="true" /><div className="capture-heading"><Dialog.Title>{saved ? "A little more headspace." : "Get it out of your head."}</Dialog.Title><Dialog.Close className="capture-close" disabled={saving} aria-label="Close capture">×</Dialog.Close></div>
+          <Dialog.Description>{saved ? "Your note is on the shared board, ready for both of you." : "Save an idea or next step to your shared board."}</Dialog.Description>
+          {saved ? <div className="capture-success" role="status"><span className="capture-success-mark"><Mark size={54} /><span><Glyph name="IconApproved" size={22} /></span></span><h3>Captured. Keep moving.</h3><p>Good ideas deserve somewhere to land.</p><Dialog.Close ref={doneButton} className="primary-button">Back to my day<Glyph name="IconChevron" size={17} /></Dialog.Close><Link href="/notes" className="capture-success-link" onClick={() => setOpen(false)}>Open shared notes</Link></div> : <>
           <form onSubmit={save}>
             <label htmlFor="capture-note">Your note</label>
             <textarea id="capture-note" required value={text} onChange={e => setText(e.target.value)} placeholder="An idea, a client follow-up, something to do…" rows={4} disabled={saving} />
             <label htmlFor="capture-lane">Save as</label><select id="capture-lane" value={lane} onChange={e => setLane(e.target.value)} disabled={saving}><option value="idea">An idea</option><option value="todo">A to-do</option><option value="doing">In progress</option></select>
             {error && <p role="alert">{error}</p>}
-            <button className="primary-button" type="submit" disabled={saving || !text.trim()}>{saving ? "Saving…" : "Save to shared board"}</button>
-          </form>
+            <button className="primary-button" type="submit" disabled={saving || !text.trim()}>{saving ? <Working onDark>Saving your note</Working> : "Save to shared board"}</button>
+          </form></>}
         </Dialog.Content></Dialog.Portal>
       </Dialog.Root>
       <Link href="/ask"><Glyph name="IconAskStride" size={22} /><span>Ask Stride</span></Link>

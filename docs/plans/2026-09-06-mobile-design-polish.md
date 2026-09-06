@@ -26,3 +26,7 @@ Motion uses CSS transform/opacity: 200ms sheet entry, 160ms exit, 140ms press re
 ## Release
 
 Pushed through existing GitHub main branch. The shared site is served by the Mac mini, which still requires its local pull/build/service restart; this machine has no established remote access.
+
+## Motion refinement
+
+Added a travelling blue selection behind the mobile navigation; directional schedule transitions; coordinated diagonal tool-group entrances; and a branded capture completion state with the actual Stride mark. Saving uses the existing brand loader. Success focuses the return button; dismissal restores focus through Radix. All new animation has reduced-motion overrides. Browser verified successful persistence, completion display, success-button focus, sheet dismissal, and group stagger timings (0/25/50/75ms). Temporary QA notes removed. Suite remains 513 passing, one skipped; production build passes.
