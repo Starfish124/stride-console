@@ -8,6 +8,7 @@ import {
 } from "@/lib/workspace-nav";
 import { Glyph } from "@/components/icons";
 import { Mark } from "@/components/Ramp";
+import { StrideLogo } from "@/components/StrideLogo";
 import { MenuTrigger } from "@/components/AppMenu";
 import { cn } from "@/lib/cn";
 
@@ -28,10 +29,7 @@ export function SideNav({ clients = [] }: { clients?: RailClient[] }) {
         className="workspace-brand"
         aria-label="Stride Console home"
       >
-        <Mark size={27} className="text-indigo" />
-        <span>
-          Stride<span className="brand-console">Console</span>
-        </span>
+        <StrideLogo />
       </Link>
       <MenuTrigger label="Search pages and tools" className="sidebar-search">
         <Glyph name="IconSearch" size={17} />

@@ -2845,3 +2845,7 @@ main {
 @media(max-width:767px) { .toolbar-location { gap:8px; } .toolbar-page-label:empty { display:none; } }
 
 .toolbar-compact-brand .stride-site-lockup > span { display:none; }
+
+@media (max-width:767px) {
+  .toolbar-mobile-brand .stride-site-lockup > span { display:none; }
+}
