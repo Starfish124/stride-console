@@ -13,6 +13,11 @@ import {
 import { listProjects, listIssues, listRuns } from "@/lib/workspace/store";
 import { listAudits } from "@/lib/seo/store";
 import { unhandledCount } from "@/lib/outreach/replies";
+import { reach, engineStatus } from "@/lib/salesnav/engine";
+import { sentLinkedInToday } from "@/lib/salesnav/manual";
+import { linkedinDailyCap } from "@/lib/salesnav/config";
+import { readLeads, contactableCount } from "@/lib/leads";
+import { apolloConfigured } from "@/lib/apollo";
 import { buildCalendar, todayISO, KIND_LABELS } from "@/lib/calendar";
 import { buildStats } from "@/lib/dashboard";
 import { workspaceActions } from "@/lib/workspace-overview";
@@ -44,7 +49,19 @@ export default function Dashboard() {
     { clients, events: listEvents(), signups: listSignups(), postLog },
     today,
   );
-  const actions = workspaceActions(calendar, drafts, unhandledCount(), today);
+  const repliesWaiting = unhandledCount();
+  const actions = workspaceActions(calendar, drafts, repliesWaiting, today);
+  // Apollo, on the home screen: what is in the book, what is moving,
+  // and what is waiting on a person. Hidden entirely when Apollo is
+  // not configured, so a fresh checkout does not show four zeroes.
+  const apolloOn = apolloConfigured();
+  const leads = apolloOn ? readLeads().leads : [];
+  const outreach = apolloOn ? reach() : null;
+  const engine = apolloOn ? engineStatus() : null;
+  // The day's LinkedIn cap. Counted on sent, never on queued, so it is the
+  // number that actually stops the runner rather than the one that looks busy.
+  const sentToday = apolloOn ? sentLinkedInToday(new Date()) : 0;
+  const dailyCap = apolloOn ? linkedinDailyCap() : 0;
   const upcoming = calendar
     .filter((e) => e.actionable && e.date >= today)
     .sort((a, b) => a.date.localeCompare(b.date))
@@ -249,6 +266,81 @@ export default function Dashboard() {
             </Link></li>;
           })}</ul>
         </section>}
+        {apolloOn && outreach && engine && (
+          <section className="workspace-panel home-outreach">
+            <SectionHeading
+              title="Outreach"
+              subtitle={engine.detail}
+              href="/leads"
+              action="Lead book"
+            />
+            <ul className="client-work-list">
+              {repliesWaiting > 0 && (
+                <li>
+                  <Link href="/outreach#replies">
+                    <span className="action-icon urgent"><Glyph name="IconEscalate" size={20} /></span>
+                    <span className="action-copy">
+                      <strong>{repliesWaiting} {repliesWaiting === 1 ? "reply" : "replies"} to answer</strong>
+                      <small>Someone wrote back. Nothing else in outreach matters more.</small>
+                    </span>
+                    <Glyph name="IconChevron" size={16} />
+                  </Link>
+                </li>
+              )}
+              <li>
+                <Link href="/outreach">
+                  <span className="action-icon"><Glyph name="IconPipeline" size={20} /></span>
+                  <span className="action-copy">
+                    <strong>{outreach.active} in a sequence</strong>
+                    <small>
+                      {outreach.waiting} waiting to send · {outreach.sent} sent
+                      {outreach.replied > 0 ? ` · ${outreach.replied} replied out` : ""}
+                    </small>
+                  </span>
+                  <Glyph name="IconChevron" size={16} />
+                </Link>
+              </li>
+              <li>
+                <Link href="/leads">
+                  <span className="action-icon"><Glyph name="IconTarget" size={20} /></span>
+                  <span className="action-copy">
+                    <strong>{leads.length.toLocaleString("en-GB")} in the lead book</strong>
+                    <small>{contactableCount(leads).toLocaleString("en-GB")} with an address to write to</small>
+                  </span>
+                  <Glyph name="IconChevron" size={16} />
+                </Link>
+              </li>
+              <li>
+                <Link href="/outreach">
+                  <span className={sentToday >= dailyCap ? "action-icon urgent" : "action-icon"}>
+                    <Glyph name="IconTime" size={20} />
+                  </span>
+                  <span className="action-copy">
+                    <strong>{sentToday} of {dailyCap} LinkedIn sends today</strong>
+                    <small>
+                      {sentToday >= dailyCap
+                        ? "The day's cap is spent. Nothing more queues until tomorrow."
+                        : `${dailyCap - sentToday} left before the runner holds the rest back.`}
+                    </small>
+                  </span>
+                  <Glyph name="IconChevron" size={16} />
+                </Link>
+              </li>
+              <li>
+                <Link href="/salesnav">
+                  <span className={engine.state === "stopped" ? "action-icon urgent" : "action-icon"}>
+                    <Glyph name="IconRuntime" size={20} />
+                  </span>
+                  <span className="action-copy">
+                    <strong>Sequencer · {engine.state === "no-clock" ? "no clock" : engine.state}</strong>
+                    <small>{engine.window}{engine.inWindow ? " · in the window now" : ""}</small>
+                  </span>
+                  <Glyph name="IconChevron" size={16} />
+                </Link>
+              </li>
+            </ul>
+          </section>
+        )}
         <section id="create-content" className="create-section">
           <SectionHeading
             title="Make something worth sharing"

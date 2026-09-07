@@ -2696,6 +2696,7 @@ main {
 .tools-settings { display:flex; justify-content:space-between; align-items:center; min-height:52px; margin-top:16px; font-size:13px; font-weight:650; }
 
 .home-projects { margin-top:18px; }
+.home-outreach { margin-top:18px; }
 
 /* Stride Daily: a consistent visual and motion language for touch. */
 .toolbar-page-label { display:flex; align-items:baseline; gap:7px; }
