@@ -6,8 +6,10 @@
 // lib/channels/linkedinApi.ts uses.
 
 import { dailyCap, domainCap, liveBlockers, salesnavMode, sendWindow } from "./config.ts";
+import { channelsOf } from "./enrol.ts";
 import { sentToday } from "./guard.ts";
 import { hardStop, listEnrolments, listSends, listSuppressions, runnerState } from "./store.ts";
+import { getSequence } from "../outreach/sequence.ts";
 import type { Channel, ChannelStatus } from "../channels/types.ts";
 
 /**
@@ -40,9 +42,22 @@ export interface SalesnavStatus {
   lastTickAt: string | null;
 }
 
+/**
+ * A LinkedIn enrolment is not this channel's business. Without this filter,
+ * "In a sequence" on the email card counted every active enrolment in the
+ * console, LinkedIn included, which was invisible while email had zero
+ * enrolments and became actively misleading the moment it did not.
+ */
+function emailEnrolments(enrolments: ReturnType<typeof listEnrolments>): ReturnType<typeof listEnrolments> {
+  return enrolments.filter((e) => {
+    const sequence = getSequence(e.sequenceId);
+    return sequence ? channelsOf(sequence.steps).email : false;
+  });
+}
+
 export function salesnavStatus(now: Date = new Date()): SalesnavStatus {
   const mode = salesnavMode();
-  const enrolments = listEnrolments();
+  const enrolments = emailEnrolments(listEnrolments());
   const active = enrolments.filter((e) => e.state === "active");
   const due = active.map((e) => e.dueAt).sort();
   const window = sendWindow();

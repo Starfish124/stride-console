@@ -13,6 +13,7 @@
 
 import { addTouch, newId } from "../store.ts";
 import type { Client } from "../types.ts";
+import { getSequence } from "../outreach/sequence.ts";
 import type { OutreachStep } from "../outreach/sequence.ts";
 import { consoleUrl, nextDueAt, publicUrl, replyTo, salesnavMode } from "./config.ts";
 import { guardSend } from "./guard.ts";
@@ -233,7 +234,7 @@ export async function attemptSend(
     return { key, outcome: "stuck", detail: stuck.problem, record: stuck };
   }
 
-  const { from, replyTo: reply } = envelope();
+  const { from, replyTo: reply } = envelope(getSequence(enrolment.sequenceId)?.sender);
   const outcome = await mail.send(
     { to: email, from, replyTo: reply, subject: rendered.subject, text: rendered.body, headers: headersFor(email) },
     key,

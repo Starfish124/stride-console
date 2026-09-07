@@ -30,12 +30,17 @@ export interface OutreachStep {
   subject?: string;
 }
 
+/** Which founder's identity an email sequence sends as. Absent means Sarvesh. */
+export type SequenceSender = "sarvesh" | "jort";
+
 export interface OutreachSequence {
   id: string;
   name: string;
   /** Who this is for, in a sentence. Sharpens the writing and the review. */
   audience: string;
   steps: OutreachStep[];
+  /** Email steps only. LinkedIn is always sent by a person, so this is unused there. */
+  sender?: SequenceSender;
   createdAt: string;
   updatedAt: string;
 }
@@ -73,6 +78,7 @@ export function saveSequence(input: {
   name: string;
   audience: string;
   steps: Array<Omit<OutreachStep, "id"> & { id?: string }>;
+  sender?: SequenceSender;
 }): OutreachSequence {
   const all = read();
   const now = new Date().toISOString();
@@ -82,6 +88,7 @@ export function saveSequence(input: {
     id: existing?.id ?? `seq_${crypto.randomBytes(6).toString("hex")}`,
     name: input.name.trim() || "Untitled sequence",
     audience: input.audience.trim(),
+    ...(input.sender ? { sender: input.sender } : existing?.sender ? { sender: existing.sender } : {}),
     steps: input.steps.map((step, i) => ({
       id: step.id ?? `step_${crypto.randomBytes(4).toString("hex")}`,
       kind: step.kind,

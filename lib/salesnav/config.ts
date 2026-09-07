@@ -56,6 +56,15 @@ export function replyTo(): string {
   return (process.env.SALESNAV_REPLY_TO ?? "").trim();
 }
 
+/** A second identity a sequence can send as. Empty, not a fallback to fromAddress() — a founder's name must never leak onto the other founder's mail. */
+export function fromAddressJort(): string {
+  return (process.env.SALESNAV_FROM_JORT ?? "").trim();
+}
+
+export function replyToJort(): string {
+  return (process.env.SALESNAV_REPLY_TO_JORT ?? "").trim();
+}
+
 /**
  * Live requires all four, not just the flag.
  *

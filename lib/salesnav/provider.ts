@@ -13,7 +13,8 @@
 // B2B email in the EU is a liability, and it tells us nothing we would act on.
 
 import crypto from "node:crypto";
-import { fromAddress, replyTo } from "./config.ts";
+import { fromAddress, fromAddressJort, replyTo, replyToJort } from "./config.ts";
+import type { SequenceSender } from "../outreach/sequence.ts";
 
 export interface MailMessage {
   to: string;
@@ -108,7 +109,16 @@ export function provider(mode: "dry" | "live"): MailProvider {
   return process.env.STRIDE_MAIL_PROVIDER === "dry" ? dryProvider : resendProvider;
 }
 
-/** The envelope, minus the body. */
-export function envelope(): { from: string; replyTo?: string } {
-  return { from: fromAddress() || "Stride <dry-run@localhost>", replyTo: replyTo() || undefined };
+/**
+ * The envelope, minus the body.
+ *
+ * "jort" reads only SALESNAV_FROM_JORT / SALESNAV_REPLY_TO_JORT — it never
+ * falls back to the other founder's address. Missing config for a sender
+ * means that sender's mail fails loudly at the provider, not that it goes
+ * out under somebody else's name.
+ */
+export function envelope(sender?: SequenceSender): { from: string; replyTo?: string } {
+  const from = sender === "jort" ? fromAddressJort() : fromAddress();
+  const reply = sender === "jort" ? replyToJort() : replyTo();
+  return { from: from || "Stride <dry-run@localhost>", replyTo: reply || undefined };
 }
