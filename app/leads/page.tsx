@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Header } from "@/components/ui";
+import { PageHeading } from "@/components/WorkspaceUI";
 import { LeadImport } from "@/components/LeadImport";
 import { LeadPull } from "@/components/LeadPull";
 import { LeadEnrol } from "@/components/LeadEnrol";
@@ -54,20 +55,20 @@ export default function LeadsPage() {
   return (
     <div className="min-h-screen bg-paper">
       <Header />
-      <main className="mx-auto max-w-6xl px-4 pb-20 sm:px-6">
+      <main id="workspace-content" tabIndex={-1} className="workspace-main">
         {/* Title row, then a toolbar. The tool's shape, not a document's. */}
-        <div className="flex flex-wrap items-baseline justify-between gap-3 py-6">
-          <div>
-            <p className="eyebrow text-slate">Apollo outreach</p>
-            <h1 className="display mt-1 text-[26px] text-ink">Lead book</h1>
-          </div>
+        <PageHeading
+          eyebrow="Apollo"
+          title="Lead book"
+          description="Everyone Apollo has found, and who is already in a sequence."
+        >
           <Link
             href="/outreach"
             className="pressable inline-flex min-h-[38px] items-center rounded-input border border-line bg-white px-4 text-[14px] text-ink"
           >
             The queue →
           </Link>
-        </div>
+        </PageHeading>
 
         <div className="mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-y border-line py-3">
           <EngineLight />

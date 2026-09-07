@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Header } from "@/components/ui";
-import { Ramp } from "@/components/Ramp";
+import { PageHeading } from "@/components/WorkspaceUI";
 import { SalesNavControls } from "@/components/SalesNavControls";
 import { salesnavStatus } from "@/lib/salesnav/channel";
 import { listEnrolments } from "@/lib/salesnav/store";
@@ -46,25 +46,24 @@ export default async function SalesNavPage() {
   return (
     <div className="min-h-screen bg-paper">
       <Header />
-      <main id="workspace-content" tabIndex={-1} className="mx-auto max-w-3xl px-6 pb-20">
-        <section className="py-12">
-          <Ramp width={52} className="mb-4 text-indigo" />
-          <p className="eyebrow text-slate">Email sequencer</p>
-          <h1 className="display mt-3 text-3xl text-ink">
-            {stopped
+      <main id="workspace-content" tabIndex={-1} className="workspace-main">
+        <PageHeading
+          eyebrow="Apollo"
+          title={
+            stopped
               ? "Stopped."
               : live
                 ? "Sending, for real."
-                : "Writing, sending nothing."}
-          </h1>
-          <p className="mt-3 text-[15px] text-slate">
-            {stopped
+                : "Writing, sending nothing."
+          }
+          description={
+            stopped
               ? `Stopped by ${status.stop?.by}. ${status.stop?.reason ?? "Nothing goes out until somebody starts it again."}`
               : live
                 ? "Every step that comes due goes to a real inbox. The switch below stops all of it at once."
-                : "Every step is written, checked and recorded, and nothing leaves the building. This is what a fresh checkout does, and what it keeps doing until it is configured otherwise."}
-          </p>
-        </section>
+                : "Every step is written, checked and recorded, and nothing leaves the building. This is what a fresh checkout does, and what it keeps doing until it is configured otherwise."
+          }
+        />
 
         <section className="card-glass mb-8 rounded-card border border-line bg-white p-5">
           <SalesNavControls stopped={stopped} />

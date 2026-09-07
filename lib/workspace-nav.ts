@@ -21,10 +21,16 @@ export const WORKSPACE_GROUPS = [
     label: "Growth",
     items: [
       { label: "Content", href: "/library", icon: "IconLineageDoc" },
-      { label: "Campaigns", href: "/campaigns", icon: "IconPipeline" },
-      { label: "Outreach", href: "/outreach", icon: "IconEscalate" },
       { label: "Website", href: "/seo", icon: "IconTrend" },
       { label: "Events", href: "/events", icon: "IconBolt" },
+    ],
+  },
+  {
+    label: "Apollo",
+    items: [
+      { label: "Lead book", href: "/leads", icon: "IconTarget" },
+      { label: "Outreach", href: "/outreach", icon: "IconEscalate" },
+      { label: "Sequencer", href: "/salesnav", icon: "IconPipeline" },
     ],
   },
   {
@@ -68,7 +74,6 @@ export function workspaceLocation(path: string): {
     lab: "Lab",
     graph: "Project graph",
     playbook: "Brand playbook",
-    salesnav: "Email sequencer",
     scout: "Event scout",
     durabo: "Durabo",
     drafts: "Draft review",
